@@ -2359,7 +2359,7 @@ L08D1:  EX      (SP),HL
         RET     
 
 szOverflow:
-	DB	"?li{nie dannye", 0dh, 0ah, 0
+	DB	"?li{nie danny", 0e5h, 0dh, 0ah, 0
 ;	DB	3Fh, 6Ch, 69h, 7Bh, 6Eh, 69h, 65h, 20h, 64h, 61h, 6Eh, 6Eh, 79h, 0E5h, 0Dh, 0Ah, 00h	; "?ЛИШНИЕ ДАННЫЕ"
 
 ReadError:
