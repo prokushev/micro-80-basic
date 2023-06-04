@@ -5,6 +5,6 @@ asw -lU ctrlbas.asm > ctrlbas.lst
 p2bin ctrlbas.p ctrlbas.bin
 
 bin2rk basic80.bin
-bin2rk ctrlbas.bin
+bin2rk ctrlbas.bin $2800
 
 ctrlbas
