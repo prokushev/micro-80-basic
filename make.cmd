@@ -6,3 +6,5 @@ p2bin ctrlbas.p ctrlbas.bin
 
 bin2rk basic80.bin
 bin2rk ctrlbas.bin
+
+ctrlbas
