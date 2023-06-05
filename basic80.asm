@@ -1,6 +1,7 @@
-; Disassembly of the file "C:\yuri\m80\Basic80.bin"
-; 
-; on Saturday, 24 of October 2020 at 03:54 PM
+; ═══════════════════════════════════════════════════════════════════════
+;  БЕЙСИК для МИКРО-80
+; ═══════════════════════════════════════════════════════════════════════
+;
 ; Это дизассемблер бейсика "МИКРО-80". Имена меток взяты с дизассемблера Altair BASIC 3.2 (4K)
 ; По ходу разбора встречаются мысли и хотелки
 ;
@@ -80,7 +81,7 @@
 ; 81 " I=1" 95 " 10"
 ;
 ; Здесь 081H - идентификатор для FOR, далее следует строка " I=1", после которой - идентификатор 095H для TO, и оканчивается
-; строкой " 10". Всего 9 bytes вместо 13 байт для нетокенизированной строки.
+; строкой " 10". Всего 9 байт вместо 13 байт для нетокенизированной строки.
 ;
 ; This particular example line of input is meaningless unless it is part of a larger program. As you should know already,
 ; each line of a program is prefixed with a line number. These line numbers get stored as 16-bit integers preceding the
@@ -91,7 +92,7 @@
 ; 20 PRINT "HELLO WORLD"
 ; 30 NEXT I
 ;
-; Assuming that the beginning of program memory was at 0D18, this program would be stored in memory like this:
+; Приняв начало памяти программы за 0D18, данная программа будет сохранена в памяти следующим образом:
 ;
 ;
 ;
@@ -167,21 +168,29 @@
 ;
 ; приведет к ошибке Ошибка 09. Индекс не соответствует размерности массива.
 ;
-; An array is stored similarly to normal variables in that we lead with the two-byte variable name. This is followed by a 16-bit integer denoting the size in bytes of the array elements; and finally the array elements themselves (4 bytes each). The example array A(2) shown above, if stored at address 0D20, would appear like this :
+; Массив хранится в памяти аналогично обычным переменным. Вначале следует двух-байтовое имя
+; переменной. Далее следует 16-битное целое, содержащее размер в байтах элементов массива.
+; Далее следуют непосредственно элементы массива (по 4-е байта на каждый элемент).
+; Например, указанный выше массив A(2), если сохранен по адресу 0D20, будет храниться так:
 ;
-; Address	Bytes	Value	Description
-; 0D20	0x4100	'A\0'	Variable name
-; 0D22	0x000C	 	Total size, in bytes, of the array elements.
-; 0D24	0x81000000	1	Element 0 value
-; 0D28	0x82000000	2	Element 1 value
-; 0D2C	0x82400000	3	Element 2 value
+; Address	Bytes		Value	Description
+; 0D20		0x4100		'A\0'	Variable name
+; 0D22		0x000C	 		Total size, in bytes, of the array elements.
+; 0D24		0x81000000	1	Element 0 value
+; 0D28		0x82000000	2	Element 1 value
+; 0D2C		0x82400000	3	Element 2 value
 ; 
 ;
-; Program Flow
+; Порядок исполнения
+; ------------------
 ;
-; When a program is RUN, execution begins on the first line of the program. When a line has finished, execution passes to the next line and so on, until the end of the program or a END or STOP instruction is reached.
+; При выполнении команды RUN исполнение начинается с первой строки программы.
+; Когда строка заканчивается, исполнение продолжается со следующей строки и так далее до тех
+; пор, пока не будет достигнут конец программы, команда END или STOP.
 ;
-; This is too simple for all but the simplest programs - there are two mechanisms in Basic for altering program flow so that code can run in loops and subroutines be called. These mechanisms are FOR/NEXT for looping, and GOSUB/RETURN for subroutines.
+; This is too simple for all but the simplest programs - there are two mechanisms in Basic 
+; for altering program flow so that code can run in loops and subroutines be called.
+; These mechanisms are FOR/NEXT for looping, and GOSUB/RETURN for subroutines.
 ;
 ; In both FOR and GOSUB cases, the stack is used to store specific information about the program line to return to.
 ;
@@ -1846,29 +1855,35 @@ FunctionCallError:
         JP      Error
 		
 ;1.11 Jumping to Program Lines
-;LineNumberFromStr
-;Gets a line number from a string pointer. The string pointer is passed in in HL,
-; and the integer result is returned in DE. Leading spaces are skipped over, and 
-;it returns on finding the first non-digit. The largest possible line number is 
-;65529 - it syntax errors out if the value of the first four digits is more then 6552.
+;
+; LineNumberFromStr
+;
+; Получает номер строки из указателя на строку. Указатель на строку передается в HL,
+; а целочисленный результат возвращается в DE. Leading spaces are skipped over, and 
+; it returns on finding the first non-digit. The largest possible line number is 
+; 65529 - it syntax errors out if the value of the first four digits is more then 6552.
 
-;One interesting feature of this function is that it returns with Z set if it
+; One interesting feature of this function is that it returns with Z set if it
 ; found a valid number (or the string was empty), or NZ if the string
 ; didn't lead with a number.
 		
 LineNumberFromStr:
+;Decrement string ptr (so we're pointing at preceding character) and initialise result to 0.
 	DEC     HL
 LineNumberFromStr2:
 	LD      DE,0000H
 NextLineNumChar:
+;Get next character and exit if it's not alphanumeric.
 	RST     NextChar
         RET     NC
 
         PUSH    HL
         PUSH    AF
+;Syntax Error out if line number is already > 6552. This is really erroring out of the line number is >65529, since the next digit has not been counted in yet.
         LD      HL,1998H
         RST     CompareHLDE
         JP      C,SyntaxError
+;Multiply result by 10.
         LD      H,D
         LD      L,E
         ADD     HL,DE
@@ -1876,6 +1891,7 @@ NextLineNumChar:
         ADD     HL,DE
         ADD     HL,HL
         POP     AF
+;Add this digit's value to the result and jump back.
         SUB     '0'
         LD      E,A
         LD      D,00H
