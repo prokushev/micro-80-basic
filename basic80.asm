@@ -199,6 +199,7 @@
 
 ; Конфигурация
 MEM_TOP	EQU	03FFFH	; Верхний адрес доступной памяти
+RK86	EQU	1	; Модификации для "Бейсик для Радио-86РК"
 BASICNEW	EQU	0	; Включить мои изменения в коде
 ANSI	EQU	0	; Включить поддержку совместимости с ANSI Minimal Basic
 GOST	EQU	0	; Включить поддержку совместимости с ГОСТ 27787-88
@@ -270,8 +271,13 @@ RST	MACRO	adr
 	ENDIF
 
 Start:
+	IF	RK86
+	LD	SP, TMPSTACK
+	JP	01742H	;Init
+	ELSE
 	LD	SP, MEM_TOP
 	JP	Init
+	ENDIF
 
 ; Данные байты не используются? В оригинале здесь указатели на какие-то данные, а не код.
 	INC	HL
@@ -367,9 +373,9 @@ RST6RET:
 
 
 ; токены и прочие данные
-; 1.2 Keywords
+; 1.2 Ключевые слова
 ;
-; There are three groups of keywords :
+; Всего существует три типа ключевых слов:
 ;
 ; Основные ключевые слова. These typically start a statement; examples are LET, PRINT, GOTO and so on.
 ; Вспомогательные слова. Used in statements but not as part of an expression, eg TO, STEP, TAB
@@ -438,6 +444,9 @@ KW_ARITH_OP_FNS:
 
 	CHK	088h, "Сдвижка кода"
 ; LET и END выкинули зачем-то... И этим поломали совместимость... В отчечественных бейсиках так много где произошло...
+
+; Таблица токенов. В основном в Бейсиках от M$ начало токенов либо 80h, либо 81h. Когда произошла сдвижка,
+; не выяснял. В советских Бейсиках в основе лежит эта таблица токенов, которая расширялась разными версиями.
 
 TOKEN	MACRO	name
 name	EQU	Q
@@ -643,14 +652,23 @@ TKCOUNT	EQU	Q-80H
 	CHK	0170H, "Сдвижка кода"
 	
 KW_GENERAL_FNS:
+; Altair 4k			;	Altair 4K	MBASIC 5.2
+	IF	RK86
+	DW	01765h		; Cls
+	ELSE
 	DW	Cls		;	END
+	ENDIF
 	DW	For		;	FOR
 	DW	Next		;	NEXT
 	DW	Data		;	DATA
 	DW	Input		;	INPUT
 	DW	Dim		;	DIM
 	DW	Read		;	READ
+	IF	RK86
+	DW	01779H		; Cur
+	ELSE
 	DW	Cur		;	LET
+	ENDIF
 	DW	Goto		;	GOTO
 	DW	Run		;	RUN
 	DW	If		;	IF
@@ -661,17 +679,25 @@ KW_GENERAL_FNS:
 	DW	Stop		;	STOP
 	DW	Out		;	PRINT
 	DW	On		;	LIST
+	IF	RK86
+	DW	017afH		; Plot
+	DW	01847h		; Line
+	ELSE
 	DW	Plot		;	CLEAR
 	DW	Line		;	NEW
-	DW	Poke		;
-	DW	Print		;
-	DW	Def		;
-	DW	Cont		;
-	DW	List		;
-	DW	Clear		;
-	DW	Mload		;
-	DW	Msave		;
-	DW	New		;
+	ENDIF
+
+; МИКРО-80
+	DW	Poke		;			ONGOTO
+	DW	Print		;			NULL
+	DW	Def		;			WAIT
+	DW	Cont		;			DEF
+	DW	List		;			POKE
+	DW	Clear		;			CONT
+	DW	Mload		;			CLOAD
+	DW	Msave		;			OUT
+	DW	New		;			LPRINT
+				;			LLIST
 	IF	OPTION
 	DW	Option
 	ENDIF
@@ -831,17 +857,18 @@ LINE_BUFFER:
 	NOP
 
 	CHK     0216h, "Сдвижка кода"
+TMPSTACK:
 	NOP     
 ControlChar:
 	DB		00		; Тип символа 00 - обычный символ FF - управляющий
             
 DIM_OR_EVAL:
 	DB	0
-        DB	01h
+VALTYP:
+	DB	01h
 DATA_STM:
 	DB	0			; Признак обработки TK_DATA
-	DB	0FFH
-        CCF     
+MEMSIZ:	DW	03FFFH			; Размер памяти //021BH
         RRA     
         LD      (BC),A
         LD      B,00H
@@ -875,16 +902,29 @@ CURRENT_LINE:
 	CHK	0241H, "Сдвижка кода"
 STACK_TOP:
 	DW	03fcdh				; Верхушка стека бейсика
+	IF	RK86
+PROGRAM_BASE:
+	DW	1B01h
+VAR_BASE:
+	DW	1B03h
+VAR_ARRAY_BASE:
+	DW	1B03h
+VAR_TOP:
+	DW	1B03h
+DATA_PROG_PTR:
+	DW	1B00h
+	ELSE
 PROGRAM_BASE:
 	DW	2201h
 VAR_BASE:
 	DW	2203h
 VAR_ARRAY_BASE:
 	DW	2203h
-VAR_TOP
+VAR_TOP:
 	DW	2203h
-DATA_PROG_PTR
+DATA_PROG_PTR:
 	DW	2200h
+	ENDIF
 FACCUM:	DB	1fh,02h,84h,87h	; Видимо, мусор. Заменить на DD	0 ?
 FTEMP:	DB	0c2h
 	db	20h
@@ -1217,33 +1257,36 @@ FindProgramLineInMem:
 
         JP      FindProgramLineInMem
 		
-;New
-;Keyword NEW. Writes the null line number to the bottom of program storage (ie an empty program), updates pointer to variables storage,
-; and falls into RUN which just happens to do the rest of the work NEW needs to do.
+; New
+; Команда NEW. Записывает нулевой номер строки в конец области программ (т.е. пустая программа),
+; обновляет указатель на область переменных и переходит в ResetAll.
 
 	CHK	039Dh, "Сдвижка кода"
 New:		
+; Команд не поддерживает аргументов.
         RET     NZ
 
 New2:
+; Записывает два нулевых байта как признак окончание программы в начало области программы.
 	LD      HL,(PROGRAM_BASE)
         XOR     A
         LD      (HL),A
         INC     HL
         LD      (HL),A
         INC     HL
+; И устанавливаем область переменных сразу за концом программы.
         LD      (VAR_BASE),HL
 
-;ResetAll
-;Resets everything.
+; ResetAll
+; Очищает все.
 		
 ResetAll:
-;Set PROG_PTR_TEMP to just before the start of the program.
+; Set PROG_PTR_TEMP to just before the start of the program.
 	LD      HL,(PROGRAM_BASE)
         DEC     HL
 ClearAll:
 	LD      (PROG_PTR_TEMP),HL
-        LD      HL,(021BH)
+        LD      HL,(MEMSIZ)
         LD      (022FH),HL
 ;Reset the data pointer
         CALL    Restore
@@ -1428,6 +1471,13 @@ InputNext:
         JP      Z,ResetInput
 ;If user has not given a printable character, then loop back until they do.
         CP      7FH
+	IF	RK86
+	JP	Z, 01995H
+	CP	03H
+	JP	C, 01967H
+	CP	1BH
+	JP	Z, 01959H
+	ELSE
         JP      NC,InputNext
         CP      01H
         JP      C,InputNext
@@ -1436,6 +1486,7 @@ InputNext:
         NOP     
         NOP     
         NOP     
+	ENDIF
 ;A normal character has been pressed. Here we store it in LINE_BUFFER, only we don't if the terminal width has been exceeded. If the terminal width is exceeded then we ring the bell (ie print ASCII code 7) and ignore the char. Finally we loop back for the next input character.
         LD      C,A
         LD      A,B
@@ -1474,18 +1525,36 @@ L04CD:  POP     AF
         PUSH    BC
         LD      C,A
         PUSH    AF
+	IF	RK86
+	CALL	19c0H
+	ELSE
         CALL    0F809h
+	ENDIF
         POP     AF
         POP     BC
         NOP     
         RET     
-		
+
 ;InputChar
 ;Gets one char of input from the user.		
 
 InputChar:
-	CALL    0F803h
-        CP      1FH
+	CALL	0F803H
+	CP	1FH
+
+	IF	RK86
+	JP	Z, 1049H
+	CP	0FH
+	CALL	Z, 19A0H
+	CP	04H
+	CALL	Z, 19A8H
+	RET
+	NOP
+	NOP
+	NOP
+
+	ELSE
+
         JP      Z,0F800h
         NOP     
         AND     7FH
@@ -1496,6 +1565,7 @@ InputChar:
         CPL     
         LD      (ControlChar),A
         RET     
+	ENDIF
 
 ;1.7 LIST Handler
 ;List
@@ -1859,31 +1929,32 @@ FunctionCallError:
 ; LineNumberFromStr
 ;
 ; Получает номер строки из указателя на строку. Указатель на строку передается в HL,
-; а целочисленный результат возвращается в DE. Leading spaces are skipped over, and 
-; it returns on finding the first non-digit. The largest possible line number is 
-; 65529 - it syntax errors out if the value of the first four digits is more then 6552.
+; а целочисленный результат возвращается в DE. Ведущие пробелы пропускаются, т осуществляется
+; возврат, при первом нечисловом символе. Наибольшее возможное число
+; 65529 - будет выведена синтаксическая ошибка, если первые четыре цифры больше 6552.
 
-; One interesting feature of this function is that it returns with Z set if it
-; found a valid number (or the string was empty), or NZ if the string
-; didn't lead with a number.
+; Одна из интересных фишек этой функции в том, что она возвращает установленным флаг Z,
+; если найдено корректное число (или строка пустая), или флаг NZ если строка начинается
+; не с цифры.
 		
 LineNumberFromStr:
-;Decrement string ptr (so we're pointing at preceding character) and initialise result to 0.
+; Уменьшение указателя строки (теперь указавает на предыдущий символ) и инициализация результата = 0.
 	DEC     HL
 LineNumberFromStr2:
 	LD      DE,0000H
 NextLineNumChar:
-;Get next character and exit if it's not alphanumeric.
+; Получить следующий символ и выйти, если он не буквенно-цифровой.
 	RST     NextChar
         RET     NC
 
         PUSH    HL
         PUSH    AF
-;Syntax Error out if line number is already > 6552. This is really erroring out of the line number is >65529, since the next digit has not been counted in yet.
+; Выводится синтаксическая ошибка, если номер строки > 6552. Фактически, ошибка возникает, еслиномер строки >65529,
+; т.к. следующая цифра еще не учтена.
         LD      HL,1998H
         RST     CompareHLDE
         JP      C,SyntaxError
-;Multiply result by 10.
+; Умножаем результат на 10.
         LD      H,D
         LD      L,E
         ADD     HL,DE
@@ -1891,7 +1962,7 @@ NextLineNumChar:
         ADD     HL,DE
         ADD     HL,HL
         POP     AF
-;Add this digit's value to the result and jump back.
+; Прибавляем значение данной цифры к результату и продолжаем вычисление.
         SUB     '0'
         LD      E,A
         LD      D,00H
@@ -1909,7 +1980,7 @@ Clear:
         RET     NZ
 
         PUSH    HL
-        LD      HL,(021BH)
+        LD      HL,(MEMSIZ)
         LD      A,L
         SUB     E
         LD      E,A
@@ -2037,7 +2108,7 @@ FindNextStatementLoop:
 Let:	CALL    GetVar
         RST     SyntaxCheck
         DB	TK_EQ			; '='
-        LD      A,(0219H)
+        LD      A,(VALTYP)
         PUSH    AF
         PUSH    DE
         CALL    EvalExpression
@@ -2165,7 +2236,7 @@ L0794:  RET     Z
         CALL    EvalExpression
         DEC     HL
         PUSH    HL
-        LD      A,(0219H)
+        LD      A,(VALTYP)
         OR      A
         JP      NZ,L07D0
         CALL    FOut
@@ -2330,7 +2401,7 @@ ReadNext:
 
 ; Restore variable address, advance the data ptr so it points to the start of the next data item, and assign the data item to the variable. 
 GotDataItem:
-	LD      A,(0219H)
+	LD      A,(VALTYP)
         OR      A
         JP      Z,L08BE
         RST     NextChar
@@ -2465,7 +2536,7 @@ ForLoopIsComplete:
 
 L0966:  CALL    EvalExpression
 L0969:  OR      37H
-L096B:  LD      A,(0219H)
+L096B:  LD      A,(VALTYP)
         ADC     A,A
         RET     PE
 
@@ -2521,7 +2592,7 @@ L09AA:  LD      A,D
         RET     NC
 
         LD      E,A
-        LD      A,(0219H)
+        LD      A,(VALTYP)
         DEC     A
         OR      E
         LD      A,E
@@ -2560,7 +2631,7 @@ L09D2:  PUSH    BC
 
 EvalTerm:
 	XOR     A
-L09E6:  LD      (0219H),A
+L09E6:  LD      (VALTYP),A
         RST     NextChar
         JP      C,FIn
 ;If the character is alphabetic then we have a variable, so jump ahead to get it.
@@ -2608,7 +2679,7 @@ EvalVarTerm:
         PUSH    HL
         EX      DE,HL
         LD      (FACCUM),HL
-        LD      A,(0219H)
+        LD      A,(VALTYP)
         OR      A
         CALL    Z,FLoadFromMem
         POP     HL
@@ -2690,7 +2761,7 @@ L0A99:  OR      E
         JP      (HL)
 
 L0A9E:  LD      HL,0AB0H
-        LD      A,(0219H)
+        LD      A,(VALTYP)
         RRA     
         LD      A,D
         RLA     
@@ -2714,7 +2785,7 @@ L0A9E:  LD      HL,0AB0H
         PUSH    HL
         JP      Z,FCompare
         XOR     A
-        LD      (0219H),A
+        LD      (VALTYP),A
         PUSH    DE
         CALL    L0EC1
         POP     DE
@@ -2795,7 +2866,7 @@ L0B1F:  CALL    CharIsAlpha
         JP      C,SyntaxError
         XOR     A
         LD      C,A
-        LD      (0219H),A
+        LD      (VALTYP),A
         RST     NextChar
         JP      C,L0B34
         CALL    CharIsAlpha
@@ -2808,7 +2879,7 @@ L0B35:  RST     NextChar
 L0B3F:  SUB     24H
         JP      NZ,L0B4C
         INC     A
-        LD      (0219H),A
+        LD      (VALTYP),A
         RRCA    
         ADD     A,C
         LD      C,A
@@ -3018,7 +3089,7 @@ Fre:
         EX      DE,HL
         LD      HL,0000H
         ADD     HL,SP
-        LD      A,(0219H)
+        LD      A,(VALTYP)
         OR      A
         JP      Z,L0C96
         CALL    L0EC1
@@ -3034,7 +3105,7 @@ L0C96:  LD      A,L
 L0C9B:  LD      B,C
 L0C9C:  LD      D,B
         LD      E,00H
-        LD      HL,0219H
+        LD      HL,VALTYP
         LD      (HL),E
         LD      B,90H
         JP      L12DA
@@ -3180,7 +3251,7 @@ L0D75:  LD      DE,022BH
         LD      HL,(021DH)
         LD      (FACCUM),HL
         LD      A,01H
-        LD      (0219H),A
+        LD      (VALTYP),A
         CALL    L131C
         RST     CompareHLDE
         LD      E,ERR_ST
@@ -3232,7 +3303,7 @@ L0DC6:  POP     AF
         PUSH    AF
         LD      BC,0DACH
         PUSH    BC
-L0DD2:  LD      HL,(021BH)
+L0DD2:  LD      HL,(MEMSIZ)
 L0DD5:  LD      (022FH),HL
         LD      HL,0000H
         PUSH    HL
@@ -3432,7 +3503,7 @@ Len:
 L0EEB:  CALL    L0EBE
         XOR     A
         LD      D,A
-        LD      (0219H),A
+        LD      (VALTYP),A
         LD      A,(HL)
         OR      A
         RET     
@@ -3652,6 +3723,39 @@ L0FFD:  CALL    Puncher
         LD      HL,(VAR_BASE)
 L100E:  LD      A,(DE)
         INC     DE
+	IF	RK86
+	CALL	0FEEH
+	RST	CompareHLDE
+	JP	NZ, 0100eH
+	CALL	0FEBH
+	POP	HL
+	JP	0F82dH
+
+	LD	HL, (00245H)
+	INC	H
+	EX	DE, HL
+	CALL	0f830H
+	RST	CompareHLDE
+	JP	C, 01041H
+	CALL	0f830H
+	LD	(021bh), HL
+	LD	(022fh), HL
+	LD	SP, HL
+	LD	HL, 0FFCEH
+	ADD	HL, SP
+	LD	(0241h), HL
+	CALL	019B8H
+	JP	02fdh
+
+	LD	A, D
+	CALL	0f815h
+	LD	A, E
+	CALL	0f815h
+	JP	0f86ch
+	NOP
+	NOP
+	CALL	0f82dH
+	ELSE
         CALL    Puncher
         RST     CompareHLDE
         JP      NZ,L100E
@@ -3683,6 +3787,7 @@ L1040:  CALL    Reader
         JP      NZ,L103E
         DEC     B
         JP      NZ,L1040
+	ENDIF
 L1051:  LD      (VAR_BASE),HL
         LD      HL,szOK
         CALL    PrintString
@@ -5257,9 +5362,30 @@ Usr:
         RST     FTestSign
         CALL    L0649
         EX      DE,HL
+	IF	RK86
+        CALL    01741H
+	DB	0C3H, 0ABH
+	DB	00CH, 0E9H, 0AFH, 032H, 000H, 01BH, 021H, 04FH, 017H, 0CDH, 018H, 0F8H, 0C3H, 01EH, 010H, 01FH
+	DB	02AH, 072H, 061H, 064H, 069H, 06FH, 02DH, 038H, 036H, 072H, 06BH, 02AH, 020H, 042H, 041H, 053H
+	DB	049H, 043H, 00DH, 00AH, 000H, 0E5H, 0CDH, 01EH, 0F8H, 001H, 018H, 01DH, 009H, 022H, 057H, 019H
+	DB	0E1H, 00EH, 01FH, 0CDH, 009H, 0F8H, 0C3H, 097H, 017H, 0CDH, 0B9H, 00FH, 0FEH, 040H, 0D2H, 05CH
+	DB	006H, 0C6H, 020H, 032H, 057H, 019H, 0CFH, 02CH, 0CDH, 0B9H, 00FH, 0FEH, 019H, 0D2H, 05CH, 006H
+	DB	04FH, 03EH, 038H, 091H, 032H, 058H, 019H, 00EH, 01BH, 0CDH, 009H, 0F8H, 00EH, 059H, 0CDH, 009H
+	DB	0F8H, 03AH, 058H, 019H, 04FH, 0CDH, 009H, 0F8H, 03AH, 057H, 019H, 04FH, 0C3H, 009H, 0F8H, 0CDH
+	DB	0B9H, 00FH, 032H, 054H, 019H, 0CFH, 02CH, 0CDH, 0B9H, 00FH, 032H, 055H, 019H, 0CFH, 02CH, 0CDH
+	DB	0B9H, 00FH, 032H, 056H, 019H, 03AH, 054H, 019H, 0FEH, 080H, 0D2H, 05CH, 006H, 03AH, 055H, 019H
+	DB	0FEH, 032H, 0D2H, 05CH, 006H, 057H, 03EH, 031H, 092H, 032H, 055H, 019H, 0E5H, 0AFH, 03AH, 054H
+	DB	019H, 01FH, 05FH, 079H, 01FH, 04FH, 03AH, 055H, 019H, 01FH, 057H, 079H, 017H, 017H, 04FH, 021H
+	DB	0C2H, 037H, 011H, 04EH, 000H, 03AH, 055H, 019H, 01FH, 0B7H, 0CAH, 002H, 018H, 019H, 03DH, 0C2H
+	DB	0FDH, 017H, 03AH, 054H, 019H, 01FH, 05FH, 019H, 079H, 0E6H, 003H, 0FEH, 000H, 006H, 001H, 0CAH
+	DB	022H, 018H, 0FEH, 001H, 006H, 002H, 0CAH, 022H, 018H, 0FEH, 002H, 006H, 010H, 0CAH, 022H, 018H
+	DB	006H, 004H, 03AH, 056H, 019H, 01FH, 078H, 0DAH, 039H, 018H, 02FH, 047H, 07EH, 0FEH, 018H, 0DAH
+	DB	034H, 018H, 036H, 000H, 078H, 0A6H, 0C3H, 044H, 018H, 047H, 07EH, 0FEH, 018H, 0DAH, 042H, 018H
+	DB	036H, 000H, 078H, 0B6H, 077H, 0E1H, 0C9H, 0CDH, 0B9H, 00FH, 032H, 052H, 019H, 0CFH, 02CH, 0CDH
+	DB	0B9H, 0FH
+	ELSE	
         CALL    L1741
         JP      L0CAB
-	
 L1741:  JP      (HL)
 
 ; Начальная инициализация.
@@ -5330,6 +5456,11 @@ L17A1:  LD      D,00H
 
 	CHK	17B3H, "Сдвижка кода"
 Cls:
+; Здесь можно было бы просто вывести 01fH через МОНИТОР и было бы портабельно...
+	IF	BASICNEW
+	LD	C, 01FH
+	JP	0F809H
+	ELSE	
         PUSH    HL
         LD      HL,0E800H
         LD      DE,1A00H
@@ -5342,7 +5473,8 @@ L17BA:  XOR     A
         CP      22H
         JP      NZ,L17BA
         POP     HL
-        RET     
+        RET
+	ENDIF
 
 	CHK	17C7H, "Сдвижка кода"
 Plot:
@@ -5428,6 +5560,7 @@ Line:
         RST     SyntaxCheck
         DB	','
         CALL    L0FB9
+	ENDIF
         LD      (1953H),A
         PUSH    HL
         LD      HL,0100H
@@ -5435,7 +5568,11 @@ Line:
         LD      HL,0001H
         LD      (1950H),HL
         LD      HL,(1954H)
+	IF	RK86
+	LD	A,31h
+	ELSE
         LD      A,3FH
+	ENDIF
         SUB     H
         LD      H,A
         LD      A,(1952H)
@@ -5477,9 +5614,17 @@ L18A8:  LD      A,E
         LD      B,01H
 L18AD:  LD      A,E
         CP      B
+	IF	RK86
+        JP      M,01845H
+	ELSE
         JP      M,L1845
+	ENDIF
         LD      HL,(1954H)
+	IF	RK86
+        LD      A,31H
+	ELSE
         LD      A,3FH
+	ENDIF
         SUB     H
         LD      H,A
         LD      A,(1950H)
@@ -5507,7 +5652,11 @@ L18AD:  LD      A,E
         LD      (1955H),A
 L18E4:  PUSH    BC
         PUSH    DE
+	IF	RK86
+        CALL    017C5H
+	ELSE
         CALL    L17DD
+	ENDIF
         POP     DE
         POP     BC
         JP      L18AD
@@ -5560,9 +5709,25 @@ L1938:  LD      A,08H
         JP      NZ,L1936
         DEC     B
         JP      NZ,L1938
+	IF	RK86
+        JP      0104EH
+	ELSE
         JP      L1051
+	ENDIF
         NOP     
-        NOP     
+        NOP
+	IF	RK86
+	DB	000H, 000H, 000H, 000H, 000H, 000H, 000H, 000H, 000H, 0CDH, 0D8H, 004H, 0FEH, 003H, 0D2H, 085H
+	DB	004H, 011H, 085H, 019H, 0C3H, 06AH, 019H, 011H, 08FH, 019H, 0B7H, 0CAH, 07AH, 019H, 04FH, 01AH
+	DB	013H, 0B7H, 0C2H, 06FH, 019H, 079H, 03DH, 0C3H, 06BH, 019H, 01AH, 077H, 013H, 023H, 0B7H, 0C2H
+	DB	07AH, 019H, 0C3H, 0D9H, 007H, 09AH, 000H, 095H, 0B2H, 028H, 030H, 029H, 000H, 097H, 000H, 09BH
+	DB	000H, 098H, 000H, 089H, 000H, 03EH, 008H, 0DFH, 03EH, 020H, 0DFH, 03EH, 008H, 0C3H, 076H, 004H
+	DB	03AH, 017H, 002H, 02FH, 032H, 017H, 002H, 0C9H, 03AH, 0EDH, 004H, 0B7H, 03EH, 0FFH, 0CAH, 0B2H
+	DB	019H, 0AFH, 032H, 0EDH, 004H, 03EH, 07FH, 0C9H, 021H, 003H, 0A0H, 036H, 091H, 036H, 00FH, 0C9H
+	DB	03EH, 07FH, 0A1H, 04FH, 0CDH, 009H, 0F8H, 03AH, 0EDH, 004H, 0B7H, 0C8H, 079H, 0B7H, 0E2H, 0D3H
+	DB	019H, 0F6H, 080H, 04FH, 0E5H, 021H, 003H, 0A0H, 07EH, 01FH, 0D2H, 0D8H, 019H, 02BH, 02BH, 071H
+	DB	023H, 023H, 036H, 00EH, 02BH, 07EH, 017H, 0D2H, 0E5H, 019H, 036H, 00FH, 0E1H, 0C9H, 000H, 000H
+	ELSE
         NOP     
         NOP     
         NOP     
@@ -5681,6 +5846,7 @@ L1938:  LD      A,08H
 	DB 73h, 6Bh, 77h, 61h, 20h, 31h, 39h, 38h,  34h, 20h, 67h, 6Fh, 64h, 22h		; "СКВА 1984 ГОД""
         NOP     
         NOP     
+	ENDIF
         NOP     
         NOP     
         NOP     
