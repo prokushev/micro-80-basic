@@ -273,11 +273,10 @@ RST	MACRO	adr
 Start:
 	IF	RK86
 	LD	SP, TMPSTACK
-	JP	01742H	;Init
 	ELSE
 	LD	SP, MEM_TOP
-	JP	Init
 	ENDIF
+	JP	Init
 
 ; Данные байты не используются? В оригинале здесь указатели на какие-то данные, а не код.
 	INC	HL
@@ -5362,12 +5361,33 @@ Usr:
         RST     FTestSign
         CALL    L0649
         EX      DE,HL
+        CALL    L1741
+	JP	L0CAB
+L1741:  JP      (HL)
+; Начальная инициализация.
+; =======================
+; В отличие от Altair BASIC, в данной версии конфигурация памяти не настраивается
+; динамически, а статично вбита в код.
+;
+; Выставляем маркер конца программы (по описанию должно быть 2 байта...)
+Init:	XOR     A
+
 	IF	RK86
-        CALL    01741H
-	DB	0C3H, 0ABH
-	DB	00CH, 0E9H, 0AFH, 032H, 000H, 01BH, 021H, 04FH, 017H, 0CDH, 018H, 0F8H, 0C3H, 01EH, 010H, 01FH
-	DB	02AH, 072H, 061H, 064H, 069H, 06FH, 02DH, 038H, 036H, 072H, 06BH, 02AH, 020H, 042H, 041H, 053H
-	DB	049H, 043H, 00DH, 00AH, 000H, 0E5H, 0CDH, 01EH, 0F8H, 001H, 018H, 01DH, 009H, 022H, 057H, 019H
+
+	LD	(1B00H),A
+
+	LD	HL, 0174FH
+	CALL	0F818H
+
+	JP	101EH
+
+szHello:
+	DB	01FH,"*radio-86rk* BASIC", 0DH, 0AH, 0
+
+	PUSH	HL
+	CALL	0F81EH
+	
+	DB	001H, 018H, 01DH, 009H, 022H, 057H, 019H
 	DB	0E1H, 00EH, 01FH, 0CDH, 009H, 0F8H, 0C3H, 097H, 017H, 0CDH, 0B9H, 00FH, 0FEH, 040H, 0D2H, 05CH
 	DB	006H, 0C6H, 020H, 032H, 057H, 019H, 0CFH, 02CH, 0CDH, 0B9H, 00FH, 0FEH, 019H, 0D2H, 05CH, 006H
 	DB	04FH, 03EH, 038H, 091H, 032H, 058H, 019H, 00EH, 01BH, 0CDH, 009H, 0F8H, 00EH, 059H, 0CDH, 009H
@@ -5384,17 +5404,7 @@ Usr:
 	DB	036H, 000H, 078H, 0B6H, 077H, 0E1H, 0C9H, 0CDH, 0B9H, 00FH, 032H, 052H, 019H, 0CFH, 02CH, 0CDH
 	DB	0B9H, 0FH
 	ELSE	
-        CALL    L1741
-        JP      L0CAB
-L1741:  JP      (HL)
 
-; Начальная инициализация.
-; =======================
-; В отличие от Altair BASIC, в данной версии конфигурация памяти не настраивается
-; динамически, а статично вбита в код.
-;
-; Выставляем маркер конца программы (по описанию должно быть 2 байта...)
-Init:	XOR     A
         LD      (2200H),A
 
 	; Приветственное сообщение. Неясно, почему не использована функция МОНИТОРа...
@@ -5414,8 +5424,8 @@ InitLoop:
         JP      InitLoop
 	ENDIF
 		
-szHello:		DB		1Fh, 0Dh, 0Ah, "*MikrO/80* BASIC", 0	;2Ah, 4Dh, 69h, 6Bh, 72h, 4Fh, 2Fh
-;			DB		38h, 30h, 2Ah, 20h, 42h, 41h, 53h, 49h, 43h, 00h
+szHello:
+	DB		1Fh, 0Dh, 0Ah, "*MikrO/80* BASIC", 0
 
 	CHK	176ah, "Сдвижка кода"
 Cur:
