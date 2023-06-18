@@ -860,7 +860,7 @@ VALTYP:
 	DB	01h
 DATA_STM:
 	DB	0			; Признак обработки TK_DATA
-MEMSIZ:	DW	03FFFH			; Размер памяти //021BH
+MEMSIZ:	DW	MEM_TOP			; Размер памяти //021BH
         RRA     
         LD      (BC),A
         LD      B,00H
@@ -878,19 +878,23 @@ MEMSIZ:	DW	03FFFH			; Размер памяти //021BH
         RST     38H
         CCF     
         PUSH    DE
-        LD      BC,0000H
+	DB	01H
+DATA_LINE:
+        DW	0000H				; Номер строка с DATA, где возникла ошибка
 NO_ARRAY:
 	DB	00H				; Флаг, что переменная-массив недопустима (для TK_FOR, например)
 INPUT_OR_READ:
-	DB	00H
+	DB	00H				; Выполняем INPUT или READ
 PROG_PTR_TEMP:
 	DW	1722h				; Мусор, можно=0
 PROG_PTR_TEMP2:
 	DW	01d5h				; Мусор, можно=0
 CURRENT_LINE:
 	DW	0FFFFH		; Номер текущей исполняемой строки FFFF - никакая не исполняется
-	DB	6eh, 0ah
-	db	0,0
+OLD_LINE:
+	DB	6eh, 0ah	; Номер строки для CONT
+OLD_TEXT:
+	db	0,0		; Адрес(?) для CONT
 	CHK	0241H, "Сдвижка кода"
 STACK_TOP:
 	DW	03fcdh				; Верхушка стека бейсика
@@ -914,10 +918,10 @@ FTEMP:	DB	0c2h
         NOP     
         NOP     
         NOP     
-szError:	DB		6fh, 7Bh, 69h, 62h, 6Bh, 0E1h, 00h		; "ОШИБКА"
-szIn:		DB		20h, 20h, 77h, 0A0h, 00h 			; "  В "
-szOK:		DB		0Dh, 0Ah, 0BDh, 3Eh, 0Dh, 0Ah, 00h		; "=>"
-szStop:		DB		0Dh, 0Ah, 73h, 74h, 6Fh, 70h, 0A0h, 00h		; "СТОП "
+szError:	DB		"o{ibk", 0E1h, 00h		; "ОШИБКА"
+szIn:		DB		20h, 20h, "w", 0A0h, 00h 			; "  В "
+szOK:		DB		0Dh, 0Ah, 0BDh, ">", 0Dh, 0Ah, 00h		; "=>"
+szStop:		DB		0Dh, 0Ah, "stop", 0A0h, 00h		; "СТОП "
 		
 ; конец токенов
 
@@ -1047,7 +1051,8 @@ OutOfMemory:
 	LD      E, ERR_OM
         JP      Error
 
-L02CA:  LD      HL,(0233H)
+DATASyntaxError:
+	LD      HL,(DATA_LINE)
         LD      (CURRENT_LINE),HL
 
 SyntaxError:
@@ -1285,7 +1290,7 @@ ResetStack:
         LD      HL,0000H
         PUSH    HL
 
-        LD      (023FH),HL
+        LD      (OLD_TEXT),HL
 
         LD      HL,(PROG_PTR_TEMP)
         XOR     A
@@ -1464,7 +1469,7 @@ InputNext:
         NOP     
         NOP     
         NOP     
-        NOP     
+	NOP
 	ENDIF
 ;A normal character has been pressed. Here we store it in LINE_BUFFER, only we don't if the terminal width has been exceeded. If the terminal width is exceeded then we ring the bell (ie print ASCII code 7) and ignore the char. Finally we loop back for the next input character.
         LD      C,A
@@ -1530,8 +1535,7 @@ InputChar:
 	RET
 	NOP
 	NOP
-	NOP
-
+L04ED:	DB	0H
 	ELSE
 
         JP      Z,0F800h
@@ -1834,9 +1838,9 @@ EndOfProgram:
         AND     H
         INC     A
         JP      Z,L0609
-        LD      (023DH),HL
+        LD      (OLD_LINE),HL
         LD      HL,(PROG_PTR_TEMP)
-        LD      (023FH),HL
+        LD      (OLD_TEXT),HL
 L0609:  XOR     A
         LD      (ControlChar),A
         POP     AF
@@ -1849,12 +1853,12 @@ Cont:
         RET     NZ
 
         LD      E,ERR_CN
-        LD      HL,(023FH)
+        LD      HL,(OLD_TEXT)
         LD      A,H
         OR      L
         JP      Z,Error
         EX      DE,HL
-        LD      HL,(023DH)
+        LD      HL,(OLD_LINE)
         LD      (CURRENT_LINE),HL
         EX      DE,HL
         RET     
@@ -2312,9 +2316,9 @@ ExitTab:
 szRepeat:
 	DB	3Fh, 70h, 6Fh, 77h, 74h, 6Fh, 72h, 69h, 74h, 65h, 20h, 77h, 77h, 6Fh, 64h, 0A0h, 0Dh, 0Ah, 00	; "?ПОВТОРИТЕ ВВОД "
 		
-L0840:  LD      A,(INPUT_OR_READ)
+L0840:  LD      A, (INPUT_OR_READ)
         OR      A
-        JP      NZ,L02CA
+        JP      NZ, DATASyntaxError
         POP     BC
         LD      HL, szRepeat
         CALL    PrintString
@@ -2323,7 +2327,7 @@ L0840:  LD      A,(INPUT_OR_READ)
 
 	CHK	0852h, "Сдвижка кода"
 Input:
-        CP      22H
+        CP      '"'				; 22H
         LD      A,00H
         LD      (ControlChar),A
         JP      NZ,L0866
@@ -2349,7 +2353,7 @@ L0866:  PUSH    HL
 Read:
         PUSH    HL
         LD      HL,(DATA_PROG_PTR)
-        DB	0f6h		; OR 0AFH
+        DB	0F6h		; OR 0AFH
 ReadParse:
 	XOR	A		; 0AFH
         LD      (INPUT_OR_READ),A
@@ -2387,14 +2391,14 @@ GotDataItem:
         RST     NextChar
         LD      D,A
         LD      B,A
-        CP      22H
+        CP      '"'				; 22H
         JP      Z,L08B2
-        LD      D,3AH
-        LD      B,2CH
+        LD      D,':'				; 3AH
+        LD      B,','				; 2CH
         DEC     HL
 L08B2:  CALL    L0D53
         EX      DE,HL
-        LD      HL,08C7H
+        LD      HL,L08C7
         EX      (SP),HL
         PUSH    DE
         JP      L072B
@@ -2403,21 +2407,22 @@ L08BE:  RST     NextChar
         EX      (SP),HL
         CALL    FCopyToMem
         POP     HL
-        DEC     HL
+L08C7:
+	DEC     HL
         RST     NextChar
         JP      Z,L08D1
-        CP      2CH
+        CP      ','				; 2CH
         JP      NZ,L0840
 L08D1:  EX      (SP),HL
         DEC     HL
         RST     NextChar
-        JP      NZ,0884h
+        JP      NZ, ReadNext			;0884h
 ;
         POP     DE
         LD      A,(INPUT_OR_READ)
         OR      A
         EX      DE,HL
-        JP      NZ, SetDataPtr		; L05E0
+        JP      NZ, SetDataPtr			; L05E0
         OR      (HL)
         LD      HL, szOverflow
         PUSH    DE
@@ -2444,10 +2449,10 @@ ReadError:
         INC     HL
         LD      D,(HL)
         EX      DE,HL
-        LD      (0233H),HL
+        LD      (DATA_LINE),HL
         EX      DE,HL
 L0914:  RST     NextChar
-        CP      83H
+        CP      TK_DATA			; 83H
         JP      NZ,ReadError
         JP      GotDataItem
 
@@ -2515,7 +2520,8 @@ ForLoopIsComplete:
         CALL    L0920
 
 L0966:  CALL    EvalExpression
-L0969:  OR      37H
+L0969:  DB	0F6H			;OR      37H
+L096A:	SCF				;37H
 L096B:  LD      A,(VALTYP)
         ADC     A,A
         RET     PE
@@ -2673,7 +2679,7 @@ EvalInlineFn:
         PUSH    BC
         RST     NextChar
         LD      A,C
-        CP      29H
+        CP      ')'
         JP      C,L0A65
         RST     SyntaxCheck
 	DB	'('
@@ -2681,7 +2687,7 @@ EvalInlineFn:
 
         RST     SyntaxCheck
         DB	','
-        CALL    096Ah
+        CALL    L096A
         EX      DE,HL
         LD      HL,(FACCUM)
         EX      (SP),HL
@@ -3408,7 +3414,7 @@ L0E77:  PUSH    BC
         EX      (SP),HL
         CALL    EvalTerm
         EX      (SP),HL
-        CALL    096Ah
+        CALL    L096A
         LD      A,(HL)
         PUSH    HL
         LD      HL,(FACCUM)
@@ -3447,7 +3453,7 @@ L0EB5:  DEC     L
         INC     DE
         JP      L0EB5
 	
-L0EBE:  CALL    096Ah
+L0EBE:  CALL    L096A
 L0EC1:  LD      HL,(FACCUM)
 L0EC4:  EX      DE,HL
 L0EC5:  LD      HL,(021DH)
@@ -3515,12 +3521,13 @@ Left:
         XOR     A
 L0F18:  EX      (SP),HL
         LD      C,A
-        PUSH    HL
-        LD      A,(HL)
+L0F1A:	PUSH    HL
+	LD      A,(HL)
         CP      B
-        JP      C,0F22h
+        JP      C,L0F22
         LD      A,B
-        LD      DE,000EH
+        DB	11H		;LD      DE,000EH
+L0F22:	LD	C, 0
         PUSH    BC
         CALL    L0DAA
         POP     BC
@@ -3568,7 +3575,7 @@ L0F60:  RST     SyntaxCheck
         DB	')'
         POP     AF
         EX      (SP),HL
-        LD      BC,0F1AH
+        LD      BC,L0F1A
         PUSH    BC
         DEC     A
         CP      (HL)
@@ -3588,14 +3595,16 @@ L0F60:  RST     SyntaxCheck
 	CHK	0f75h, "Сдвижка кода"
 Inp:
         CALL    L0FBC
-        LD      (0F7CH),A
-        IN      A,(00H)
+        LD      (InpD),A		;0F7CH
+InpD:	EQU	$+1
+        IN      A,(00H)			; Self-modified code
         JP      L0CAB
 
 	CHK	0F80h, "Сдвижка кода"
 Out:
         CALL    L0FAC
-        OUT     (00H),A
+OutD:	EQU	$+1
+        OUT     (00H),A			; Self-modified code
         RET     
 
         CALL    L0FAC
@@ -3608,7 +3617,8 @@ Out:
         DB	','
         CALL    L0FB9
 L0F96:  POP     BC
-L0F97:  IN      A,(00H)
+InD:	EQU	$+1
+L0F97:  IN      A,(00H)			; Self-modified code
         XOR     E
         AND     B
         JP      Z,L0F97
@@ -3627,8 +3637,8 @@ L0FA2:  POP     BC
         RET     
 
 L0FAC:  CALL    L0FB9
-        LD      (0F98H),A
-        LD      (0F84H),A
+        LD      (InD),A			; 0F98H
+        LD      (OutD),A		; 0F84H
         RST     SyntaxCheck
         DB	','
         DB	06h	;LD      B,..
@@ -3724,23 +3734,23 @@ L100E:  LD      A,(DE)
 	JP	0F82dH
 
 ContInit:
-	LD	HL, (00245H)
+	LD	HL, (VAR_BASE)
 	INC	H
 	EX	DE, HL
 	CALL	0f830H
 	RST	CompareHLDE
-	JP	C, 01041H
+	JP	C, L1041
 	CALL	0f830H
-	LD	(021bh), HL
+	LD	(MEMSIZ), HL		;021bh
 	LD	(022fh), HL
 	LD	SP, HL
-	LD	HL, 0FFCEH
+	LD	HL, 0FFCEH		; -50
 	ADD	HL, SP
-	LD	(0241h), HL
+	LD	(STACK_TOP), HL		;0241h
 	CALL	L19B8
 	JP	Main
 
-	LD	A, D
+L1041:	LD	A, D
 	CALL	0f815h
 	LD	A, E
 	CALL	0f815h
@@ -5455,11 +5465,11 @@ L17C5:	LD	A, (01954H)
 	LD	A, (01955H)
 	RRA
 	OR	A
-	JP	Z, 1802H
-	ADD	HL, DE
+	JP	Z, L1802
+L17FD:	ADD	HL, DE
 	DEC	A
-	JP	NZ, 17fdh
-	LD	A, (01954H)
+	JP	NZ, L17FD
+L1802:	LD	A, (01954H)
 	RRA
 	LD	E, A
 	ADD	HL, DE
@@ -5467,37 +5477,36 @@ L17C5:	LD	A, (01954H)
 	AND	03H
 	CP	0
 	LD	B, 01H
-	JP	Z, 01822H
+	JP	Z, L1822
 	CP	1
 	LD	B, 2
-	JP	Z, 01822H
+	JP	Z, L1822
 	CP	2
 	LD	B, 010H
-	JP	Z, 01822H
+	JP	Z, L1822
 	LD	B, 4
-	LD	A, (01956H)
+L1822:	LD	A, (01956H)
 	RRA
 	LD	A, B
-	JP	C, 01839H
+	JP	C, L1839
 	CPL
 	LD	B, A
 	LD	A, (HL)
 	CP	018H
-	JP	C, 01834H
+	JP	C, L1834
 	LD	(HL), 0
-	LD	A, B
+L1834:	LD	A, B
 	AND	(HL)
-	JP	01844H
+	JP	L1844
 
-	LD	B, A
+L1839:	LD	B, A
 	LD	A, (HL)
 	CP	018H
-	JP	C, 01842H
+	JP	C, L1842
 	LD	(HL), 0
-	LD	A, B
+L1842:	LD	A, B
 	OR	(HL)
-	LD	(HL), A
-
+L1844:
 	ELSE	
 
 	; Приветственное сообщение. Неясно, почему не использована функция МОНИТОРа...
@@ -5653,11 +5662,10 @@ L183E:  OR      (HL)
 L183F:  LD      (HL),A
         LD      HL,0E800H
         ADD     HL,DE
-        LD      (HL),A
 
-;	CHK	1847h, "Сдвижка кода"
 	ENDIF
 
+	LD	(HL), A
 POPHLRET:
 	POP     HL
         RET     
@@ -5868,17 +5876,17 @@ L1995:	LD	A, 08H
 	LD	A, 08H
 	JP	Backspace
 	
-L19A0:	LD	A, (0217H)
+L19A0:	LD	A, (ControlChar)
 	CPL
-	LD	(0217H), A
+	LD	(ControlChar), A
 	RET
 	
-	LD	A, (04EDH)
+	LD	A, (L04ED)
 	OR	A
 	LD	A, 0FFH
 	JP	Z, L19B2
 	XOR	A
-L19B2:	LD	(04EDH), A
+L19B2:	LD	(L04ED), A
 	LD	A, 07FH
 	RET
 
@@ -5891,7 +5899,7 @@ L19B8:	LD	HL, 0A003H
 	AND	C
 	LD	C, A
 	CALL	0F809H
-	LD	A, (04EDH)
+	LD	A, (L04ED)
 	OR	A
 	RET	Z
 	LD	A, C
