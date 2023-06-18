@@ -1,24 +1,26 @@
 ; ═══════════════════════════════════════════════════════════════════════
-;  БЕЙСИК для МИКРО-80
+;  БЕЙСИК для МИКРО-80/БЕЙСИК для РАДИО-86РК/БЕЙСИК для ЮТ-88
 ; ═══════════════════════════════════════════════════════════════════════
 ;
-; Это дизассемблер бейсика "МИКРО-80". Имена меток взяты с дизассемблера Altair BASIC 3.2 (4K)
-; По ходу разбора встречаются мысли и хотелки
+; Это дизассемблер Бейсика для "МИКРО-80" и Бейсика для "Радио-86РК".
+; Гипотетически Бейсик для МИКРО-80=Бейсик для ЮТ-88, но это пока не проверялось.
+; Имена меток взяты с дизассемблера Altair BASIC 3.2 (4K)
+; По ходу разбора встречаются мысли и хотелки.
 ;
 ; Общие хотелки:
-; !?Добавить OPTION NOLET для управления наличием/отсутствием LET (по идее, можно при парсинге кода просто игнорить)
-; !?Добавить OPTION NOEND для управления наличием/отсутствием END
-; !!Добавить поддержку каналов и потоков, как в Sinclair Basic, не забывая совместимость с ECMA стандартом
-; !!Добавить поддержку дисковых операций через CP/M (с учетом, что под Микро-80 она существует) (ЗЫ: Базироваться на CP/M Бейсике не хочу)
+; !?Добавить обратно поддержку LET
+; !?Добавить обратно поддержку END
+; !!Добавить поддержку каналов и потоков, как в Sinclair Basic, не забывая совместимость с ECMA стандартом ЮТ-88 она существует) (ЗЫ: Базироваться на CP/M Бейсике не хочу)
 ; !!Отвязаться от RST и пересобрать с адреса 100h. Вначале добавить CP/M адаптер. При наличии поддержки дисковых фунок - адаптер не цепляем.
 ; !!Добавить OPTION BASE для управления индеском массива (Совместимость ANSI)
 ; !!Автонастройка памяти (сейчас жестко задано в коде)
 ; !!GO TO=GOTO, GO SUB=GOSUB (учесть в токенизаторе)
 ; ??ГОСТ расширение основных средств уровень 1 и 2 не могут быть реализованы из-за усеченного знакогенератора. Нет строчных букв.
 ; !!Развернутые сообщения об ошибках
-; !!Отвязать по максимуму от работы в ОЗУ (версия для ROM-диска? Мысль интересная, т.к можно высвободить гору ОЗУ. Больше актуально не для М-80)
+; !!Отвязать по максимуму от работы в ОЗУ (версия для ROM-диска? Мысль интересная, т.к можно высвободить гору ОЗУ. 
+;   Больше актуально не для М-80, а для РК-86. При этом для самого интерпретатора можно заполучить 32Кб для стандартного ROM-диска).
 ;
-; БЕЙСИК для МИКРО-80 - Общее устройство
+; БЕЙСИК для МИКРО-80/РАДИО-86РК - Общее устройство
 ;
 ; Как распределяется память
 ;
@@ -42,7 +44,7 @@
 ; !           Переменные          !
 ; +-------------------------------+ (VAR_BASE)
 ; ! Текст  программы  на  Бейсике !
-; +-------------------------------+ 2200H (PROGRAM_BASE)
+; +-------------------------------+ 2200H/1B00H (PROGRAM_BASE)
 ; !         Буфер  экрана         !
 ; +-------------------------------+ 1A00H
 ; !      Область  подпрограмм     !
@@ -51,7 +53,7 @@
 ; !    Интерпретатор  Бейсика     !
 ; +-------------------------------+ 0000H
 ;
-; Рассмотрим Lets consider the blocks of memory that follow Basic's own code in turn :
+; Рассмотрим блоки памяти, которые идут непосредственно после интерпретатора Бейсика:
 ;
 ; The minimum amount of stack space is 18 bytes - at initialisation, after the
 ; user has stated the options they want, the amount of space is reported as 
@@ -241,6 +243,11 @@ CHK	MACRO	adr, msg
 	ENDM
 	ENDIF
 
+	IF	RK86
+PROGRAM_BASE_INIT	EQU	1B00H
+        ELSE
+PROGRAM_BASE_INIT	EQU	2200H
+	ENDIF
 ; 
 ;********************
 ;* 1. Интерпретатор *
@@ -652,22 +659,14 @@ TKCOUNT	EQU	Q-80H
 	
 KW_GENERAL_FNS:
 ; Altair 4k			;	Altair 4K	MBASIC 5.2
-	IF	RK86
-	DW	01765h		; Cls
-	ELSE
 	DW	Cls		;	END
-	ENDIF
 	DW	For		;	FOR
 	DW	Next		;	NEXT
 	DW	Data		;	DATA
 	DW	Input		;	INPUT
 	DW	Dim		;	DIM
 	DW	Read		;	READ
-	IF	RK86
-	DW	01779H		; Cur
-	ELSE
 	DW	Cur		;	LET
-	ENDIF
 	DW	Goto		;	GOTO
 	DW	Run		;	RUN
 	DW	If		;	IF
@@ -678,14 +677,8 @@ KW_GENERAL_FNS:
 	DW	Stop		;	STOP
 	DW	Out		;	PRINT
 	DW	On		;	LIST
-	IF	RK86
-	DW	017afH		; Plot
-	DW	01847h		; Line
-	ELSE
 	DW	Plot		;	CLEAR
 	DW	Line		;	NEW
-	ENDIF
-
 ; МИКРО-80
 	DW	Poke		;			ONGOTO
 	DW	Print		;			NULL
@@ -901,29 +894,16 @@ CURRENT_LINE:
 	CHK	0241H, "Сдвижка кода"
 STACK_TOP:
 	DW	03fcdh				; Верхушка стека бейсика
-	IF	RK86
 PROGRAM_BASE:
-	DW	1B01h
+	DW	PROGRAM_BASE_INIT+01h
 VAR_BASE:
-	DW	1B03h
+	DW	PROGRAM_BASE_INIT+03h
 VAR_ARRAY_BASE:
-	DW	1B03h
+	DW	PROGRAM_BASE_INIT+03h
 VAR_TOP:
-	DW	1B03h
+	DW	PROGRAM_BASE_INIT+03h
 DATA_PROG_PTR:
-	DW	1B00h
-	ELSE
-PROGRAM_BASE:
-	DW	2201h
-VAR_BASE:
-	DW	2203h
-VAR_ARRAY_BASE:
-	DW	2203h
-VAR_TOP:
-	DW	2203h
-DATA_PROG_PTR:
-	DW	2200h
-	ENDIF
+	DW	PROGRAM_BASE_INIT
 FACCUM:	DB	1fh,02h,84h,87h	; Видимо, мусор. Заменить на DD	0 ?
 FTEMP:	DB	0c2h
 	db	20h
@@ -989,7 +969,7 @@ GetFlowLoop:
         OR      E
 
         EX      DE,HL
-        JP      Z,NoVar			; NEXT без переменной (возравщвем первый попавшийся FOR)
+        JP      Z,NoVar			; NEXT без переменной (возвращаем первый попавшийся FOR)
         EX      DE,HL
         RST     CompareHLDE
 NoVar:  LD      BC,000DH		; Размер структуры FOR
@@ -1471,11 +1451,11 @@ InputNext:
 ;If user has not given a printable character, then loop back until they do.
         CP      7FH
 	IF	RK86
-	JP	Z, 01995H
+	JP	Z, L1995
 	CP	03H
-	JP	C, 01967H
+	JP	C, L1967
 	CP	1BH
-	JP	Z, 01959H
+	JP	Z, L1959			; Обработка Esc-последовательности
 	ELSE
         JP      NC,InputNext
         CP      01H
@@ -1544,7 +1524,7 @@ InputChar:
 	IF	RK86
 	JP	Z, 1049H
 	CP	0FH
-	CALL	Z, 19A0H
+	CALL	Z, L19A0
 	CP	04H
 	CALL	Z, 19A8H
 	RET
@@ -2259,6 +2239,7 @@ L07D0:  CALL    NZ,L0D96
 		
 TerminateInput:
 	LD      (HL),00H
+TerminateInput2:
         LD      HL,LINE_BUFFER-1
 		
 ;NewLine
@@ -3687,6 +3668,9 @@ Val:
 ; Подпрогрмамма ввода с READER. В нашем случае - с магнитофона
 	CHK	0FE1H, "Сдвижка кода"
 Reader:
+	IF	BASICNEW
+	JP	0F806h
+	ELSE
 	CALL    0F806h
         NOP     
         NOP     
@@ -3694,7 +3678,8 @@ Reader:
         NOP     
         NOP     
         NOP     
-        RET     
+        RET
+	ENDIF
 
 ; Подпрограмма вывода на PUNCHER. В нашем случае - на магнитофон
 Puncher2:
@@ -3708,11 +3693,18 @@ Puncher:
         CALL    0F80CH
         POP     AF
         POP     BC
-        NOP     
+	IF	BASICNEW
+	ELSE
+        NOP
+	ENDIF
         RET     
 
-        PUSH    HL
+	IF	BASICNEW
+	; Ниже указанный код нигде не вызывается...
+	ELSE
+L0FFA:	PUSH    HL
         LD      A,0D3H
+	ENDIF
 L0FFD:  CALL    Puncher
         CALL    Puncher2
         LD      A,(HL)
@@ -3722,14 +3714,16 @@ L0FFD:  CALL    Puncher
         LD      HL,(VAR_BASE)
 L100E:  LD      A,(DE)
         INC     DE
-	IF	RK86
-	CALL	0FEEH
+	CALL	Puncher
 	RST	CompareHLDE
-	JP	NZ, 0100eH
-	CALL	0FEBH
-	POP	HL
+	JP	NZ, L100E
+        CALL    Puncher2
+        POP     HL
+
+	IF	RK86
 	JP	0F82dH
 
+ContInit:
 	LD	HL, (00245H)
 	INC	H
 	EX	DE, HL
@@ -3743,8 +3737,8 @@ L100E:  LD      A,(DE)
 	LD	HL, 0FFCEH
 	ADD	HL, SP
 	LD	(0241h), HL
-	CALL	019B8H
-	JP	02fdh
+	CALL	L19B8
+	JP	Main
 
 	LD	A, D
 	CALL	0f815h
@@ -3753,13 +3747,8 @@ L100E:  LD      A,(DE)
 	JP	0f86ch
 	NOP
 	NOP
-	CALL	0f82dH
+L104E:	CALL	0f82dH
 	ELSE
-        CALL    Puncher
-        RST     CompareHLDE
-        JP      NZ,L100E
-        CALL    Puncher2
-        POP     HL
         RST     NextChar
         RET     
 
@@ -5372,19 +5361,19 @@ L1741:  JP      (HL)
 ; Выставляем маркер конца программы (по описанию должно быть 2 байта...)
 Init:	XOR     A
 
+        LD      (PROGRAM_BASE_INIT),A
+
+        LD      HL, szHello
+
 	IF	RK86
 
-	LD	(1B00H),A
-
-	LD	HL, 0174FH
 	CALL	0F818H
-
-	JP	101EH
+	JP	ContInit
 
 szHello:
 	DB	01FH,"*radio-86rk* BASIC", 0DH, 0AH, 0
 
-	PUSH	HL
+Cls:	PUSH	HL
 	CALL	0F81EH
 	LD	BC, 01D18H
 	ADD	HL, BC
@@ -5392,24 +5381,26 @@ szHello:
 	POP	HL
 	LD	C, 1fh	
 	CALL	0F809H
-	JP	01797h
+	JP	SetCurPos
 
-	CALL	0FB9H
+Cur:	CALL	L0FB9
 	CP	40H
-	JP	NC, 065CH
+	JP	NC, FunctionCallError
 	ADD	A, 20H
 	LD	(01957H), A
 
 	RST	SyntaxCheck
 	DB	02CH
-	CALL	0FB9H
+	CALL	L0FB9
 
 	CP	19H
-	JP	NC, 065cH
+	JP	NC, FunctionCallError
 	LD	C,A
 	LD	A, 38H
 	SUB	C
 	LD	(01958H), A
+
+SetCurPos:
 	LD	C, 01BH
 	CALL	0F809H
 	LD	C, 59H
@@ -5421,25 +5412,25 @@ szHello:
 	LD	C, A
 	JP	0F809H
 
-	CALL	0FB9H
+Plot:	CALL	L0FB9
 	LD	(01954H), A
 	RST	SyntaxCheck
-	DB	2CH
+	DB	','
 
-	CALL	0FB9H
+	CALL	L0FB9
 	LD	(01955H), A
 	RST	SyntaxCheck
-	DB	2CH
+	DB	','
 
-	CALL	0FB9H
+	CALL	L0FB9
 	LD	(01956H), A
 
-	LD	A, (01954H)
+L17C5:	LD	A, (01954H)
 	CP	80H
-	JP	NC, 065cH
+	JP	NC, FunctionCallError
 	LD	A, (01955H)
 	CP	32H
-	JP	NC, 065cH
+	JP	NC, FunctionCallError
 	LD	D, A
 	LD	A, 31H
 	SUB	D
@@ -5468,19 +5459,48 @@ szHello:
 	ADD	HL, DE
 	DEC	A
 	JP	NZ, 17fdh
-	DB	03AH, 054H, 019H, 01FH, 05FH, 019H, 079H, 0E6H, 003H, 0FEH, 000H, 006H, 001H, 0CAH
-	DB	022H, 018H, 0FEH, 001H, 006H, 002H, 0CAH, 022H, 018H, 0FEH, 002H, 006H, 010H, 0CAH, 022H, 018H
-	DB	006H, 004H, 03AH, 056H, 019H, 01FH, 078H, 0DAH, 039H, 018H, 02FH, 047H, 07EH, 0FEH, 018H, 0DAH
-	DB	034H, 018H, 036H, 000H, 078H, 0A6H, 0C3H, 044H, 018H, 047H, 07EH, 0FEH, 018H, 0DAH, 042H, 018H
-	DB	036H, 000H, 078H, 0B6H, 077H, 0E1H, 0C9H, 0CDH, 0B9H, 00FH, 032H, 052H, 019H, 0CFH, 02CH, 0CDH
-	DB	0B9H, 0FH
+	LD	A, (01954H)
+	RRA
+	LD	E, A
+	ADD	HL, DE
+	LD	A, C
+	AND	03H
+	CP	0
+	LD	B, 01H
+	JP	Z, 01822H
+	CP	1
+	LD	B, 2
+	JP	Z, 01822H
+	CP	2
+	LD	B, 010H
+	JP	Z, 01822H
+	LD	B, 4
+	LD	A, (01956H)
+	RRA
+	LD	A, B
+	JP	C, 01839H
+	CPL
+	LD	B, A
+	LD	A, (HL)
+	CP	018H
+	JP	C, 01834H
+	LD	(HL), 0
+	LD	A, B
+	AND	(HL)
+	JP	01844H
+
+	LD	B, A
+	LD	A, (HL)
+	CP	018H
+	JP	C, 01842H
+	LD	(HL), 0
+	LD	A, B
+	OR	(HL)
+	LD	(HL), A
+
 	ELSE	
 
-        LD      (2200H),A
-
 	; Приветственное сообщение. Неясно, почему не использована функция МОНИТОРа...
-        LD      HL, szHello
-
 	IF	BASICNEW
 	CALL	0F818H
 	JP	Main
@@ -5512,8 +5532,8 @@ Cur:
         CP      40H
         JP      NC,FunctionCallError
         PUSH    HL
-        LD      HL,(0F75AH)
-        LD      DE,0F801H
+        LD      HL,(0F75AH)		; Адрес курсора в МИКРО-80 и ЮТ-88
+        LD      DE,0F801H		; -7FFH
         ADD     HL,DE
         LD      (HL),00H
         LD      HL,0EFC0H
@@ -5528,8 +5548,8 @@ L17A1:  LD      D,00H
         LD      A,(1957H)
         LD      E,A
         ADD     HL,DE
-        LD      (0F75AH),HL
-        LD      DE,0F801H
+        LD      (0F75AH),HL		; Адрес курсора в МИКРО-80 и ЮТ-88
+        LD      DE,0F801H		; -7FFH
         ADD     HL,DE
         LD      (HL),80H
         POP     HL
@@ -5538,9 +5558,12 @@ L17A1:  LD      D,00H
 	CHK	17B3H, "Сдвижка кода"
 Cls:
 ; Здесь можно было бы просто вывести 01fH через МОНИТОР и было бы портабельно...
+; Но МИКРО-80 не умеет получать и сохранять координаты курсора.
 	IF	BASICNEW
+	; Сначала сохраняем позицию курсора
 	LD	C, 01FH
-	JP	0F809H
+	CALL	0F809H
+	; Потом восстанавливаем позицию курсора
 	ELSE	
         PUSH    HL
         LD      HL,0E800H
@@ -5631,17 +5654,20 @@ L183F:  LD      (HL),A
         LD      HL,0E800H
         ADD     HL,DE
         LD      (HL),A
-L1845:  POP     HL
+
+;	CHK	1847h, "Сдвижка кода"
+	ENDIF
+
+POPHLRET:
+	POP     HL
         RET     
 
-	CHK	1847h, "Сдвижка кода"
 Line:
         CALL    L0FB9
         LD      (1952H),A
         RST     SyntaxCheck
         DB	','
         CALL    L0FB9
-	ENDIF
         LD      (1953H),A
         PUSH    HL
         LD      HL,0100H
@@ -5695,11 +5721,7 @@ L18A8:  LD      A,E
         LD      B,01H
 L18AD:  LD      A,E
         CP      B
-	IF	RK86
-        JP      M,01845H
-	ELSE
-        JP      M,L1845
-	ENDIF
+        JP      M,POPHLRET
         LD      HL,(1954H)
 	IF	RK86
         LD      A,31H
@@ -5734,7 +5756,7 @@ L18AD:  LD      A,E
 L18E4:  PUSH    BC
         PUSH    DE
 	IF	RK86
-        CALL    017C5H
+        CALL    L17C5
 	ELSE
         CALL    L17DD
 	ENDIF
@@ -5791,33 +5813,111 @@ L1938:  LD      A,08H
         DEC     B
         JP      NZ,L1938
 	IF	RK86
-        JP      0104EH
+        JP      L104E
 	ELSE
         JP      L1051
 	ENDIF
         NOP     
         NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
+	NOP
 	IF	RK86
-	DB	000H, 000H, 000H, 000H, 000H, 000H, 000H, 000H, 000H, 0CDH, 0D8H, 004H, 0FEH, 003H, 0D2H, 085H
-	DB	004H, 011H, 085H, 019H, 0C3H, 06AH, 019H, 011H, 08FH, 019H, 0B7H, 0CAH, 07AH, 019H, 04FH, 01AH
-	DB	013H, 0B7H, 0C2H, 06FH, 019H, 079H, 03DH, 0C3H, 06BH, 019H, 01AH, 077H, 013H, 023H, 0B7H, 0C2H
-	DB	07AH, 019H, 0C3H, 0D9H, 007H, 09AH, 000H, 095H, 0B2H, 028H, 030H, 029H, 000H, 097H, 000H, 09BH
-	DB	000H, 098H, 000H, 089H, 000H, 03EH, 008H, 0DFH, 03EH, 020H, 0DFH, 03EH, 008H, 0C3H, 076H, 004H
-	DB	03AH, 017H, 002H, 02FH, 032H, 017H, 002H, 0C9H, 03AH, 0EDH, 004H, 0B7H, 03EH, 0FFH, 0CAH, 0B2H
-	DB	019H, 0AFH, 032H, 0EDH, 004H, 03EH, 07FH, 0C9H, 021H, 003H, 0A0H, 036H, 091H, 036H, 00FH, 0C9H
-	DB	03EH, 07FH, 0A1H, 04FH, 0CDH, 009H, 0F8H, 03AH, 0EDH, 004H, 0B7H, 0C8H, 079H, 0B7H, 0E2H, 0D3H
-	DB	019H, 0F6H, 080H, 04FH, 0E5H, 021H, 003H, 0A0H, 07EH, 01FH, 0D2H, 0D8H, 019H, 02BH, 02BH, 071H
-	DB	023H, 023H, 036H, 00EH, 02BH, 07EH, 017H, 0D2H, 0E5H, 019H, 036H, 00FH, 0E1H, 0C9H, 000H, 000H
+
+L1959:	CALL	InputChar
+	CP	003H
+	JP	NC, InputNext
+	LD	DE, L1985
+	JP	L196A
+
+L1967:	LD	DE, L198F
+L196A:	OR	A
+L196B:	JP	Z, L197A
+	LD	C, A
+L196F:	LD	A, (DE)
+	INC	DE
+	OR	A
+	JP	NZ, L196F
+	LD	A, C
+	DEC	A
+	JP	L196B
+
+L197A:	LD	A, (DE)
+	LD	(HL), A
+	INC	DE
+	INC	HL
+	OR	A
+	JP	NZ, L197A
+	JP	TerminateInput2
+
+L1985:	DB	09AH, 000H
+	DB	095H, 0B2H, 028H, 030H, 029H, 000H, 097H, 000H
+L198F:	DB	09BH
+	DB	000H, 098H, 000H, 089H, 000H
+
+L1995:	LD	A, 08H
+	RST	OutChar
+	LD	A, ' '
+	RST	OutChar
+	LD	A, 08H
+	JP	Backspace
+	
+L19A0:	LD	A, (0217H)
+	CPL
+	LD	(0217H), A
+	RET
+	
+	LD	A, (04EDH)
+	OR	A
+	LD	A, 0FFH
+	JP	Z, L19B2
+	XOR	A
+L19B2:	LD	(04EDH), A
+	LD	A, 07FH
+	RET
+
+L19B8:	LD	HL, 0A003H
+	LD	(HL), 091H
+	LD	(HL), 00FH
+	RET
+
+	LD	A, 07FH
+	AND	C
+	LD	C, A
+	CALL	0F809H
+	LD	A, (04EDH)
+	OR	A
+	RET	Z
+	LD	A, C
+	OR	A
+	JP	PO, L19D3
+	OR	080H
+L19D3:	LD	C, A
+	PUSH	HL
+	LD	HL, 0A003H
+L19D8:	LD	A, (HL)
+	RRA
+	JP	NC, L19D8
+	DEC	HL
+	DEC	HL
+	LD	(HL),C
+	INC	HL
+	INC	HL
+	LD	(HL), 0EH
+	DEC	HL
+L19E5:	LD	A,(HL)
+	RLA
+	JP	NC, L19E5
+	LD	(HL), 0FH
+	POP	HL
+	RET
 	ELSE
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
         NOP     
         NOP     
         NOP     
@@ -5925,9 +6025,9 @@ L1938:  LD      A,08H
 	DB 72h, 61h, 7Ah, 72h, 61h, 62h, 6Fh, 74h,  41h, 4Eh, 4Fh, 20h, 44h, 4Ch, 71h, 20h	; "РАЗРАБОТANO DLЯ "
 	DB 76h, 75h, 72h, 6Eh, 61h, 6Ch, 61h, 20h,  72h, 61h, 64h, 69h, 6Fh, 20h, 60h, 6Fh	; "ЖУРНАЛА РАДИО МО"
 	DB 73h, 6Bh, 77h, 61h, 20h, 31h, 39h, 38h,  34h, 20h, 67h, 6Fh, 64h, 22h		; "СКВА 1984 ГОД""
-        NOP     
-        NOP     
 	ENDIF
+        NOP     
+        NOP     
         NOP     
         NOP     
         NOP     
