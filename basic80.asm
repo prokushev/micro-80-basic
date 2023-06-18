@@ -852,12 +852,12 @@ LINE_BUFFER:
 TMPSTACK:
 	NOP     
 ControlChar:
-	DB		00		; Тип символа 00 - обычный символ FF - управляющий
+	DB		00		; Тип символа: 00 - обычный символ, FF - управляющий
             
 DIM_OR_EVAL:
 	DB	0
 VALTYP:
-	DB	01h
+	DB	01h			; Тип переменной: 00 - числовая, 01 - символьная
 DATA_STM:
 	DB	0			; Признак обработки TK_DATA
 MEMSIZ:	DW	MEM_TOP			; Размер памяти //021BH
@@ -897,7 +897,7 @@ OLD_TEXT:
 	db	0,0		; Адрес(?) для CONT
 	CHK	0241H, "Сдвижка кода"
 STACK_TOP:
-	DW	03fcdh				; Верхушка стека бейсика
+	DW	MEMTOP-50	;03fcdh ; Верхушка стека бейсика. Размер (50) для РК86 используется для вычисления при инициализации.
 PROGRAM_BASE:
 	DW	PROGRAM_BASE_INIT+01h
 VAR_BASE:
@@ -2830,7 +2830,7 @@ L0AF9:  LD      D,5AH
 
 ;1.18 Variable Management
 ;Dim
-;Declares an array. Note that the start of this function handler is some way down in the block (at 0716).
+;Declares an array. Note that the start of this function handler is some way down in the block (at 0B15).
 
 DimContd:
 	DEC     HL
@@ -2852,7 +2852,7 @@ L0B1F:  CALL    CharIsAlpha
         JP      C,SyntaxError
         XOR     A
         LD      C,A
-        LD      (VALTYP),A
+        LD      (VALTYP),A		; A=0
         RST     NextChar
         JP      C,L0B34
         CALL    CharIsAlpha
@@ -2862,9 +2862,9 @@ L0B35:  RST     NextChar
         JP      C,L0B35
         CALL    CharIsAlpha
         JP      NC,L0B35
-L0B3F:  SUB     24H
+L0B3F:  SUB     '$'			; 24H
         JP      NZ,L0B4C
-        INC     A
+        INC     A			; A=1
         LD      (VALTYP),A
         RRCA    
         ADD     A,C
