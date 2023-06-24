@@ -28,7 +28,7 @@ $0B4, $03D, $01A, $06A
 );
 
  begin
-   Assign(datFile, 'basic80.bin');
+   Assign(datFile, 'basic80-rk86.bin');
    Reset(datFile);
   i:=0;
 sum:=0;   
