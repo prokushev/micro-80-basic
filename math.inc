@@ -1517,12 +1517,8 @@ L1647:  CALL    FCopyToBCDE
         JP      FCopyToMem
 
 ;Seed for random number generation.
-;@todo Здесь не код, а данные
 RND_SEED:	
-        LD      D,D
-        RST     00H
-        LD      C,A
-        ADD     A,B
+	DB 052H, 0C7H, 04FH, 080H	; 0.811635
 	
 	CHK	1660H, "Сдвижка кода"
 Cos:
