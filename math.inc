@@ -29,11 +29,18 @@
 ; ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
 ; Maths Refresher
 ; The Basics of Bases 
-; Consider an everyday decimal number such as 317.25. The digits that make up this and every other decimal number represent multiples of powers of ten, all added together:
+; Consider an everyday decimal number such as 317.25. The 
+; digits that make up this and every other decimal number 
+; represent multiples of powers of ten, all added together:
 ;
 ; 102	101	100	.	10-1	10-2
 ; 3	1	7	.	2	5
-; So writing 317.25 is basically just shorthand for 3*102 + 1*101 + 7*100 + 2*10-1 + 5*10-2. The shorthand form is far more readable, and that's why everybody uses it. At risk of labouring the point, the below table should clarify this.
+;
+; So writing 317.25 is basically just shorthand for
+; 3*102 + 1*101 + 7*100 + 2*10-1 + 5*10-2. The shorthand form
+; is far more readable, and that's why everybody uses it. At 
+; risk of labouring the point, the below table should clarify
+; this.
 ;
 ; Digit Position	Digit Value for Position	Decimal Number	Digit value for this number
 ; 2	100	317.25	3 * 100	=	300
@@ -42,13 +49,18 @@
 ; -1	1/10	317.25	2 * .1	=	.2
 ; -2	1/100	317.25	5 * .01	=	.05
 ; Total:	=	317.25
- ;Now consider the same number in binary (base two). The decimal number 317.25, expressed in binary, is :
+;
+; Now consider the same number in binary (base two). The 
+; decimal number 317.25, expressed in binary, is :
 ;
 ;28	27	26	25	24	23	22	21	20	.	2-1	2-2
 ;1	0	0	1	1	1	1	0	1	.	0	1
-;And here's a table like the decimal one above, which should make it completely clear (remember 'bit' is short for 'binary digit') :
 ;
-;Bit Position	Bit Value for Position	Binary Number	Bit value for this number
+; And here's a table like the decimal one above, which should
+; make it completely clear (remember 'bit' is short for 
+; 'binary digit') :
+;
+; Bit Position	Bit Value for Position	Binary Number	Bit value for this number
 ;8	256	100111101.01	1 * 256	=	256
 ;7	128	100111101.01	0 * 128	=	0
 ;6	64	100111101.01	0 * 64	=	0
@@ -61,19 +73,60 @@
 ;-1	1/2	100111101.01	0 * 1/2	=	0
 ;-2	1/4	100111101.01	1 * 1/4	=	0.25
 ;Total:	=	317.25
+;
 ;Mantissas, Exponents, and Scientific Notation
-;Now let's think about decimal numbers again. Another way of representing the number 317.25 is like this : 3.1725 * 102. Yes we've split one number into two numbers - we've extracted the number's magnitude and written it seperately. Why is this useful? Well, consider a very small number such as 0.00000000000588. Looking at it now, precisely how small is that? That's a lot of zeros to work through. Also, let's pretend we're using very small numbers like this one in a pen+paper calculation - something like 0.00000000000588 + 0.000000000000291. You'd better be sure you don't miss out a zero when you're working the problem through, or your answer will be off by a factor of 10. It's much easier to have those numbers represented as 5.88 * 10-12 and 2.91* 10-13 (yes the second number had an extra zero - did you spot that?). The same principle applies for very large numbers like 100000000 - it's just easier and less human error prone to keep the magnitudes seperated out when working with such numbers.
 ;
-;It's the smallest of small steps to get from this form of number notation to proper scientific notation. The only difference is how the magnitude is written - in scientific notation we lose the magnitude's base and only write it's exponent part, thusly : 3.1725 E 2. The part that's left of the E, the 3.1725, is called the mantissa. The bit to the right of the E is the exponent.
+; Now let's think about decimal numbers again. Another way of
+; representing the number 317.25 is like this : 3.1725 * 102. 
+; Yes we've split one number into two numbers - we've extracted
+; the number's magnitude and written it seperately. Why is this
+; useful? Well, consider a very small number such as
+; 0.00000000000588. Looking at it now, precisely how small is
+; that? That's a lot of zeros to work through. Also, let's 
+; pretend we're using very small numbers like this one in a
+; pen+paper calculation - something like 0.00000000000588 +
+; 0.000000000000291. You'd better be sure you don't miss out
+; a zero when you're working the problem through, or your
+; answer will be off by a factor of 10. It's much easier 
+; to have those numbers represented as 5.88 * 10-12 and
+; 2.91* 10-13 (yes the second number had an extra zero - 
+; did you spot that?). The same principle applies for very
+; large numbers like 100000000 - it's just easier and less
+; human error prone to keep the magnitudes seperated out when
+; working with such numbers.
 ;
-;Mantissas and Exponents in Binary
-;Let's go back to considering 317.25 in binary : 100111101.01. Using scientific notation, this is 1.0011110101 E 1000. Remember that both mantissa and exponent are written in binary that exponent value 1000 is a binary number, 8 in decimal.
+; It's the smallest of small steps to get from this form of
+; number notation to proper scientific notation. The only
+; difference is how the magnitude is written - in scientific
+; notation we lose the magnitude's base and only write it's
+; exponent part, thusly : 3.1725 E 2. The part that's left of
+; the E, the 3.1725, is called the mantissa. The bit to the
+; right of the E is the exponent.
+;
+; Mantissas and Exponents in Binary
+;
+; Let's go back to considering 317.25 in binary: 100111101.01.
+; Using scientific notation, this is 1.0011110101 E 1000.
+; Remember that both mantissa and exponent are written in
+; binary that exponent value 1000 is a binary number, 8 in
+; decimal.
 ;
 ; ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ
 ; Why floating point?
-;Consider the eternal problem of having a finite amount of computer memory. Not having infinate RAM means we cannot represent an infinite range of numbers. If we have eight bits of memory, we can represent the integers from 0 to 255 only. If we have sixteen, we can raise our range from 0 to 65535, and so on. The more bits we can play with, the larger the range of numbers we can represent. With fractional numbers there is a second problem : precision. Many fractions recur : eg one third in decimal is 0.33333 recurring. Likewise, one tenth is 0.1 in decimal but 0.0001100110011 last four bits recurring in binary.
 ;
-;So any method we choose for storing fractional numbers has to take these two problems into consideration. Bearing this in mind, consider the two possible approaches for storing fractional numbers :
+; Consider the eternal problem of having a finite amount of
+; computer memory. Not having infinate RAM means we cannot
+; represent an infinite range of numbers. If we have eight
+; bits of memory, we can represent the integers from 0 to 255
+; only. If we have sixteen, we can raise our range from 0 to 
+; 65535, and so on. The more bits we can play with, the larger
+; the range of numbers we can represent. With fractional
+; numbers there is a second problem : precision. Many
+; fractions recur : eg one third in decimal is 0.33333
+; recurring. Likewise, one tenth is 0.1 in decimal but
+; 0.0001100110011 last four bits recurring in binary.
+;
+; So any method we choose for storing fractional numbers has to take these two problems into consideration. Bearing this in mind, consider the two possible approaches for storing fractional numbers :
 ;
 ;Fixed point. Store the integer part in one field, and the fractional part in another field. It's called fixed point representation since the point (binary or decimal) is always in the same place - between the integer and fractional fields.
 ;Floating point. Store the mantissa in one field, and the exponent in another field. This way, the point wouldn't be fixed into place - it could be anywhere, as determined by the binary exponent. It would, in fact be, a floating point.
@@ -454,18 +507,20 @@ L11B3:  LD      BC,8031H
 ;
 ;(fixme: Show why this works)
 	CHK	11BAh, "‘¤¢¨¦ª  ª®¤ "
-FMul:
-	POP	BC
+FMul:					
+	POP	BC			; Get lhs in BCDE
 	POP	DE
-FMul2:	RST     FTestSign
+FMul2:	RST     FTestSign		; If rhs==0 then exit
         RET     Z
-
-        LD      L,00H
+;Add the exponents. 
+        LD      L,00H			; L=0 to signify exponent add
         CALL    FExponentAdd
+;Store the lhs mantissa in the operands for FMulInnerLoop
         LD      A,C
-        LD      (11F3H),A
+        LD      (L11F3),A
         EX      DE,HL
-        LD      (11EEH),HL
+        LD      (L11EE),HL
+;Initialise result mantissa CDEB to 0.
         LD      BC,0000H
         LD      D,B
         LD      E,B
@@ -489,9 +544,11 @@ FMulInnerLoop:
         LD      A,C
         JP      NC,L11F4
         PUSH    DE
+L11EE:	EQU	$+1
         LD      DE,0000H	; <-- á ¬®¬®¤¨ä¨æ¨àãîé¨©áï ª®¤
         ADD     HL,DE
         POP     DE
+L11F3:	EQU	$+1
         ADC     A,00H		; <-- á ¬®¬®¤¨ä¨æ¨àãîé¨©áï ª®¤
 L11F4:  RRA     
         LD      C,A
@@ -540,42 +597,46 @@ L121A:  RST     FTestSign
         INC     (HL)
         DEC     HL
         LD      A,(HL)
-        LD      (1249H),A
+        LD      (L1249),A
         DEC     HL
         LD      A,(HL)
-        LD      (1245H),A
+        LD      (L1245),A
         DEC     HL
         LD      A,(HL)
-        LD      (1241H),A
+        LD      (L1241),A
         LD      B,C
         EX      DE,HL
         XOR     A
         LD      C,A
         LD      D,A
         LD      E,A
-        LD      (124CH),A
+        LD      (L124C),A
 FDivLoop:
 	PUSH    HL
         PUSH    BC
         LD      A,L
-        SUB     00H
+L1241:	EQU	$+1
+        SUB     00H			; ‘ ¬®¬®¤¨ä¨æ¨àãîé¨©áï ª®¤
         LD      L,A
         LD      A,H
-        SBC     A,00H
+L1245:	EQU	$+1
+        SBC     A,00H			; ‘ ¬®¬®¤¨ä¨æ¨àãîé¨©áï ª®¤
         LD      H,A
         LD      A,B
-        SBC     A,00H
+L1249:	EQU	$+1
+        SBC     A,00H			; ‘ ¬®¬®¤¨ä¨æ¨àãîé¨©áï ª®¤
         LD      B,A
-        LD      A,00H
+L124C:	EQU	$+1
+        LD      A,00H			; ‘ ¬®¬®¤¨ä¨æ¨àãîé¨©áï ª®¤
         SBC     A,00H
         CCF     
-        JP      NC,125Ah
-        LD      (124CH),A
+        JP      NC,L125A
+        LD      (L124C),A
         POP     AF
         POP     AF
         SCF     
         DB	0D2H	;JP      NC,...
-	POP	BC
+L125A:	POP	BC
 	POP	HL
         LD      A,C
         INC     A
@@ -596,9 +657,9 @@ FDivLoop:
         LD      A,B
         RLA     
         LD      B,A
-        LD      A,(124CH)
+        LD      A,(L124C)
         RLA     
-        LD      (124CH),A
+        LD      (L124C),A
         LD      A,C
         OR      D
         OR      E
@@ -1138,24 +1199,24 @@ PrintIN:
 ;number in no time at all! Took me a while to see that...
 
 PrintInt:
-	EX      DE,HL
-        XOR     A
-        LD      B,98H
+	EX      DE,HL			; DE=integer
+        XOR     A			; A=0 (ends up in C)
+        LD      B,98H			; B (ie exponent) = 24
         CALL    L12DA
-        LD      HL,0D92H
+        LD      HL,PrintString-1	;0D92H
         PUSH    HL
 ;FOut
 ;Prints a floating point number to the terminal.
 ;
 ;Set HL to FBUFFER, which is where FACCUM gets printed to.	
-FOut:  LD      HL,0252H
+FOut:	LD      HL,FBUFFER
         PUSH    HL
         RST     FTestSign
-        LD      (HL),20H
+        LD      (HL), ' '
         JP      P,L147C
-        LD      (HL),2DH
+        LD      (HL), '-'
 L147C:  INC     HL
-        LD      (HL),30H
+        LD      (HL), '0'
         JP      Z,L1525
         PUSH    HL
         CALL    M,FNegate
@@ -1193,14 +1254,14 @@ L14C3:  DEC     A
         PUSH    AF
         LD      DE,DECIMAL_POWERS
 L14C9:  DEC     B
-        LD      (HL),2EH
+        LD      (HL), '.'
         CALL    Z,L1317
         PUSH    BC
         PUSH    HL
         PUSH    DE
         CALL    FCopyToBCDE
         POP     HL
-        LD      B,2FH
+        LD      B,'0'-1
 L14D8:  INC     B
         LD      A,E
         SUB     (HL)
@@ -1230,20 +1291,20 @@ L14D8:  INC     B
         JP      Z,L1509
 L14FD:  DEC     HL
         LD      A,(HL)
-        CP      30H
+        CP      '0'
         JP      Z,L14FD
-        CP      2EH
+        CP      '.'
         CALL    NZ,L1317
 L1509:  POP     AF
         JP      Z,L1528
-        LD      (HL),45H
+        LD      (HL),'E'
         INC     HL
-        LD      (HL),2BH
+        LD      (HL),'+'
         JP      P,L1519
-        LD      (HL),2DH
+        LD      (HL),'-'
         CPL     
         INC     A
-L1519:  LD      B,2FH
+L1519:  LD      B,'0'-1
 L151B:  INC     B
         SUB     0AH
         JP      NC,L151B
@@ -1465,7 +1526,7 @@ RND_SEED:
 	
 	CHK	1660H, "‘¤¢¨¦ª  ª®¤ "
 Cos:
-	LD      HL,16A6H
+	LD      HL,PI2
         CALL    FAddFromMem
 	CHK	1666h, "‘¤¢¨¦ª  ª®¤ "
 
@@ -1485,7 +1546,7 @@ Sin:
         POP     BC
         POP     DE
         CALL    FSubBCDE
-        LD      HL,16AAH
+        LD      HL,C14
         CALL    FSubFromMem
         RST     FTestSign
         SCF     
@@ -1497,37 +1558,23 @@ Sin:
 NegateIfPositive:
 	PUSH    AF
         CALL    P,FNegate
-        LD      HL,16AAH
+        LD      HL,C14
         CALL    FAddFromMem
         POP     AF
         CALL    NC,FNegate
-        LD      HL,16AEH
+        LD      HL,SINETAB
         JP      L15FA
-        IN      A,(0FH)
-        LD      C,C
-        ADD     A,C
-        NOP     
-        NOP     
-        NOP     
-        LD      A,A
-        DEC     B
-        CP      D
-        RST     NextChar
-        LD      E,86H
-        LD      H,H
-        LD      H,99H
-        ADD     A,A
-        LD      E,B
-        INC     (HL)
-        INC     HL
-        ADD     A,A
-        RET     PO
 
-        LD      E,L
-        AND     L
-        ADD     A,(HL)
-        JP      C,490Fh
-        ADD     A,E
+PI2:	DB	0DBH, 00FH, 049H, 081H	; PI/2
+C14:	DB	0, 0, 0, 07FH		; 1/4
+SINETAB:
+        DB	5
+TAYLOR_SERIES:
+	DB	0BAH, 0D7H, 01EH, 086H	; 39.710670
+	DB	064H, 026H, 099H, 087H	; -76.574982
+	DB	058H, 034H, 023H, 087H	; 81.602234
+	DB	0E0H, 05DH, 0A5H, 086H	; -41.341675
+	DB	0DAH, 00FH, 049H, 083H	; 6.283185
 
 	CHK	16c3h, "‘¤¢¨¦ª  ª®¤ "
 Tan:
@@ -1555,43 +1602,23 @@ Atn:
         CALL    L121A
         LD      HL,FSubFromMem
         PUSH    HL
-L16F3:  LD      HL,16FDH
+L16F3:  LD      HL,ATNTAB
         CALL    L15FA
-        LD      HL,16A6H
+        LD      HL,PI2
         RET     
 
-        ADD     HL,BC
-        LD      C,D
-        RST     NextChar
-        DEC     SP
-        LD      A,B
-        LD      (BC),A
-        LD      L,(HL)
-        ADD     A,H
-        LD      A,E
-        CP      0C1H
-        CPL     
-        LD      A,H
-        LD      (HL),H
-        LD      SP,7D9AH
-        ADD     A,H
-        DEC     A
-        LD      E,D
-        LD      A,L
-        RET     Z
+ATNTAB:
+	DB	09H
 
-        LD      A,A
-        SUB     C
-        LD      A,(HL)
-        CALL    PO,4CBBh
-        LD      A,(HL)
-        LD      L,H
-        XOR     D
-        XOR     D
-        LD      A,A
-        NOP     
-        NOP     
-        NOP     
-        ADD     A,C
+	DB	04AH, 0D7H, 03BH, 078H			; .002866226
+	DB	002H, 06EH, 084H, 07BH			; -.01616574
+	DB	0FEH, 0C1H, 02FH, 07CH			; .04290961
+	DB	074H, 031H, 09AH, 07DH			; -.07528964
+	DB	084H, 03DH, 05AH, 07DH			; .1065626
+	DB	0C8H, 07FH, 091H, 07EH			; -.142089
+	DB	0E4H, 0BBH, 04CH, 07EH			; .1999355
+	DB	06CH, 0AAH, 0AAH, 07FH			; -.3333315
+	DB	000H, 000H, 000H, 081H			; 1.0
+
         NOP     
         NOP     

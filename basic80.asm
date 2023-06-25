@@ -914,7 +914,9 @@ DATA_PROG_PTR:
 	DW	PROGRAM_BASE_INIT
 FACCUM:	DB	1fh,02h,84h,87h	; Видимо, мусор. Заменить на DD	0 ?
 FTEMP:	DB	0c2h
-	db	20h
+FBUFFER:
+;Small buffer (12 bytes) used by the math package functions FOut and Sqr.
+	DB	20h
 	db	32h, 35h,36h, 0 ; "256"
 	db	30h, 30h,30h, 0	; "000"
 	CHK	025bh, "Сдвижка кода"
