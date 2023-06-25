@@ -915,15 +915,12 @@ DATA_PROG_PTR:
 FACCUM:	DB	1fh,02h,84h,87h	; Видимо, мусор. Заменить на DD	0 ?
 FTEMP:	DB	0c2h
 FBUFFER:
-;Small buffer (12 bytes) used by the math package functions FOut and Sqr.
+; Small buffer (13 bytes) used by the math package functions FOut and Sqr.
 	DB	20h
 	db	32h, 35h,36h, 0 ; "256"
 	db	30h, 30h,30h, 0	; "000"
 	CHK	025bh, "Сдвижка кода"
-	NOP     
-        NOP     
-        NOP     
-        NOP     
+	db	0, 0, 0, 0
 szError:	DB		"o{ibk", 0E1h, 00h		; "ОШИБКА"
 szIn:		DB		20h, 20h, "w", 0A0h, 00h 			; "  В "
 szOK:		DB		0Dh, 0Ah, 0BDh, ">", 0Dh, 0Ah, 00h		; "=>"
@@ -3996,9 +3993,13 @@ InitLoop:
         CALL    0F809h
         JP      InitLoop
 	ENDIF
-		
+
 szHello:
+	IF	UT88
+	DB		1Fh, 0Dh, 0Ah, "* UT-88 *  BASIC", 0
+	ELSE
 	DB		1Fh, 0Dh, 0Ah, "*MikrO/80* BASIC", 0
+	ENDIF
 
 	CHK	176ah, "Сдвижка кода"
 Cur:
