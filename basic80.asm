@@ -1528,7 +1528,7 @@ L04CD:  POP     AF
         LD      C,A
         PUSH    AF
 	IF	RK86
-	CALL	19c0H
+	CALL	L19C0
 	ELSE
         CALL    0F809h
 	ENDIF
@@ -1545,15 +1545,15 @@ InputChar:
 	CP	1FH
 
 	IF	RK86
-	JP	Z, 1049H
+	JP	Z, L1049
 	CP	0FH
 	CALL	Z, L19A0
-	CP	04H
-	CALL	Z, 19A8H
+	CP	04H		; F5
+	CALL	Z, L19A8
 	RET
 	NOP
 	NOP
-L04ED:	DB	0H
+PRNDUP:	DB	0H		; Флаг дублирования вывода на принтер 0 - выключит >0 - включить
 	ELSE
 
         JP      Z,0F800h
@@ -3286,7 +3286,8 @@ L0D9D:  DEC     E
         JP      L0D9D
 		
 L0DAA:  OR      A
-        LD      C,0F1H
+	DB	0EH			; LD C,...
+L0DAC:	POP	AF
         PUSH    AF
         LD      HL,(STACK_TOP)
         EX      DE,HL
@@ -3309,7 +3310,7 @@ L0DC6:  POP     AF
         JP      Z,Error
         CP      A
         PUSH    AF
-        LD      BC,0DACH
+        LD      BC,L0DAC
         PUSH    BC
 L0DD2:  LD      HL,(MEMSIZ)
 L0DD5:  LD      (STR_TOP),HL
@@ -3318,11 +3319,11 @@ L0DD5:  LD      (STR_TOP),HL
         LD      HL,(STACK_TOP)
         PUSH    HL
         LD      HL,TMPST		;021FH
-        EX      DE,HL
+L0DE3:	EX      DE,HL
         LD      HL,(TEMPPT)		;021DH
         EX      DE,HL
         RST     CompareHLDE
-        LD      BC,0DE3H
+        LD      BC,L0DE3
         JP      NZ,L0E2F
         LD      HL,(VAR_BASE)
 L0DF2:  EX      DE,HL
@@ -3357,10 +3358,10 @@ L0E06:  EX      DE,HL
         INC     HL
         EX      DE,HL
         LD      HL,(0231H)
-        EX      DE,HL
+L0E23:	EX      DE,HL
         RST     CompareHLDE
         JP      Z,L0E06
-        LD      BC,0E23H
+        LD      BC,L0E23
 L0E2F:  PUSH    BC
         OR      80H
 L0E32:  RST     PushNextWord
@@ -3778,9 +3779,11 @@ L1041:	LD	A, D
 	CALL	0f815h
 	LD	A, E
 	CALL	0f815h
-	JP	0f86ch
+L1049:	JP	0f86ch
+
 	NOP
 	NOP
+
 L104E:	CALL	0f82dH
 	ELSE
         RST     NextChar
@@ -3789,6 +3792,7 @@ L104E:	CALL	0f82dH
 ; Предположительно, это две строчки - мертвый код
         LD      (FACCUM),A
         CALL    New2
+
 L1023:  LD      B,03H
 L1025:  CALL    Reader
         CP      0D3H
@@ -3816,10 +3820,14 @@ L1051:  LD      (VAR_BASE),HL
         CALL    PrintString
         JP      UpdateLinkedList
 
+; Какой-то мертвый код...
         CALL    L0645
         LD      A,(DE)
         JP      L0CAB
+
+; Тоже похоже на мертвый код
         CALL    L0642
+
 L1067:  PUSH    DE
         RST     SyntaxCheck
         DB	','
@@ -3849,9 +3857,11 @@ Usr:
         RST     FTestSign
         CALL    L0649
         EX      DE,HL
-        CALL    L1741
+        CALL    CallHL
 	JP	L0CAB
-L1741:  JP      (HL)
+
+CallHL:	JP      (HL)
+
 ; Начальная инициализация.
 ; =======================
 ; В отличие от Altair BASIC, в данной версии конфигурация памяти не настраивается
@@ -4378,12 +4388,12 @@ L19A0:	LD	A, (ControlChar)
 	LD	(ControlChar), A
 	RET
 	
-	LD	A, (L04ED)
+L19A8:	LD	A, (PRNDUP)
 	OR	A
 	LD	A, 0FFH
 	JP	Z, L19B2
 	XOR	A
-L19B2:	LD	(L04ED), A
+L19B2:	LD	(PRNDUP), A
 	LD	A, 07FH
 	RET
 
@@ -4392,11 +4402,11 @@ L19B8:	LD	HL, 0A003H
 	LD	(HL), 00FH
 	RET
 
-	LD	A, 07FH
+L19C0:	LD	A, 07FH
 	AND	C
 	LD	C, A
 	CALL	0F809H
-	LD	A, (L04ED)
+	LD	A, (PRNDUP)
 	OR	A
 	RET	Z
 	LD	A, C
@@ -4550,4 +4560,3 @@ L19E5:	LD	A,(HL)
         NOP     
         NOP     
 
-+
