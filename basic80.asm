@@ -364,7 +364,7 @@ FTestSign:
 ;
 PushNextWord:
 	EX	(SP),HL
-	LD	(RST6RET+1),HL
+	LD	(RST6RET),HL
 	POP	HL
 	JP	RST6_CONT		; Отличие от Altair - место для обработчика RST 7
 ;
@@ -381,7 +381,7 @@ RST6_CONT:
 	LD	B,(HL)
 	INC	HL
 	PUSH    BC
-RST6RET:
+RST6RET:	EQU	$+1
 	JP	04F9H		; Это самомодифицирующийся код, см. PushNextWord.
 
 
@@ -924,10 +924,10 @@ FBUFFER:
 	db	30h, 30h,30h, 0	; "000"
 	CHK	025bh, "Сдвижка кода"
 	db	0, 0, 0, 0
-szError:	DB		"o{ibk", 0E1h, 00h		; "ОШИБКА"
-szIn:		DB		20h, 20h, "w", 0A0h, 00h 			; "  В "
-szOK:		DB		0Dh, 0Ah, 0BDh, ">", 0Dh, 0Ah, 00h		; "=>"
-szStop:		DB		0Dh, 0Ah, "stop", 0A0h, 00h		; "СТОП "
+szError:	DB		"o{ibk", "a"+80h, 00h		; "ОШИБКА"
+szIn:		DB		"  w", " "+80h, 00h 			; "  В "
+szOK:		DB		0Dh, 0Ah, "="+080h, ">", 0Dh, 0Ah, 00h		; "=>"
+szStop:		DB		0Dh, 0Ah, "stop", " "+080h, 00h		; "СТОП "
 		
 ; конец токенов
 
@@ -2958,7 +2958,8 @@ L0BA5:  PUSH    DE
         LD      (DIM_OR_EVAL),HL
         PUSH    DE
         LD      HL,(VAR_ARRAY_BASE)
-        LD      A,19H
+        DB	3EH			;LD      A,..
+L0BC6:	ADD	HL, DE
         EX      DE,HL
         LD      HL,(VAR_TOP)
         EX      DE,HL
@@ -2975,7 +2976,7 @@ L0BD8:  INC     HL
         INC     HL
         LD      D,(HL)
         INC     HL
-        JP      NZ,0BC6h
+        JP      NZ,L0BC6
         LD      A,(DIM_OR_EVAL)
         OR      A
         LD      E,ERR_DD
@@ -2992,8 +2993,9 @@ L0BF3:  LD      DE,0004H
         LD      (HL),B
         INC     HL
         POP     AF
-        LD      (0C01H),A
+        LD      (VarSize),A
         CALL    CheckEnoughVarSpace2
+VarSize:
         DB	0e9h
         LD      (0231H),HL
         INC     HL
@@ -3035,7 +3037,7 @@ L0C34:  DEC     HL
         LD      H,A
         LD      A,(DIM_OR_EVAL)
         OR      A
-        LD      A,(0C01H)
+        LD      A,(VarSize)
         LD      L,A
         ADD     HL,HL
         ADD     HL,BC
@@ -3048,7 +3050,8 @@ L0C34:  DEC     HL
         JP      NZ,L0C74
 L0C52:  INC     HL
         LD      BC,0000H
-        LD      D,0E1H
+	DB	16H		; LD D,...
+L0C57:	POP	HL
         LD      E,(HL)
         INC     HL
         LD      D,(HL)
@@ -3065,7 +3068,7 @@ L0C52:  INC     HL
         DEC     A
         LD      B,H
         LD      C,L
-        JP      NZ,0C57h
+        JP      NZ,L0C57
         ADD     HL,HL
         ADD     HL,HL
         POP     BC
@@ -3771,6 +3774,7 @@ L104E:	CALL	0f82dH
         RST     NextChar
         RET     
 
+; Предположительно, это две строчки - мертвый код
         LD      (FACCUM),A
         CALL    New2
 L1023:  LD      B,03H

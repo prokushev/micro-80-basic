@@ -126,19 +126,50 @@
 ; recurring. Likewise, one tenth is 0.1 in decimal but
 ; 0.0001100110011 last four bits recurring in binary.
 ;
-; So any method we choose for storing fractional numbers has to take these two problems into consideration. Bearing this in mind, consider the two possible approaches for storing fractional numbers :
+; So any method we choose for storing fractional numbers 
+; has to take these two problems into consideration. Bearing 
+; this in mind, consider the two possible approaches for 
+; storing fractional numbers :
 ;
-;Fixed point. Store the integer part in one field, and the fractional part in another field. It's called fixed point representation since the point (binary or decimal) is always in the same place - between the integer and fractional fields.
-;Floating point. Store the mantissa in one field, and the exponent in another field. This way, the point wouldn't be fixed into place - it could be anywhere, as determined by the binary exponent. It would, in fact be, a floating point.
-;Why is floating point better than fixed point? Let's say we have 32 bits to play with. Let's use fixed point and assign 16 bits for the integer part and 16 for the fractional part. This allows a range of 0 to 65535.9999 or so, which isn't very good value, range-wise, for 32 bits. OK, lets increase the range - we'll change to using 20 bits for the integer and 12 for the fraction. This gives us a range of 0 to 1,048,575.999ish . Still not a huge range, and since we've only got 12 bits for the fraction we're losing precision - numbers stored this way will be rounded to the nearest 1/4096th.
+; Fixed point. Store the integer part in one field, and the
+; fractional part in another field. It's called fixed point
+; representation since the point (binary or decimal) is always
+; in the same place - between the integer and fractional fields.
 ;
-;Now lets try floating point instead. Lets assign a whopping 24 bits for the mantissa and 8 bits for the exponent. 8 bits doesn't sound like much, but this is an exponent after all - with these 8 bits we get a range of -128 to +127 which is roughly 10-38 to to 1038. That's a nice big range! And we get 24 bits of precision too! It's clearly the better choice.
+; Floating point. Store the mantissa in one field, and the
+; exponent in another field. This way, the point wouldn't be
+; fixed into place - it could be anywhere, as determined by 
+; the binary exponent. It would, in fact be, a floating point.
+; Why is floating point better than fixed point? Let's say we
+; have 32 bits to play with. Let's use fixed point and assign
+; 16 bits for the integer part and 16 for the fractional part.
+; This allows a range of 0 to 65535.9999 or so, which isn't
+; very good value, range-wise, for 32 bits. OK, lets increase
+; the range - we'll change to using 20 bits for the integer
+; and 12 for the fraction. This gives us a range of 0 to
+; 1,048,575.999ish . Still not a huge range, and since
+; we've only got 12 bits for the fraction we're losing
+; precision - numbers stored this way will be rounded to
+; the nearest 1/4096th.
 ;
-;Floating point is not a perfect solution though... adding a very small number to a very large number is likely to produce an erroneous result. For example, go to the BASIC emulator and try PRINT 10000+.1. You get 10000.1 as expected. Now try PRINT 10000+.01 or PRINT 100000+.1. See?
+; Now lets try floating point instead. Lets assign a whopping
+; 24 bits for the mantissa and 8 bits for the exponent. 8 bits
+; doesn't sound like much, but this is an exponent after all -
+; with these 8 bits we get a range of -128 to +127 which is
+; roughly 10-38 to to 1038. That's a nice big range! And we
+; get 24 bits of precision too! It's clearly the better choice.
+;
+; Floating point is not a perfect solution though... adding a
+; very small number to a very large number is likely to produce
+; an erroneous result. For example, go to the BASIC emulator
+; and try PRINT 10000+.1. You get 10000.1 as expected. Now
+; try PRINT 10000+.01 or PRINT 100000+.1. See?
 ;
 ; ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
-;Normalisation
-;Normalisation is the process of shifting the mantissa until it is between 0.5 and 1 and adjusting the exponent to compensate. For example, these binary numbers are unnormalised :
+; Normalisation
+; Normalisation is the process of shifting the mantissa until
+; it is between 0.5 and 1 and adjusting the exponent to
+; compensate. For example, these binary numbers are unnormalised:
 ;
 ;101.001
 ;0.0001
@@ -429,12 +460,12 @@ L115F:  RRA
         RRA     
         LD      B,A
         JP      RtMultLoop
-	
-        NOP     
+
+L116D:  NOP     
         NOP     
         NOP     
         ADD     A,C
-        INC     BC
+L1171:        INC     BC
         XOR     D
         LD      D,(HL)
         ADD     HL,DE
@@ -462,9 +493,9 @@ L117E:  RST     FTestSign
         POP     DE
         INC     B
         CALL    L121A
-        LD      HL,116DH
+        LD      HL,L116D
         CALL    FSubFromMem
-        LD      HL,1171H
+        LD      HL,L1171
         CALL    L15FA
         LD      BC,8080H
         LD      DE,0000H
@@ -1406,7 +1437,7 @@ L1599:  CALL    FPush
         ADD     A,02H
         JP      C,L12A8
         PUSH    AF
-        LD      HL,116DH
+        LD      HL,L116D
         CALL    FAddFromMem
         CALL    L11B3
         POP     AF
@@ -1415,14 +1446,14 @@ L1599:  CALL    FPush
         PUSH    AF
         CALL    FSubBCDE
         CALL    FNegate
-        LD      HL,15D9H
+        LD      HL,L15D9
         CALL    L1609
         LD      DE,0000H
         POP     BC
         LD      C,D
         JP      FMul2
 	
-	DB	08h
+L15D9:	DB	08h
         LD      B,B
         LD      L,94H
         LD      (HL),H
@@ -1452,7 +1483,7 @@ L1599:  CALL    FPush
         ADD     A,C
 	CHK	15fah, "‘คขจฆช  ชฎค "
 L15FA:  CALL    FPush
-        LD      DE,11BAH
+        LD      DE, FMul	;  11BAH
         PUSH    DE
         PUSH    HL
         CALL    FCopyToBCDE
