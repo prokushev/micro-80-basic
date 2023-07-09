@@ -868,9 +868,11 @@ VALTYP:
 DATA_STM:
 	DB	0			; Признак обработки TK_DATA
 MEMSIZ:	DW	MEM_TOP			; Размер памяти //021BH
-        RRA     
-        LD      (BC),A
-        LD      B,00H
+
+TEMPPT:	DW	TMPST			;POINTER AT FIRST FREE TEMP DESCRIPTOR
+					;INITIALIZED TO POINT TO TEMPST
+;TEMPST:	DS	STRSIZ*NUMTMP		;STORAGE FOR NUMTMP TEMP DESCRIPTORS
+TMPST:	LD      B,00H
         LD      L,E
         LD      (BC),A
         LD      BC,8900H
@@ -1290,8 +1292,8 @@ ResetStack:
         LD      HL,(STACK_TOP)
         LD      SP,HL
 
-        LD      HL,021FH
-        LD      (021DH),HL
+        LD      HL,TMPST	;021FH
+        LD      (TEMPPT),HL	;021DH
 
         LD      HL,0000H
         PUSH    HL
@@ -2438,7 +2440,7 @@ L08D1:  EX      (SP),HL
         RET     
 
 szOverflow:
-	DB	"?li{nie danny", 0e5h, 0dh, 0ah, 0
+	DB	"?li{nie danny", "e"+80h, 0dh, 0ah, 0
 ;	DB	3Fh, 6Ch, 69h, 7Bh, 6Eh, 69h, 65h, 20h, 64h, 61h, 6Eh, 6Eh, 79h, 0E5h, 0Dh, 0Ah, 00h	; "?ЛИШНИЕ ДАННЫЕ"
 
 ReadError:
@@ -2662,7 +2664,7 @@ L0A1E:  LD      D,7DH
         LD      HL,(PROG_PTR_TEMP2)
         PUSH    HL
         CALL    FNegate
-        CALL    L0969
+L0A2A:	CALL    L0969
         POP     HL
         RET     
 
@@ -2707,7 +2709,7 @@ EvalInlineFn:
 	
 L0A65:  CALL    L0A16
         EX      (SP),HL
-        LD      DE,0A2AH
+        LD      DE,L0A2A
         PUSH    DE
 L0A6D:  LD      BC,0043H
         ADD     HL,BC
@@ -2753,7 +2755,7 @@ L0A99:  OR      E
         OR      D
         JP      (HL)
 
-L0A9E:  LD      HL,0AB0H
+L0A9E:  LD      HL,L0AB0
         LD      A,(VALTYP)
         RRA     
         LD      A,D
@@ -2765,7 +2767,7 @@ L0A9E:  LD      HL,0AB0H
         RET     NC
         JP      L09D2
 
-        OR      D
+L0AB0:	OR      D
         LD      A,(BC)
         LD      A,C
         OR      A
@@ -2774,7 +2776,7 @@ L0A9E:  LD      HL,0AB0H
         POP     DE
         PUSH    AF
         CALL    L096B
-        LD      HL,0AEFH
+        LD      HL,L0AEF
         PUSH    HL
         JP      Z,FCompare
         XOR     A
@@ -2814,7 +2816,7 @@ L0AD7:  LD      A,E
         CCF     
         JP      L12D0
 	
-        INC     A
+L0AEF:	INC     A
         ADC     A,A
         POP     BC
         AND     B
@@ -3197,7 +3199,7 @@ Str:
         CALL    FOut
         CALL    L0D4F
         CALL    L0EC1
-        LD      BC,0F10H
+        LD      BC,L0F10
         PUSH    BC
 L0D2F:  LD      A,(HL)
         INC     HL
@@ -3244,7 +3246,7 @@ L0D65:  CP      22H
         RST     CompareHLDE
         CALL    NC,L0D2F
 L0D75:  LD      DE,022BH
-        LD      HL,(021DH)
+        LD      HL,(TEMPPT)		;021DH
         LD      (FACCUM),HL
         LD      A,01H
         LD      (VALTYP),A
@@ -3252,7 +3254,7 @@ L0D75:  LD      DE,022BH
         RST     CompareHLDE
         LD      E,ERR_ST
         JP      Z,Error
-        LD      (021DH),HL
+        LD      (TEMPPT),HL		; 021DH
         POP     HL
         LD      A,(HL)
         RET     
@@ -3305,9 +3307,9 @@ L0DD5:  LD      (STR_TOP),HL
         PUSH    HL
         LD      HL,(STACK_TOP)
         PUSH    HL
-        LD      HL,021FH
+        LD      HL,TMPST		;021FH
         EX      DE,HL
-        LD      HL,(021DH)
+        LD      HL,(TEMPPT)		;021DH
         EX      DE,HL
         RST     CompareHLDE
         LD      BC,0DE3H
@@ -3466,7 +3468,7 @@ L0EB5:  DEC     L
 L0EBE:  CALL    L096A
 L0EC1:  LD      HL,(FACCUM)
 L0EC4:  EX      DE,HL
-L0EC5:  LD      HL,(021DH)
+L0EC5:  LD      HL,(TEMPPT)		;021DH
         DEC     HL
         LD      B,(HL)
         DEC     HL
@@ -3477,7 +3479,7 @@ L0EC5:  LD      HL,(021DH)
         EX      DE,HL
         RET     NZ
 
-        LD      (021DH),HL
+        LD      (TEMPPT),HL		; 021DH
         PUSH    DE
         LD      D,B
         LD      E,C
@@ -3522,7 +3524,7 @@ Chr:
         CALL    L0FBC
         LD      HL,(022DH)
         LD      (HL),E
-        POP     BC
+L0F10:	POP     BC
         JP      L0D75
 
 	CHK	0f14h, "Сдвижка кода"
@@ -3864,7 +3866,7 @@ Cls:	PUSH	HL
 	CALL	0F81EH
 	LD	BC, 01D18H
 	ADD	HL, BC
-	LD	(01957H), HL
+	LD	(POSX), HL		; 01957H
 	POP	HL
 	LD	C, 1FH	
 	CALL	0F809H
@@ -3874,7 +3876,7 @@ Cur:	CALL	L0FB9
 	CP	40H
 	JP	NC, FunctionCallError
 	ADD	A, 20H
-	LD	(01957H), A
+	LD	(POSX), A		; 01957H
 
 	RST	SyntaxCheck
 	DB	','
@@ -3885,17 +3887,17 @@ Cur:	CALL	L0FB9
 	LD	C,A
 	LD	A, 38H
 	SUB	C
-	LD	(01958H), A
+	LD	(POSY), A		; 01958H
 
 SetCurPos:
 	LD	C, 01BH
 	CALL	0F809H
 	LD	C, 59H
 	CALL	0F809H
-	LD	A, (01958H)
+	LD	A, (POSY)		; 01958H
 	LD	C, A
 	CALL	0F809H
-	LD	A, (01957H)
+	LD	A, (POSX)		; 01957H
 	LD	C, A
 	JP	0F809H
 
@@ -4011,14 +4013,14 @@ szHello:
 	CHK	176ah, "Сдвижка кода"
 Cur:
 	CALL    L0FB9
-        LD      (1957H),A
+        LD      (POSX),A		; 1957H
         RST     SyntaxCheck
         DB	','
         CALL    L0FB9
-        LD      (1958H),A
+        LD      (POSY),A		; 1958H
         CP      20H
         JP      NC,FunctionCallError
-        LD      A,(1957H)
+        LD      A,(POSX)		; 1957H
         CP      40H
         JP      NC,FunctionCallError
         PUSH    HL
@@ -4028,14 +4030,14 @@ Cur:
         LD      (HL),00H
         LD      HL,0EFC0H
 L1792:  LD      DE,0FFC0H
-        LD      A,(1958H)
+        LD      A,(POSY)		; 1958H
         OR      A
 L1799:  JP      Z,L17A1
         ADD     HL,DE
         DEC     A
         JP      L1799
 L17A1:  LD      D,00H
-        LD      A,(1957H)
+        LD      A,(POSX)		; 1957H
         LD      E,A
         ADD     HL,DE
         LD      (0F75AH),HL		; Адрес курсора в МИКРО-80 и ЮТ-88
@@ -4050,10 +4052,10 @@ Cls:
 ; Здесь можно было бы просто вывести 01fH через МОНИТОР и было бы портабельно...
 ; Но МИКРО-80 не умеет получать и сохранять координаты курсора.
 	IF	BASICNEW
-	; Сначала сохраняем позицию курсора
+	; TODO Сначала сохраняем позицию курсора
 	LD	C, 01FH
 	CALL	0F809H
-	; Потом восстанавливаем позицию курсора
+	; TODO Потом восстанавливаем позицию курсора
 	ELSE	
         PUSH    HL
         LD      HL,0E800H
@@ -4083,6 +4085,7 @@ Plot:
         DB	','
         CALL    L0FB9
         LD      (1956H),A
+
 L17DD:  LD      A,(1954H)
         CP      80H
         JP      NC,FunctionCallError
@@ -4259,14 +4262,14 @@ Msave:
         PUSH    HL
         LD      L,00H
         XOR     A
-L18F2:  CALL    Puncher
+L18F2:  CALL    Puncher			; Вывод пилот-тона,256 нулей
         DEC     L
         JP      NZ,L18F2
         POP     HL
         PUSH    HL
-        LD      A,0E6H
+        LD      A,0E6H			; Синхро-байт
         CALL    Puncher
-        LD      A,0D3H
+        LD      A,0D3H			; Опознаватель BASIC-программы
         JP      L0FFD
 
 	CHK	1905H, "Сдвижка кода"
@@ -4316,8 +4319,8 @@ L1938:  LD      A,08H
 	NOP
 	NOP
 	NOP
-	NOP
-	NOP
+POSX:	DB	0
+POSY:	DB	0
 	IF	RK86
 
 L1959:	CALL	InputChar
@@ -4338,7 +4341,7 @@ L196F:	LD	A, (DE)
 	DEC	A
 	JP	L196B
 
-L197A:	LD	A, (DE)
+L197A:	LD	A, (DE)			; Загрузка программ FN-keys
 	LD	(HL), A
 	INC	DE
 	INC	HL
@@ -4346,10 +4349,12 @@ L197A:	LD	A, (DE)
 	JP	NZ, L197A
 	JP	TerminateInput2
 
-L1985:	DB	09AH, 000H
-	DB	095H, 0B2H, 028H, 030H, 029H, 000H, 097H, 000H
-L198F:	DB	09BH
-	DB	000H, 098H, 000H, 089H, 000H
+L1985:	DB	TK_MLOAD, 000H
+	DB	TK_PRINT, TK_FRE, "(0)", 000H
+	DB	TK_CONT, 000H
+L198F:	DB	TK_MSAVE, 000H
+	DB	TK_LIST, 000H
+	DB	TK_RUN, 000H
 
 L1995:	LD	A, 08H
 	RST	OutChar
@@ -4535,3 +4540,4 @@ L19E5:	LD	A,(HL)
         NOP     
         NOP     
 
++
