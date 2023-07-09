@@ -3912,37 +3912,37 @@ SetCurPos:
 	JP	0F809H
 
 Plot:	CALL	L0FB9
-	LD	(01954H), A
+	LD	(GPOSX), A		; 01954H
 	RST	SyntaxCheck
 	DB	','
 
 	CALL	L0FB9
-	LD	(01955H), A
+	LD	(GPOSY), A		; 01955H
 	RST	SyntaxCheck
 	DB	','
 
 	CALL	L0FB9
-	LD	(01956H), A
+	LD	(GFILL), A		; 01956H
 
-L17C5:	LD	A, (01954H)
+L17C5:	LD	A, (GPOSX)		; 01954H
 	CP	80H
 	JP	NC, FunctionCallError
-	LD	A, (01955H)
+	LD	A, (GPOSY)		; 01955H
 	CP	32H
 	JP	NC, FunctionCallError
 	LD	D, A
 	LD	A, 31H
 	SUB	D
-	LD	(01955H), A
+	LD	(GPOSY), A		; 01955H
 	PUSH	HL
 	XOR	A
-	LD	A, (01954H)
+	LD	A, (GPOSX)		; 01954H
 	RRA
 	LD	E, A
 	LD	A, C
 	RRA
 	LD	C, A
-	LD	A, (01955H)
+	LD	A, (GPOSY)		; 01955H
 	RRA
 	LD	D, A
 	LD	A, C
@@ -3951,14 +3951,14 @@ L17C5:	LD	A, (01954H)
 	LD	C, A
 	LD	HL, SCRADDR
 	LD	DE, 004EH
-	LD	A, (01955H)
+	LD	A, (GPOSY)		; 01955H
 	RRA
 	OR	A
 	JP	Z, L1802
 L17FD:	ADD	HL, DE
 	DEC	A
 	JP	NZ, L17FD
-L1802:	LD	A, (01954H)
+L1802:	LD	A, (GPOSX)		; 01954H
 	RRA
 	LD	E, A
 	ADD	HL, DE
@@ -3974,7 +3974,7 @@ L1802:	LD	A, (01954H)
 	LD	B, 010H
 	JP	Z, L1822
 	LD	B, 4
-L1822:	LD	A, (01956H)
+L1822:	LD	A, (GFILL)		; 01956H
 	RRA
 	LD	A, B
 	JP	C, L1839
@@ -4086,35 +4086,35 @@ ClsLoop:
 	CHK	17C7H, "Сдвижка кода"
 Plot:
         CALL    L0FB9
-        LD      (1954H),A
+        LD      (GPOSX),A		; 1954H
         RST     SyntaxCheck
         DB	','
         CALL    L0FB9
-        LD      (1955H),A
+        LD      (GPOSY),A		; 1955H
         RST     SyntaxCheck
         DB	','
         CALL    L0FB9
-        LD      (1956H),A
+        LD      (GFILL),A		; 1956H
 
-L17DD:  LD      A,(1954H)
+L17DD:  LD      A,(GPOSX)		; 1954H
         CP      80H
         JP      NC,FunctionCallError
-        LD      A,(1955H)
+        LD      A,(GPOSY)		; 1955H
         CP      40H
         JP      NC,FunctionCallError
         LD      D,A
         LD      A,3FH
         SUB     D
-        LD      (1955H),A
+        LD      (GPOSY),A		; 1955H
         PUSH    HL
         XOR     A
-        LD      A,(1954H)
+        LD      A,(GPOSX)		; 1954H
         RRA     
         LD      E,A
         LD      A,C
         RRA     
         LD      C,A
-        LD      A,(1955H)
+        LD      A,(GPOSY)		; 1955H
         RRA     
         LD      D,A
         LD      A,C
@@ -4145,7 +4145,7 @@ L17DD:  LD      A,(1954H)
         LD      B,10H
         JP      Z,L1831
         LD      B,04H
-L1831:  LD      A,(1956H)
+L1831:  LD      A,(GFILL)		; 1956H
         RRA     
         LD      A,B
         JP      C,L183E
@@ -4167,17 +4167,17 @@ POPHLRET:
 
 Line:
         CALL    L0FB9
-        LD      (1952H),A
+        LD      (GPOSX2),A		; 1952H
         RST     SyntaxCheck
         DB	','
         CALL    L0FB9
-        LD      (1953H),A
+        LD      (GPOSY2),A		; 1953H
         PUSH    HL
         LD      HL,0100H
         LD      (194EH),HL
         LD      HL,0001H
         LD      (1950H),HL
-        LD      HL,(1954H)
+        LD      HL,(GPOSX)		; 1954H
 	IF	RK86
 	LD	A,31h
 	ELSE
@@ -4185,7 +4185,7 @@ Line:
 	ENDIF
         SUB     H
         LD      H,A
-        LD      A,(1952H)
+        LD      A,(GPOSX2)		; 1952H
         SUB     L
         LD      E,A
         OR      A
@@ -4195,7 +4195,7 @@ Line:
         LD      E,A
         LD      A,0FFH
         LD      (1950H),A
-L187B:  LD      A,(1953H)
+L187B:  LD      A,(GPOSY2)		; 1953H
         SUB     H
         LD      D,A
         OR      A
@@ -4225,7 +4225,7 @@ L18A8:  LD      A,E
 L18AD:  LD      A,E
         CP      B
         JP      M,POPHLRET
-        LD      HL,(1954H)
+        LD      HL,(GPOSX)		; 1954H
 	IF	RK86
         LD      A,31H
 	ELSE
@@ -4235,10 +4235,10 @@ L18AD:  LD      A,E
         LD      H,A
         LD      A,(1950H)
         ADD     A,L
-        LD      (1954H),A
+        LD      (GPOSX),A		; 1954H
         LD      A,(1951H)
         ADD     A,H
-        LD      (1955H),A
+        LD      (GPOSY),A		; 1955H
         LD      A,D
         ADD     A,C
         LD      C,A
@@ -4249,13 +4249,13 @@ L18AD:  LD      A,E
         LD      A,C
         SUB     E
         LD      C,A
-        LD      HL,(1954H)
+        LD      HL,(GPOSX)		; 1954H
         LD      A,(194EH)
         ADD     A,L
-        LD      (1954H),A
+        LD      (GPOSX),A		; 1954H
         LD      A,(194FH)
         ADD     A,H
-        LD      (1955H),A
+        LD      (GPOSY),A		; 1955H
 L18E4:  PUSH    BC
         PUSH    DE
 	IF	RK86
@@ -4324,11 +4324,11 @@ L1938:  LD      A,08H
         NOP
 	NOP
 	NOP
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+GPOSX2:	NOP
+GPOSY2:	NOP
+GPOSX:	NOP
+GPOSY:	NOP
+GFILL:	NOP
 POSX:	DB	0
 POSY:	DB	0
 	IF	RK86
