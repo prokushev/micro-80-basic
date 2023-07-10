@@ -30,11 +30,11 @@
 ; !     Рабочие  ячейки  МОНИТОРа !
 ; +-------------------------------+ F750H
 ; !        Не  использована       !
-; +-------------------------------+ F000H
+; +-------------------------------+ F000H (МИКРО-80/ЮТ-88)
 ; !          ОЗУ  экрана          !
-; +-------------------------------+ E800H
+; +-------------------------------+ E800H (МИКРО-80/ЮТ-88)
 ; !         ОЗУ  курсора          !
-; +-------------------------------+ E000H
+; +-------------------------------+ E000H (МИКРО-80/ЮТ-88)
 ; !        Не  использована       !
 ; +-------------------------------+ (MEM_TOP)
 ; !      Строковые переменные     !
@@ -202,7 +202,23 @@
 	Z80SYNTAX	EXCLUSIVE
 
 ; Конфигурация
-MEM_TOP	EQU	03FFFH	; Верхний адрес доступной памяти
+
+	IFNDEF	RAM
+RAM	EQU	16
+	ENDIF
+
+; Верхний адрес доступной памяти. В МИКРО-80 задано жестко, 
+; а в РК-86 настраивается при инициализации
+	IF	RAM=12
+MEM_TOP	EQU	02FFFH
+	ELSEIF	RAM=16
+MEM_TOP	EQU	03FFFH
+	ELSEIF	RAM=32
+MEM_TOP	EQU	07FFFH
+	ELSEIF	RAM=48
+MEM_TOP	EQU	0BFFFH
+	ENDIF
+
 	ifndef RK86
 RK86	EQU	0	; Модификации для "Бейсик для Радио-86РК"
 	endif
@@ -252,17 +268,14 @@ CHK	MACRO	adr, msg
 
 	IF	RK86
 PROGRAM_BASE_INIT	EQU	1B00H
-	IFNDEF	RK86_16
-RK86_16	EQU	1
-	ENDIF
 
-	IF	RK86_16
+	IF RAM=16
 SCRADDR	EQU	037c2H
-	ELSE
+	ELSE		; 32kb
 SCRADDR	EQU	077c2H
 	ENDIF
 
-        ELSE
+	ELSE
 PROGRAM_BASE_INIT	EQU	2200H
 	ENDIF
 ; 
@@ -443,13 +456,13 @@ KW_INLINE_FNS:
 
 KW_ARITH_OP_FNS:
 	DB	079h
-	DW	FAdd	;+ 144C
+	DW	FAdd	; + 144C
 	DB	079h
-	DW	FSub	;- 107D
+	DW	FSub	; - 107D
 	DB	07Bh
-	DW	FMul	;* 11BA
+	DW	FMul	; * 11BA
 	DB	07Bh
-	DW	FDiv	;/ 1218
+	DW	FDiv	; / 1218
 	DB	07Fh
 	DW	FPower	; ^ 155D
 	DB	50H
@@ -797,71 +810,7 @@ ERR_UF	EQU	$-ERROR_CODES
 	DB	','
 LINE_BUFFER: 
         DB	9ch
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-	NOP
+	DB	65 DUP (0)
 	DB	32h, 32h, 37h, 30h
 	NOP
 
@@ -870,19 +819,18 @@ TMPSTACK:
 	NOP     
 ControlChar:
 	DB		00		; Тип символа: 00 - обычный символ, FF - управляющий
-            
 DIM_OR_EVAL:
-	DB	0
+	DB	0			; Обработка массива или...
 VALTYP:
 	DB	01h			; Тип переменной: 00 - числовая, 01 - символьная
 DATA_STM:
 	DB	0			; Признак обработки TK_DATA
 MEMSIZ:	DW	MEM_TOP			; Размер памяти //021BH
 
-TEMPPT:	DW	TMPST			;POINTER AT FIRST FREE TEMP DESCRIPTOR
-					;INITIALIZED TO POINT TO TEMPST
-;TEMPST:	DS	STRSIZ*NUMTMP		;STORAGE FOR NUMTMP TEMP DESCRIPTORS
-TMPST:	LD      B,00H
+TEMPPT:	DW	TMPST			; POINTER AT FIRST FREE TEMP DESCRIPTOR
+					; INITIALIZED TO POINT TO TEMPST
+;TEMPST:	DS	STRSIZ*NUMTMP
+TMPST:	LD      B,00H			; STORAGE FOR NUMTMP TEMP DESCRIPTORS
         LD      L,E
         LD      (BC),A
         LD      BC,8900H
@@ -896,10 +844,9 @@ TMPST:	LD      B,00H
         LD      (BC),A
 STR_TOP:
 	DW	MEM_TOP
-        PUSH    DE
-	DB	01H
+	DW	01D5H
 DATA_LINE:
-        DW	0000H				; Номер строка с DATA, где возникла ошибка
+	DW	0000H				; Номер строка с DATA, где возникла ошибка
 NO_ARRAY:
 	DB	00H				; Флаг, что переменная-массив недопустима (для TK_FOR, например)
 INPUT_OR_READ:
@@ -916,7 +863,7 @@ OLD_TEXT:
 	db	0,0		; Адрес(?) для CONT
 	CHK	0241H, "Сдвижка кода"
 STACK_TOP:
-	DW	MEM_TOP-50	;03fcdh ; Верхушка стека бейсика. Размер (50) для РК86 используется для вычисления при инициализации.
+	DW	MEM_TOP-50	; Верхушка стека бейсика. Размер (50) для РК86 используется для вычисления при инициализации.
 PROGRAM_BASE:
 	DW	PROGRAM_BASE_INIT+01h
 VAR_BASE:
@@ -1998,7 +1945,7 @@ Clear:
         LD      (STACK_TOP),HL
         POP     HL
         JP      ClearAll
-;;;		
+
 	CHK	06ABH, "Сдвижка кода"
 Run:
         JP      Z,ResetAll
@@ -2333,7 +2280,7 @@ ExitTab:
         JP      L0794
 
 szRepeat:
-	DB	3Fh, 70h, 6Fh, 77h, 74h, 6Fh, 72h, 69h, 74h, 65h, 20h, 77h, 77h, 6Fh, 64h, 0A0h, 0Dh, 0Ah, 00	; "?ПОВТОРИТЕ ВВОД "
+	DB	"?powtorite wwod", ' '+80h, 0Dh, 0Ah, 00
 		
 L0840:  LD      A, (INPUT_OR_READ)
         OR      A
@@ -2451,7 +2398,6 @@ L08D1:  EX      (SP),HL
 
 szOverflow:
 	DB	"?li{nie danny", "e"+80h, 0dh, 0ah, 0
-;	DB	3Fh, 6Ch, 69h, 7Bh, 6Eh, 69h, 65h, 20h, 64h, 61h, 6Eh, 6Eh, 79h, 0E5h, 0Dh, 0Ah, 00h	; "?ЛИШНИЕ ДАННЫЕ"
 
 ReadError:
 	CALL    FindNextStatement
@@ -2564,7 +2510,7 @@ L0978:  PUSH    DE
         LD      (PROG_PTR_TEMP2),HL
 ArithParse:
 	LD      HL,(PROG_PTR_TEMP2)
-        POP     BC
+L0986:	POP     BC
         LD      A,B
         CP      78H
         CALL    NC,L0969
@@ -2584,7 +2530,7 @@ L0990:  SUB     0ABH
         LD      (0231H),HL
         RST     NextChar
         JP      L0990
-	
+
 L09AA:  LD      A,D
         OR      A
         JP      NZ,L0A9E
@@ -2716,12 +2662,12 @@ EvalInlineFn:
         EX      DE,HL
         EX      (SP),HL
         JP      L0A6D
-	
+
 L0A65:  CALL    L0A16
         EX      (SP),HL
         LD      DE,L0A2A
         PUSH    DE
-L0A6D:  LD      BC,0043H
+L0A6D:  LD      BC, KW_INLINE_FNS	; 0043H
         ADD     HL,BC
         LD      C,(HL)
         INC     HL
@@ -2902,7 +2848,7 @@ L0B4C:  LD      A,(NO_ARRAY)
 
 FindVarLoop:
 	RST     CompareHLDE
-        JP      Z,L0B78
+	JP      Z,AllocNewVar
         LD      A,C
         SUB     (HL)
         INC     HL
@@ -2918,7 +2864,7 @@ L0B6D:  INC     HL
         JP      FindVarLoop
 
 AllocNewVar:
-L0B78:  PUSH    BC
+	PUSH    BC
         LD      BC,0006H
         LD      HL,(VAR_TOP)
         PUSH    HL
@@ -3269,6 +3215,7 @@ L0D75:  LD      DE,022BH
         LD      A,(HL)
         RET     
 
+PrintString1:
         INC     HL
 PrintString:
 	CALL    L0D4F
@@ -3356,9 +3303,9 @@ L0E06:  EX      DE,HL
         ADD     HL,BC
         ADD     HL,BC
         INC     HL
-        EX      DE,HL
-        LD      HL,(0231H)
 L0E23:	EX      DE,HL
+        LD      HL,(0231H)
+	EX      DE,HL
         RST     CompareHLDE
         JP      Z,L0E06
         LD      BC,L0E23
@@ -3455,7 +3402,7 @@ L0E77:  PUSH    BC
         EX      DE,HL
         CALL    L0EAE
         CALL    L0EAE
-        LD      HL,0986H
+        LD      HL,L0986
         EX      (SP),HL
         PUSH    HL
         JP      L0D75
@@ -3475,7 +3422,7 @@ L0EB5:  DEC     L
         INC     BC
         INC     DE
         JP      L0EB5
-	
+
 L0EBE:  CALL    L096A
 L0EC1:  LD      HL,(FACCUM)
 L0EC4:  EX      DE,HL
@@ -3527,7 +3474,7 @@ Asc:
         POP     HL
         LD      A,(HL)
         JP      L0CAB
-	
+
 	CHK	0f04h, "Сдвижка кода"
 Chr:
         LD      A,01H
@@ -3756,16 +3703,16 @@ L100E:  LD      A,(DE)
         POP     HL
 
 	IF	RK86
-	JP	0F82dH
+	JP	0F82DH
 
 ContInit:
 	LD	HL, (VAR_BASE)
 	INC	H
 	EX	DE, HL
-	CALL	0f830H
+	CALL	0F830H
 	RST	CompareHLDE
 	JP	C, L1041
-	CALL	0f830H
+	CALL	0F830H
 	LD	(MEMSIZ), HL		;021bh
 	LD	(STR_TOP), HL
 	LD	SP, HL
@@ -3776,15 +3723,15 @@ ContInit:
 	JP	Main
 
 L1041:	LD	A, D
-	CALL	0f815h
+	CALL	0F815h
 	LD	A, E
-	CALL	0f815h
-L1049:	JP	0f86ch
+	CALL	0F815h
+L1049:	JP	0F86Ch
 
 	NOP
 	NOP
 
-L104E:	CALL	0f82dH
+L104E:	CALL	0F82DH
 	ELSE
         RST     NextChar
         RET     
@@ -3888,7 +3835,7 @@ Cls:	PUSH	HL
 	ADD	HL, BC
 	LD	(POSX), HL		; 01957H
 	POP	HL
-	LD	C, 1FH	
+	LD	C, 1FH
 	CALL	0F809H
 	JP	SetCurPos
 
@@ -4334,11 +4281,11 @@ L1938:  LD      A,08H
         NOP
 	NOP
 	NOP
-GPOSX2:	NOP
-GPOSY2:	NOP
-GPOSX:	NOP
-GPOSY:	NOP
-GFILL:	NOP
+GPOSX2:	DB	0			; Вторая графическая координата X (для LINE)
+GPOSY2:	DB	0		; Вторая графическая координата Y (для LINE)
+GPOSX:	DB	0		; Графическая координата X
+GPOSY:	DB	0		; Графическая координата Y
+GFILL:	DB	0		; Ставить точки или стереть точку
 POSX:	DB	0
 POSY:	DB	0
 	IF	RK86
@@ -4382,12 +4329,12 @@ L1995:	LD	A, 08H
 	RST	OutChar
 	LD	A, 08H
 	JP	Backspace
-	
+
 L19A0:	LD	A, (ControlChar)
 	CPL
 	LD	(ControlChar), A
 	RET
-	
+
 L19A8:	LD	A, (PRNDUP)
 	OR	A
 	LD	A, 0FFH
@@ -4433,130 +4380,13 @@ L19E5:	LD	A,(HL)
 	POP	HL
 	RET
 	ELSE
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        db	0ch
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
+	DB	40 DUP (0)
+	DB	0CH
+	DB	62 DUP (0)
 	CHK	19c0h, "Сдвижка кода"
 	DB 72h, 61h, 7Ah, 72h, 61h, 62h, 6Fh, 74h,  41h, 4Eh, 4Fh, 20h, 44h, 4Ch, 71h, 20h	; "РАЗРАБОТANO DLЯ "
 	DB 76h, 75h, 72h, 6Eh, 61h, 6Ch, 61h, 20h,  72h, 61h, 64h, 69h, 6Fh, 20h, 60h, 6Fh	; "ЖУРНАЛА РАДИО МО"
 	DB 73h, 6Bh, 77h, 61h, 20h, 31h, 39h, 38h,  34h, 20h, 67h, 6Fh, 64h, 22h		; "СКВА 1984 ГОД""
 	ENDIF
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
+	DB	18 DUP (0)
 

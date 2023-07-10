@@ -1,9 +1,9 @@
-; ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
-;  …‘ คซ๏ -80/…‘ คซ๏ €-86/…‘ คซ๏ ’-88
-; ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
-;  โฅฌ โจ็ฅแชจฉ ฏ ชฅโ
+; โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•
+;  ะ‘ะ•ะะกะะ ะดะปั ะะะะ ะ-80/ะ‘ะ•ะะกะะ ะดะปั ะ ะะ”ะะ-86ะ ะ/ะ‘ะ•ะะกะะ ะดะปั ะฎะข-88
+; โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•
+; ะะฐัะตะผะฐัะธัะตัะบะธะน ะฟะฐะบะตั
 ;
-; ' โฅฌ โจ็ฅแชจฉ ฏ ชฅโ' is a reasonably discrete block of
+; 'ะะฐัะตะผะฐัะธัะตัะบะธะน ะฟะฐะบะตั' is a reasonably discrete block of
 ; code that provides floating-point arithmetic capability
 ; for the rest of BASIC. It also includes some math 
 ; functions, such as SQR (square root) and is probably the 
@@ -26,7 +26,7 @@
 ;   hire a third wunderkind, Monte Davidoff, just to do
 ;   floating point. They needed a specialist to do 
 ;   specialist work, and Monte had done it before.
-; ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+; โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•
 ; Maths Refresher
 ; The Basics of Bases 
 ; Consider an everyday decimal number such as 317.25. The 
@@ -111,7 +111,7 @@
 ; binary that exponent value 1000 is a binary number, 8 in
 ; decimal.
 ;
-; ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+; โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•
 ; Why floating point?
 ;
 ; Consider the eternal problem of having a finite amount of
@@ -165,7 +165,7 @@
 ; and try PRINT 10000+.1. You get 10000.1 as expected. Now
 ; try PRINT 10000+.01 or PRINT 100000+.1. See?
 ;
-; ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+; โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•
 ; Normalisation
 ; Normalisation is the process of shifting the mantissa until
 ; it is between 0.5 and 1 and adjusting the exponent to
@@ -181,7 +181,7 @@
 ;0.11 E 100
 ;blah
 ;
-; ออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+; โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•
 ;How Altair BASIC stored floating point numbers
 ;There was no industry standard for floating-point number representation back in 1975, so Monte had to roll his own. He decided that 32 bits would allow an adequate range, and defined his floating-point number format like this :
 ;
@@ -199,31 +199,31 @@
 ;============================================================================
 
 
-; 2.1 แฏฎฌฎฃ โฅซ์ญ๋ฅ ไใญชๆจจ
+; 2.1 ะ’ัะฟะพะผะพะณะฐัะตะปัะฝัะต ััะฝะบัะธะธ
 
-; ’เจ ญฅกฎซ์่ ๏ ขแฏฎฌฎฃ โฅซ์ญ ๏ ไใญชๆจ๏
+; ะขั€ะธ ะฝะตะฑะพะปััะฐั ะฒัะฟะพะผะพะณะฐัะตะปัะฝะฐั ััะฝะบัะธั
 
 ; FAddOneHalf
-; ฎก ซ๏ฅโ 0.5 ช FACCUM.
+; ะ”ะพะฑะฐะปัะตั 0.5 ะบ FACCUM.
 
 FAddOneHalf:
 	LD      HL,ONE_HALF
 
 ; FAddFromMrm
-; ฎก ขซ๏ฅโ ็จแซฎ จง (HL) ช FACCUM
+; ะ”ะพะฑะฐะฒะปัะตั ัะธัะปะพ ะธะท (HL) ะบ FACCUM
 FAddFromMem:
 	CALL    FLoadBCDEfromMem
         JP      FAddBCDE
 
 ; FSubFromMrm
-; ๋็จโ ฅโ ็จแซฎ จง (HL) จง FACCUM
+; ะ’ััะธัะฐะตั ัะธัะปะพ ะธะท (HL) ะธะท FACCUM
 FSubFromMem:
 	CALL    FLoadBCDEfromMem
         DB	21h			;LD      HL,...
 	
-	CHK	107dh, "‘คขจฆช  ชฎค "
+	CHK	107dh, "ะกะดะฒะธะถะบะฐ ะบะพะดะฐ"
 
-; 2.2 ‘ซฎฆฅญจฅ จ ข๋็จโ ญจฅ
+; 2.2 ะกะปะพะถะตะฝะธะต ะธ ะฒััะธัะฐะฝะธะต
 
 FSub:
 	POP	BC			; Get lhs in BCDE.
@@ -475,7 +475,7 @@ L1171:        INC     BC
         LD      B,L
         XOR     D
         db	38h, 82h
-	CHK	117eh, "‘คขจฆช  ชฎค "
+	CHK	117eh, "ะกะดะฒะธะถะบะฐ ะบะพะดะฐ"
 Log:
 L117E:  RST     FTestSign
         JP      PE,FunctionCallError
@@ -537,7 +537,7 @@ L11B3:  LD      BC,8031H
 ;}
 ;
 ;(fixme: Show why this works)
-	CHK	11BAh, "‘คขจฆช  ชฎค "
+	CHK	11BAh, "ะกะดะฒะธะถะบะฐ ะบะพะดะฐ"
 FMul:					
 	POP	BC			; Get lhs in BCDE
 	POP	DE
@@ -576,11 +576,11 @@ FMulInnerLoop:
         JP      NC,L11F4
         PUSH    DE
 L11EE:	EQU	$+1
-        LD      DE,0000H	; <-- แ ฌฎฌฎคจไจๆจเใ๎้จฉแ๏ ชฎค
+        LD      DE,0000H	; <-- ัะฐะผะพะผะพะดะธัะธัะธั€ัััะธะนัั ะบะพะด
         ADD     HL,DE
         POP     DE
 L11F3:	EQU	$+1
-        ADC     A,00H		; <-- แ ฌฎฌฎคจไจๆจเใ๎้จฉแ๏ ชฎค
+        ADC     A,00H		; <-- ัะฐะผะพะผะพะดะธัะธัะธั€ัััะธะนัั ะบะพะด
 L11F4:  RRA     
         LD      C,A
         LD      A,H
@@ -608,14 +608,14 @@ L1207:  LD      B,E
         RET     
 
 ; FDivByTen
-; ฅซฅญจฅ FACCUM ญ  10. Used in FOut to bring the number into range before printing.
+; ะ”ะตะปะตะฝะธะต FACCUM ะฝะฐ 10. Used in FOut to bring the number into range before printing.
 FDivByTen:
 	CALL    FPush
         LD      BC,8420H		; BCDE=(float)10;
         LD      DE,0000H
         CALL    FLoadFromBCDE
 	
-	CHK	1218H, "‘คขจฆช  ชฎค "
+	CHK	1218H, "ะกะดะฒะธะถะบะฐ ะบะพะดะฐ"
 FDiv:
 ;Get lhs into BCDE.
 	POP     BC
@@ -647,18 +647,18 @@ FDivLoop:
         PUSH    BC
         LD      A,L
 L1241:	EQU	$+1
-        SUB     00H			; ‘ ฌฎฌฎคจไจๆจเใ๎้จฉแ๏ ชฎค
+        SUB     00H			; ะกะฐะผะพะผะพะดะธัะธัะธั€ัััะธะนัั ะบะพะด
         LD      L,A
         LD      A,H
 L1245:	EQU	$+1
-        SBC     A,00H			; ‘ ฌฎฌฎคจไจๆจเใ๎้จฉแ๏ ชฎค
+        SBC     A,00H			; ะกะฐะผะพะผะพะดะธัะธัะธั€ัััะธะนัั ะบะพะด
         LD      H,A
         LD      A,B
 L1249:	EQU	$+1
-        SBC     A,00H			; ‘ ฌฎฌฎคจไจๆจเใ๎้จฉแ๏ ชฎค
+        SBC     A,00H			; ะกะฐะผะพะผะพะดะธัะธัะธั€ัััะธะนัั ะบะพะด
         LD      B,A
 L124C:	EQU	$+1
-        LD      A,00H			; ‘ ฌฎฌฎคจไจๆจเใ๎้จฉแ๏ ชฎค
+        LD      A,00H			; ะกะฐะผะพะผะพะดะธัะธัะธั€ัััะธะนัั ะบะพะด
         SBC     A,00H
         CCF     
         JP      NC,L125A
@@ -759,7 +759,7 @@ FMulByTen:
 
 ;FTestSign_tail
 ;When FACCUM is non-zero, RST FTestSign jumps here to get the sign as an integer : 0x01 for positive, 0xFF for negative.
-	CHK	12cah, "‘คขจฆช  ชฎค "
+	CHK	12cah, "ะกะดะฒะธะถะบะฐ ะบะพะดะฐ"
 
 FTestSign_tail:
 	LD	A,(FACCUM+2)
@@ -788,7 +788,7 @@ L12D0:  SBC     A,A
 ;Returns an integer that indicates FACCUM's sign. We do this by a simple call to FTestSign which gets the answer in A, then fall into FCharToFloat to get that answer back into FACCUM.
 ;
 ;Get FACCUM's sign in A. A will be 0x01 for positive, 0 for zero, and 0xFF for negative.
-	CHK	12D4H, "‘คขจฆช  ชฎค "
+	CHK	12D4H, "ะกะดะฒะธะถะบะฐ ะบะพะดะฐ"
 
 Sgn:	RST     FTestSign
 
@@ -811,7 +811,7 @@ L12DA:  LD      HL,FACCUM+3
 ;FACCUM = |FACCUM|.
 ;
 ;Return if FACCUM is already positive, otherwise fall into FNegate to make it positive.
-	CHK	12e8h, "‘คขจฆช  ชฎค "
+	CHK	12e8h, "ะกะดะฒะธะถะบะฐ ะบะพะดะฐ"
 Abs:
         RST     FTestSign
         RET     P
@@ -1026,7 +1026,7 @@ FMantissaDec:
 
 ;If FACCUM's exponent is >= 2^24, then it's too big to hold any fractional part - it is already an integer, so we just return.
 
-	CHK	1392h, "‘คขจฆช  ชฎค "
+	CHK	1392h, "ะกะดะฒะธะถะบะฐ ะบะพะดะฐ"
 Int:
 	LD      HL,FACCUM+3
         LD      A,(HL)
@@ -1070,16 +1070,16 @@ L13C1:  DEC     A
 ;Reads a string and converts it to a floating point number in FACCUM.
 ;The first thing we do is some initialisation.
 ;
-;แฅ เฅฃจแโเ๋ ฏฎเโ๏โแ๏
+;ะ’ัะต ั€ะตะณะธััั€ั ะฟะพั€ััััั
 ;
-;  ขๅฎคฅ HL แฎคฅเฆจโ ใช ง โฅซ์ ญ  แโเฎชใ.
-;A แฎคฅเฆจโ ชฎฏจ๎ ฏฅเขฎฃฎ แจฌขฎซ .
-;C = 255 ฅแซจ โฎ็ช  ญฅ ฎกญ เใฆฅญ , 0 ฅแซจ ค 
-;B = ็จแซฎ ๆจไเ ฏฎแซฅ โฎ็ชจ
-;E = ํชแฏฎญฅญโ 
+;ะะฐ ะฒั…ะพะดะต HL ัะพะดะตั€ะถะธั ัะบะฐะทะฐัะตะปั ะฝะฐ ััั€ะพะบั.
+;A ัะพะดะตั€ะถะธั ะบะพะฟะธั ะฟะตั€ะฒะพะณะพ ัะธะผะฒะพะปะฐ.
+;C = 255 ะตัะปะธ ัะพัะบะฐ ะฝะต ะพะฑะฝะฐั€ัะถะตะฝะฐ, 0 ะตัะปะธ ะดะฐ
+;B = ัะธัะปะพ ัะธัั€ ะฟะพัะปะต ัะพัะบะธ
+;E = ัะบัะฟะพะฝะตะฝัะฐ
 
 FIn:	CP      '-'		; '-'
-        PUSH    AF		; ‘ฎๅเ ญ๏ฅฌ งญ ช ข แโฅชฅ
+        PUSH    AF		; ะกะพั…ั€ะฐะฝัะตะผ ะทะฝะฐะบ ะฒ ััะตะบะต
         JP      Z,SkipSign
         CP      '+'		; '+'
         JP      Z,SkipSign
@@ -1186,7 +1186,7 @@ AddDigit:
 	CALL    FPush
         CALL    FCharToFloat
 	
-	CHK	144ch, "‘คขจฆช  ชฎค "
+	CHK	144ch, "ะกะดะฒะธะถะบะฐ ะบะพะดะฐ"
 FAdd:
 ;The lhs is on the stack, the rhs is in FACCUM. The steps for adding the two numbers are :
 ;
@@ -1234,7 +1234,7 @@ PrintInt:
         XOR     A			; A=0 (ends up in C)
         LD      B,98H			; B (ie exponent) = 24
         CALL    L12DA
-        LD      HL,PrintString-1	;0D92H
+        LD      HL,PrintString1	;0D92H
         PUSH    HL
 ;FOut
 ;Prints a floating point number to the terminal.
@@ -1379,13 +1379,13 @@ L154F:  LD      HL,FNegate
         EX      (SP),HL
         JP      (HL)
 	
-	CHK	1554h, "‘คขจฆช  ชฎค "
+	CHK	1554h, "ะกะดะฒะธะถะบะฐ ะบะพะดะฐ"
 Sqr:
         CALL    FPush
         LD      HL,1539H
         CALL    FLoadFromMem
 
-	CHK	155dh, "‘คขจฆช  ชฎค "
+	CHK	155dh, "ะกะดะฒะธะถะบะฐ ะบะพะดะฐ"
 FPower:
         POP     BC
         POP     DE
@@ -1423,7 +1423,7 @@ L1581:  POP     HL
         POP     DE
         CALL    FMul2
 	
-	CHK	1599h, "‘คขจฆช  ชฎค "
+	CHK	1599h, "ะกะดะฒะธะถะบะฐ ะบะพะดะฐ"
 Exp:
 L1599:  CALL    FPush
         LD      BC,8138H
@@ -1481,7 +1481,7 @@ L15D9:	DB	08h
         NOP     
         NOP     
         ADD     A,C
-	CHK	15fah, "‘คขจฆช  ชฎค "
+	CHK	15fah, "ะกะดะฒะธะถะบะฐ ะบะพะดะฐ"
 L15FA:  CALL    FPush
         LD      DE, FMul	;  11BAH
         PUSH    DE
@@ -1515,7 +1515,7 @@ L1612:	POP	AF
 ;Rnd
 ;Generates a random number. This is a bit odd... like all inline functions it takes a numeric argument, but in RNDs case this argument is mostly ignored. If it's a negative number it skips a couple of stages of reseeding RND_SEED.
 
-	CHK	162ah, "‘คขจฆช  ชฎค "
+	CHK	162ah, "ะกะดะฒะธะถะบะฐ ะบะพะดะฐ"
 Rnd:
 ;If tghe argument in FACCUM is negative, then skip over the
 	RST     FTestSign
@@ -1551,11 +1551,11 @@ L1647:  CALL    FCopyToBCDE
 RND_SEED:	
 	DB 052H, 0C7H, 04FH, 080H	; 0.811635
 	
-	CHK	1660H, "‘คขจฆช  ชฎค "
+	CHK	1660H, "ะกะดะฒะธะถะบะฐ ะบะพะดะฐ"
 Cos:
 	LD      HL,PI2
         CALL    FAddFromMem
-	CHK	1666h, "‘คขจฆช  ชฎค "
+	CHK	1666h, "ะกะดะฒะธะถะบะฐ ะบะพะดะฐ"
 
 ;Divide x (in FACCUM) by 2p to get u. 
 
@@ -1603,7 +1603,7 @@ TAYLOR_SERIES:
 	DB	0E0H, 05DH, 0A5H, 086H	; -41.341675
 	DB	0DAH, 00FH, 049H, 083H	; 6.283185
 
-	CHK	16c3h, "‘คขจฆช  ชฎค "
+	CHK	16c3h, "ะกะดะฒะธะถะบะฐ ะบะพะดะฐ"
 Tan:
         CALL    FPush
         CALL    Sin
@@ -1615,7 +1615,7 @@ Tan:
         CALL    Cos
         JP      FDiv
 
-	CHK	16D8h, "‘คขจฆช  ชฎค "
+	CHK	16D8h, "ะกะดะฒะธะถะบะฐ ะบะพะดะฐ"
 Atn:
         RST     FTestSign
         CALL    M,L154F
