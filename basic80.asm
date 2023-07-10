@@ -978,7 +978,7 @@ InputLine:
 InputNext:
 	CALL    InputChar
 ;Deal with backspace.
-        CP      08H
+L0488:	CP      08H
         JP      Z,Backspace
         CP      0DH
         JP      Z,TerminateInput
@@ -1057,7 +1057,8 @@ OutChar_tail:
 	JP      NZ,L0DC4
         POP     AF
         PUSH    AF
-        CP      ' '
+L04BD:	EQU	$+1
+        CP      ' '			; Самомодифицирующийся код в Бейсик-Сервис
         JP      C,L04CD
         LD      A,(TERMINAL_X)
 ;;
@@ -3975,7 +3976,12 @@ L198F:	DB	TK_MSAVE, 000H
 
 L1995:
 	IF	SERVICE
-	DB	005H, 0CAH, 080H, 004H, 02BH, 03EH, 008H, 0DFH, 0C3H, 0EEH, 019H
+	DEC	B
+	JP	Z, InputLine
+	DEC	HL
+	LD	A, 08H
+	RST	OutChar
+	JP	L19EE
 	ELSE
 	LD	A, 08H
 	RST	OutChar
@@ -4038,7 +4044,12 @@ L19E5:	LD	A,(HL)
 	DB	0CH
 	IF	SERVICE
 	DB	19 DUP (0)
-L1995:	DB	005H, 0CAH, 080H, 004H, 02BH, 03EH, 008H, 0DFH, 0C3H, 0EEH, 019H
+L1995:	DEC	B
+	JP	Z, InputLine
+	DEC	HL
+	LD	A, 08H
+	RST	OutChar
+	JP	L19EE
 	DB	32 DUP (0)
 	ELSE
 	DB	62 DUP (0)
@@ -4049,8 +4060,15 @@ L1995:	DB	005H, 0CAH, 080H, 004H, 02BH, 03EH, 008H, 0DFH, 0C3H, 0EEH, 019H
 	DB 73h, 6Bh, 77h, 61h, 20h, 31h, 39h, 38h,  34h, 20h, 67h, 6Fh, 64h, 22h		; "СКВА 1984 ГОД""
 	ENDIF
 	IF	SERVICE
-	DB	03AH, 0BDH
-	DB	004H, 0FEH, 001H, 0CAH, 088H, 004H, 03EH, 020H, 023H, 004H, 0DFH, 03EH, 008H, 0C3H, 076H, 004H
+L19EE:	LD	A, (L04BD)
+	CP	01H
+	JP	Z, L0488
+	LD	A, " "
+	INC	HL
+	INC	B
+	RST	OutChar
+	LD	A, 08H
+	JP	BackSpace
 	ELSE
 	DB	18 DUP (0)
 	ENDIF
