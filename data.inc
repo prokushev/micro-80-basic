@@ -434,6 +434,7 @@ TMPST:	LD      B,00H			; STORAGE FOR NUMTMP TEMP DESCRIPTORS
         LD      (BC),A
 STR_TOP:
 	DW	MEM_TOP
+CUR_TOKEN_ADR:
 	DW	01D5H
 DATA_LINE:
 	DW	0000H				; Номер строка с DATA, где возникла ошибка

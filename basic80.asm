@@ -737,9 +737,9 @@ FindProgramLineInMem:
 ; обновляет указатель на область переменных и переходит в ResetAll.
 
 	CHK	039Dh, "Сдвижка кода"
-New:		
+New:
 ; Команд не поддерживает аргументов.
-        RET     NZ
+	RET     NZ
 
 New2:
 ; Записывает два нулевых байта как признак окончание программы в начало области программы.
@@ -1567,14 +1567,12 @@ Goto:
         JP      Error
 		
 		
-;		Return
-;Returns program execution to the statement following the last GOSUB. Information about where to return to is kept on the stack in a flow struct (see notes).
+; Return
+; Returns program execution to the statement following the last GOSUB. Information about where to return to is kept on the stack in a flow struct (see notes).
 
 	CHK	06e3h, "Сдвижка кода"
 Return:
-
-;No arguments allowed.
-        RET     NZ
+        RET     NZ		;No arguments allowed.
         LD      D,0FFH
         CALL    GetFlowPtr
         LD      SP,HL
@@ -1585,22 +1583,23 @@ Return:
         LD      (CURRENT_LINE),HL
         LD      HL,ExecNext
         EX      (SP),HL
-		
+
 ;Safe to fall into FindNextStatement, since we're already at the end of the line!...
 
 ;FindNextStatement
-;Finds the end of the statement or the end of the program line.
+; Finds the end of the statement or the end of the program line.
 
-;Rem is jumped to in two places - it is the REM handler, and also when an IF statement's condition evals to false and the rest of the line needs to be skipped. Luckily in both these cases, C just happens to be loaded with a byte that cannot occur in the program so the null byte marking the end of the line is found as expected.
+; Rem is jumped to in two places - it is the REM handler, and also when an 
+; IF statement's condition evals to false and the rest of the line needs
+; to be skipped. Luckily in both these cases, C just happens to be
+; loaded with a byte that cannot occur in the program so the null 
+; byte marking the end of the line is found as expected.
 
 Data:
 FindNextStatement:
-	DB	01H
-	DB	':'		;LD      BC,..3AH
-Rem:
-	DB	0EH		;LD		C, 0
-        NOP     
-        LD      B,00H
+	DB	01H, ":"	;LD BC,..3AH эмулирует LD C, ":"
+Rem:	LD	C, 0
+	LD      B,00H
 ExcludeQuote:
 	LD      A,C
         LD      C,B
@@ -1814,8 +1813,8 @@ L07F4:  LD      A,(TERMINAL_X)
 L07FF:  SUB     0EH
         JP      NC,L07FF
         CPL     
-        JP      L081F
-		
+        JP      PrintSpaces
+
 ;Tab и Spc
 ;Tabulation. The TAB keyword takes an integer argument denoting the absolute column to print spaces up to.
 		
@@ -1835,8 +1834,7 @@ Tab:
         ADD     A,E
         JP      NC,ExitTab
 PrintSpaces:
-L081F:  INC     A
-
+	INC     A
 Spc:	
 	LD      B,A
         LD      A, ' '
@@ -2104,7 +2102,7 @@ L0990:  SUB     0ABH
         CP      D
         LD      D,A
         JP      C,SyntaxError
-        LD      (0231H),HL
+        LD      (CUR_TOKEN_ADR),HL
         RST     NextChar
         JP      L0990
 
@@ -2112,7 +2110,7 @@ L09AA:  LD      A,D
         OR      A
         JP      NZ,L0A9E
         LD      A,(HL)
-        LD      (0231H),HL
+        LD      (CUR_TOKEN_ADR),HL
         SUB     0A4H
         RET     C
 
@@ -2149,7 +2147,7 @@ L09D2:  PUSH    BC
         LD      D,C
 ;Push address of arithmetic fn and jump back to 
         RST     PushNextWord
-        LD      HL,(0231H)
+        LD      HL,(CUR_TOKEN_ADR)
         JP      L0978
 	
 ;EvalTerm
@@ -2274,7 +2272,7 @@ FAnd:
         POP     AF
         POP     BC
         LD      A,C
-        LD      HL,L0C9B
+        LD      HL,WordFromACToFACCUM
         JP      NZ,L0A99
         AND     E
         LD      C,A
@@ -2366,7 +2364,7 @@ L0AF9:  LD      D,5AH
         LD      C,A
         LD      A,D
         CPL     
-        CALL    L0C9B
+        CALL    WordFromACToFACCUM
         POP     BC
         JP      ArithParse
 
@@ -2532,7 +2530,7 @@ L0BF3:  LD      DE,0004H
         CALL    CheckEnoughVarSpace2
 VarSize:
         DB	0e9h
-        LD      (0231H),HL
+        LD      (CUR_TOKEN_ADR),HL
         INC     HL
         INC     HL
         LD      B,C
@@ -2577,7 +2575,7 @@ L0C34:  DEC     HL
         ADD     HL,HL
         ADD     HL,BC
         EX      DE,HL
-        LD      HL,(0231H)
+        LD      HL,(CUR_TOKEN_ADR)
         LD      (HL),E
         INC     HL
         LD      (HL),D
@@ -2624,7 +2622,7 @@ Fre:
         OR      A
         JP      Z,L0C96
         CALL    L0EC1
-        CALL    L0DD2
+        CALL    GarbageCollection
         LD      HL,(STACK_TOP)
         EX      DE,HL
         LD      HL,(STR_TOP)
@@ -2633,8 +2631,10 @@ L0C96:  LD      A,L
         LD      C,A
         LD      A,H
         SBC     A,D
-L0C9B:  LD      B,C
-L0C9C:  LD      D,B
+WordFromACToFACCUM:
+	LD      B,C
+WordFromABToFACCUM:
+	LD      D,B
         LD      E,00H
         LD      HL,VALTYP
         LD      (HL),E
@@ -2644,9 +2644,12 @@ L0C9C:  LD      D,B
 	CHK	0CA8h, "Сдвижка кода"
 Pos:
         LD      A,(TERMINAL_X)
-L0CAB:  LD      B,A
+
+; Преобразует байт из A в число с плавающей точкой в FACCUM
+ByteFromAToFACCUM:
+	LD      B,A
         XOR     A
-        JP      L0C9C
+        JP      WordFromABToFACCUM
 	
 	CHK	0CB0h, "Сдвижка кода"
 Def:
@@ -2836,7 +2839,9 @@ L0DC6:  POP     AF
         PUSH    AF
         LD      BC,L0DAC
         PUSH    BC
-L0DD2:  LD      HL,(MEMSIZ)
+; Сборка мусора
+GarbageCollection:
+	LD      HL,(MEMSIZ)
 L0DD5:  LD      (STR_TOP),HL
         LD      HL,0000H
         PUSH    HL
@@ -2873,7 +2878,7 @@ L0E06:  EX      DE,HL
         ADD     HL,BC
         OR      A
         JP      P,L0E05
-        LD      (0231H),HL
+        LD      (CUR_TOKEN_ADR),HL
         POP     HL
         LD      C,(HL)
         LD      B,00H
@@ -2881,7 +2886,7 @@ L0E06:  EX      DE,HL
         ADD     HL,BC
         INC     HL
 L0E23:	EX      DE,HL
-        LD      HL,(0231H)
+        LD      HL,(CUR_TOKEN_ADR)
 	EX      DE,HL
         RST     CompareHLDE
         JP      Z,L0E06
@@ -3031,7 +3036,7 @@ L0EE5:  POP     HL
 
 	CHK	0EE7h, "Сдвижка кода"
 Len:
-        LD      BC,L0CAB
+        LD      BC,ByteFromAToFACCUM
         PUSH    BC
 L0EEB:  CALL    L0EBE
         XOR     A
@@ -3050,7 +3055,7 @@ Asc:
         RST     PushNextWord
         POP     HL
         LD      A,(HL)
-        JP      L0CAB
+        JP      ByteFromAToFACCUM
 
 	CHK	0f04h, "Сдвижка кода"
 Chr:
@@ -3145,7 +3150,7 @@ Inp:
         LD      (InpD),A		;0F7CH
 InpD:	EQU	$+1
         IN      A,(00H)			; Self-modified code
-        JP      L0CAB
+        JP      ByteFromAToFACCUM
 
 	CHK	0F80h, "Сдвижка кода"
 Out:
@@ -3356,7 +3361,7 @@ L1051:
 ; Какой-то мертвый код..., похоже на другую реализацию PEEK
         CALL    FTestPositiveIntegerExpression
         LD      A,(DE)
-        JP      L0CAB
+        JP      ByteFromAToFACCUM
 
 ; Тоже мертвый код, , похоже на другую реализацию POKE
         CALL    L0642
@@ -3376,7 +3381,7 @@ Peek:
         RST     FTestSign
         CALL    FTestIntegerExpression
         LD      A,(DE)
-        JP      L0CAB
+        JP      ByteFromAToFACCUM
 	
 	CHK	172CH, "Сдвижка кода"
 Poke:
@@ -3391,7 +3396,7 @@ Usr:
         CALL    FTestIntegerExpression
         EX      DE,HL
         CALL    CallHL
-	JP	L0CAB
+	JP	ByteFromAToFACCUM
 
 CallHL:	JP      (HL)
 
