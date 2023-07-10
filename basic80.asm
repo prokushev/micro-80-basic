@@ -10,8 +10,8 @@
 ; Общие хотелки:
 ; !?Добавить обратно поддержку LET
 ; !?Добавить обратно поддержку END
-; !!Добавить поддержку каналов и потоков, как в Sinclair Basic, не забывая совместимость с ECMA стандартом ЮТ-88 она существует) (ЗЫ: Базироваться на CP/M Бейсике не хочу)
-; !!Отвязаться от RST и пересобрать с адреса 100h. Вначале добавить CP/M адаптер. При наличии поддержки дисковых фунок - адаптер не цепляем.
+; !!Добавить поддержку каналов и потоков, как в Sinclair Basic, не забывая совместимость с ECMA стандартом
+; !!Отвязаться от RST и пересобрать с адреса 100h. Вначале добавить CP/M адаптер. При наличии поддержки дисковых фунок - адаптер не цепляем. 
 ; !!Добавить OPTION BASE для управления индеском массива (Совместимость ANSI)
 ; !!Автонастройка памяти (сейчас жестко задано в коде)
 ; !!GO TO=GOTO, GO SUB=GOSUB (учесть в токенизаторе)
@@ -47,9 +47,9 @@
 ; !      Числовые переменные      !
 ; +-------------------------------+ (VAR_BASE)
 ; ! Текст  программы  на  Бейсике !
-; +-------------------------------+ 2200H/1B00H (PROGRAM_BASE)
+; +-------------------------------+ (PROGRAM_BASE)
 ; !         Буфер  экрана         !
-; +-------------------------------+ 1A00H (МИКРО-80/ЮТ-88)
+; +-------------------------------+ (SCRBUF) (МИКРО-80/ЮТ-88)
 ; !      Область  подпрограмм     !
 ; !         пользователя          !
 ; +-------------------------------+ 1960H
@@ -227,10 +227,10 @@ RK86	EQU	0	; Модификации для "Бейсик для Радио-86Р�
 UT88	EQU	0	; Модификации для "Бейсик для ЮТ-88"
 	endif
 	ifndef SERVICE
-SERVICE	EQU	1	; Модификации для Бейсик-Сервис
+SERVICE	EQU	0	; Модификации для Бейсик-Сервис
 	endif
 	ifndef BASICNEW
-BASICNEW	EQU	0	; Vjb vjlbabrfwbb
+BASICNEW	EQU	0	; Включить мои изменения в коде
 	endif
 ANSI	EQU	0	; Включить поддержку совместимости с ANSI Minimal Basic
 GOST	EQU	0	; Включить поддержку совместимости с ГОСТ 27787-88
@@ -289,8 +289,10 @@ SCRADDR	EQU	077c2H
 	ELSE
 
 	IF SERVICE
+SCRBUF			EQU	1D00H
 PROGRAM_BASE_INIT	EQU	2500H
 	ELSE
+SCRBUF			EQU	1A00H
 PROGRAM_BASE_INIT	EQU	2200H
 	ENDIF
 
@@ -959,7 +961,7 @@ Backspace:
 	DEC	B
 	JP	P, 0B4B1H		; ???? 04b1?
 L047D:	CALL	Z, NewLine
-	ELSE
+	ELSE	; SERVICE
 	DEC     B			; Char count--;
         DEC     HL			; Input ptr--;
         RST     OutChar			; Print backspace char.
@@ -967,7 +969,7 @@ L047D:	CALL	Z, NewLine
 ResetInput:
 	RST     OutChar
 L047D:	CALL    NewLine
-	ENDIF
+	ENDIF	; SERVICE
 InputLine:
 	LD      HL,LINE_BUFFER
         LD      B,01H
@@ -982,12 +984,20 @@ InputNext:
         JP      Z,TerminateInput
 
 	IF	SERVICE
+	IF	RK86
 	CP	0AH
+	ELSE
+	CP	1AH
+	ENDIF
 	JP	Z, L047D
 	CP	01FH
 	JP	Z, 01BE4H
 	CP	07FH
+	IF	RK86
 	JP	Z, L1995
+	ELSE
+	JP	NC, InputNext
+	ENDIF
 	LD	C,A
 	LD	A, B
 	CP	72
@@ -1003,7 +1013,7 @@ InputNext:
 	INC	B
 	JP	InputNext
 
-	ELSE
+	ELSE	; SERVICE
 
 ;Deal with line-abort..
         CP      18H
@@ -1025,7 +1035,7 @@ InputNext:
         NOP     
         NOP     
 	NOP
-	ENDIF
+	ENDIF	; SERVICE
 ;A normal character has been pressed. Here we store it in LINE_BUFFER, only we don't if the terminal width has been exceeded. If the terminal width is exceeded then we ring the bell (ie print ASCII code 7) and ignore the char. Finally we loop back for the next input character.
         LD      C,A
         LD      A,B
@@ -1066,12 +1076,12 @@ OutChar_tail:
 	NOP
 	SCF
 	CALL	C, 01B50H
-	ELSE
+	ELSE	; SERVICE
         CP      48H
         CALL    Z,NewLine
         INC     A
         LD      (TERMINAL_X),A
-	ENDIF
+	ENDIF	; SERVICE
 
 L04CD:  POP     AF
         PUSH    BC
@@ -1093,9 +1103,9 @@ L04CD:  POP     AF
 InputChar:
 	CALL	0F803H
 	IF	SERVICE
-	CP	1FH
-	ELSE
 	CP	05H
+	ELSE
+	CP	1FH
 	ENDIF
 
 	IF	RK86
@@ -3677,7 +3687,7 @@ Cls:
 
         PUSH    HL
         LD      HL,0E800H
-        LD      DE,1A00H
+        LD      DE,SCRBUF
 ClsLoop:
 	XOR     A
         LD      (HL),A
@@ -3685,7 +3695,7 @@ ClsLoop:
         LD      (DE),A
         INC     DE
         LD      A,D
-        CP      22H
+        CP      (PROGRAM_BASE_INIT & 0FF00H)>>8; Это адрес конца буфера экрана TODO Привязать не к началу программы, а к началу буфера и его размеру
         JP      NZ, ClsLoop
         POP     HL
         RET
@@ -3738,7 +3748,7 @@ L17DD:  LD      A,(GPOSX)		; 1954H
         LD      A,D
         AND     07H
         LD      D,A
-        LD      HL,1A00H
+        LD      HL,SCRBUF
         ADD     HL,DE
         LD      A,C
         AND     03H
@@ -4027,9 +4037,9 @@ L19E5:	LD	A,(HL)
 	DB	40 DUP (0)
 	DB	0CH
 	IF	SERVICE
-	DB	20 DUP (0)
+	DB	19 DUP (0)
 L1995:	DB	005H, 0CAH, 080H, 004H, 02BH, 03EH, 008H, 0DFH, 0C3H, 0EEH, 019H
-	DB	31 DUP (0)
+	DB	32 DUP (0)
 	ELSE
 	DB	62 DUP (0)
 	ENDIF
@@ -4058,8 +4068,20 @@ L1995:	DB	005H, 0CAH, 080H, 004H, 02BH, 03EH, 008H, 0DFH, 0C3H, 0EEH, 019H
 	DB	0FEH, 055H, 0C8H, 01EH, 033H, 0FEH, 038H, 0C8H, 01EH, 036H, 0FEH, 057H, 0C8H, 01EH, 03CH, 0FEH
 	DB	039H, 0C8H, 01EH, 04BH, 0FEH, 058H, 0C8H, 01EH, 056H, 0FEH, 056H, 0C8H, 01EH, 05CH, 0FEH, 048H
 	DB	0C8H, 01EH, 060H, 0FEH, 05BH, 0C8H, 01EH, 065H, 0FEH, 05DH, 0C8H, 01EH, 06BH, 0FEH, 04DH, 0C8H
-	DB	0D1H, 0C3H, 088H, 004H, 079H, 0FEH, 003H, 0DAH, 067H, 019H, 0CDH, 003H, 0F8H, 0FEH, 045H, 0CAH
-	DB	072H, 01BH, 0FEH, 041H, 0CAH, 02CH, 01BH, 0FEH, 020H, 0DAH, 05CH, 019H, 0CDH, 000H, 01AH, 0CDH
+	DB	0D1H, 0C3H, 088H, 004H, 079H, 0FEH, 003H, 0DAH
+	IF	RK86
+	DB	067H, 019H
+	ELSE
+	DB	085H, 004H
+	ENDIF
+	DB	0CDH, 003H, 0F8H, 0FEH, 045H, 0CAH
+	DB	072H, 01BH, 0FEH, 041H, 0CAH, 02CH, 01BH, 0FEH, 020H, 0DAH
+	IF	RK86
+	DB	05CH, 019H
+	ELSE
+	DB	085H, 04H
+	ENDIF
+	DB	0CDH, 000H, 01AH, 0CDH
 	DB	0E8H, 01AH, 0D2H, 0D8H, 01CH, 0C3H, 085H, 004H, 078H, 0FEH, 048H, 0D0H, 01AH, 04FH, 0E6H, 07FH
 	DB	077H, 023H, 004H, 0DFH, 013H, 0B9H, 0CAH, 0E8H, 01AH, 0C9H, 02AH, 027H, 002H, 0EBH, 021H, 00AH
 	DB	000H, 019H, 022H, 027H, 002H, 0C9H, 02AH, 027H, 002H, 0CDH, 065H, 014H, 021H, 0CFH, 001H, 006H
@@ -4080,7 +4102,13 @@ L1995:	DB	005H, 0CAH, 080H, 004H, 02BH, 03EH, 008H, 0DFH, 0C3H, 0EEH, 019H
 	DB	0BDH, 004H, 021H, 080H, 004H, 022H, 00EH, 003H, 0C3H, 044H, 01BH, 0FEH, 018H, 0CAH, 0E0H, 01CH
 	DB	03AH, 00EH, 003H, 0FEH, 080H, 0CAH, 0C4H, 01AH, 0D2H, 011H, 01CH, 0CDH, 003H, 0F8H, 0C3H, 0DCH
 	DB	01AH, 079H, 0F6H, 002H, 0FEH, 003H, 0CAH, 060H, 01CH, 0CDH, 003H, 0F8H, 0FEH, 001H, 0CAH, 085H
-	DB	004H, 0FEH, 003H, 0CAH, 0C7H, 01CH, 0FEH, 00DH, 0CAH, 04FH, 01CH, 0FEH, 00AH, 0CAH, 033H, 01CH
+	DB	004H, 0FEH, 003H, 0CAH, 0C7H, 01CH, 0FEH, 00DH, 0CAH, 04FH, 01CH, 0FEH
+	IF	RK86
+	DB	00AH
+	ELSE
+	DB	01AH
+	ENDIF
+	DB	0CAH, 033H, 01CH
 	DB	0C3H, 0DCH, 01AH, 0CDH, 055H, 01CH, 0EBH, 0C3H, 04FH, 01CH, 0CDH, 055H, 01CH, 0CDH, 003H, 0F8H
 	DB	0FEH, 00DH, 0CAH, 09BH, 01BH, 0E1H, 02AH, 029H, 002H, 0CDH, 088H, 004H, 02AH, 029H, 002H, 036H
 	DB	000H, 021H, 0CEH, 001H, 0C9H, 021H, 0CFH, 001H, 0CDH, 061H, 006H, 0EBH, 022H, 039H, 000H, 0C9H
