@@ -425,7 +425,11 @@ TMPST:	LD      B,00H			; STORAGE FOR NUMTMP TEMP DESCRIPTORS
         LD      (BC),A
         LD      BC,8900H
         RLA     
-        NOP     
+	IF SERVICE
+	DB	0AH
+	ELSE
+        NOP 
+	ENDIF
         NOP     
         NOP     
         NOP     
