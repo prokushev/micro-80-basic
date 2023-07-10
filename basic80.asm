@@ -959,7 +959,7 @@ Backspace:
 	DEC	HL
 	DEC	B
 	DEC	B
-	JP	P, 0B4B1H		; ???? 04b1?
+	JP	P, L04B1
 L047D:	CALL	Z, NewLine
 	ELSE	; SERVICE
 	DEC     B			; Char count--;
@@ -1008,7 +1008,7 @@ L0488:	CP      08H
 	CP	" "
 	JP	C, 01BFBH
 	LD	(HL), C
-	INC	HL
+L04B1:	INC	HL
 	RST	OutChar
 	INC	B
 	JP	InputNext
