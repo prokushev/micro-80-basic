@@ -910,16 +910,16 @@ GetFlowPtr:
 	LD      HL,0004H
         ADD     HL,SP
 
-;Get the keyword ID, the byte that precedes the flow struct. Then we increment HL
+; Get the keyword ID, the byte that precedes the flow struct. Then we increment HL
 ; so it points to (what should be) the flow struct, and return if the keyword ID is not 'FOR'.
 
 GetFlowLoop:
 	LD      A,(HL)
-        INC     HL
-        CP      TK_FOR
-        RET     NZ
+	INC     HL
+	CP      TK_FOR
+	RET     NZ
 
-;Special treatment for FOR flow structs. Here we check that we've got the right one,
+; Special treatment for FOR flow structs. Here we check that we've got the right one,
 ; ie the one required by the NEXT statement which called us. When we're called by NEXT,
 ; it sets DE to point to the variable in the NEXT statement. So here we get the first
 ; word of the FOR flow struct which is the address of the FOR variable, and compare
@@ -947,8 +947,8 @@ NoVar:  LD      BC,000DH		; Размер структуры FOR
 
         ADD     HL,BC
         JP      GetFlowLoop
-		
-;		
+
+;
 ; CopyMemoryUp
 ;
 ; Copies a block of memory from BC to HL. Copying is done backwards, 
@@ -957,7 +957,6 @@ NoVar:  LD      BC,000DH		; Размер структуры FOR
 ; as little as a couple of bytes. If it copied forwards then the
 ; block of memory would overwrite itself.
 
-		
 CopyMemoryUp:
 	CALL    CheckEnoughMem
 ;Exchange BC with HL, so HL now points to the source and BC points to destination.
@@ -974,18 +973,20 @@ CopyMemLoop:
         DEC     BC
         DEC     HL
         JP      CopyMemLoop
-		
+
 ; CheckEnoughVarSpace2
-; То же, что и ниже, но C берется из следующей ячейки, откуда вызвана подпрограмма. Более эффективно, чем в Altair Basic
+; То же, что и ниже, но C берется из следующей ячейки, откуда вызвана подпрограмма.
+; Более эффективно, чем в Altair Basic
 CheckEnoughVarSpace2:
 	EX      (SP),HL
         LD      C,(HL)
         INC     HL
         EX      (SP),HL
 
-;CheckEnoughVarSpace
-;Checks that there is enough room for C*4 bytes on top of (VAR_TOP) before it intrudes on the stack. Probably varspace.
-		
+; CheckEnoughVarSpace
+; Checks that there is enough room for C*4 bytes on top of (VAR_TOP) before it 
+; intrudes on the stack. Probably varspace.
+
         PUSH    HL
         LD      HL,(VAR_TOP)
         LD      B,00H			;BC=C*4
@@ -995,9 +996,9 @@ CheckEnoughVarSpace2:
         POP     HL
         RET     
 
-;CheckEnoughMem
-;Checks that HL is more than 32 bytes away from the stack pointer. If HL is within 32 bytes
-;of the stack pointer then this function falls into OutOfMemory.
+; CheckEnoughMem
+; Checks that HL is more than 32 bytes away from the stack pointer. If HL is within 32 bytes
+; of the stack pointer then this function falls into OutOfMemory.
 
 CheckEnoughMem:
 	PUSH    DE
@@ -1009,16 +1010,17 @@ CheckEnoughMem:
         POP     DE
         RET     NC
 
-;Three common errors.
-;Notice use of LXI trick.
+; 5 обработчиков ошибки
+; Используется трюк с LD BC,...
+; (Здесь можно еще пооптимизировать, используя трюки с INC/DEC/LD B,...)
 
 OutOfMemory:
-	LD      E, ERR_OM
-        JP      Error
+	LD	E, ERR_OM
+	JP	Error
 
 DATASyntaxError:
 	LD      HL,(DATA_LINE)
-        LD      (CURRENT_LINE),HL
+	LD      (CURRENT_LINE),HL
 
 SyntaxError:
 	LD      E, ERR_SN
@@ -1070,22 +1072,22 @@ Main:
 
 GetNonBlankLine:
 	CALL	InputLine			; Считываем строку с клавиатуры
-	RST	NextChar					; Считываем первый символ из буфера. Флаг переноса =1, если это цифра
-	INC	A					; Проверяем на пустую строку. Инкремент/декремент не сбрасывает флаг переноса.
+	RST	NextChar			; Считываем первый символ из буфера. Флаг переноса =1, если это цифра
+	INC	A				; Проверяем на пустую строку. Инкремент/декремент не сбрасывает флаг переноса.
 	DEC	A
-	JP	Z, GetNonBlankLine	; Снова вводим строку, если пустая
+	JP	Z, GetNonBlankLine		; Снова вводим строку, если пустая
 
-	PUSH	AF					; Сохраняем флаг переноса
-	CALL	LineNumberFromStr	; Получаем номер строки в DE
-	PUSH	DE					; Запоминаем номер строки
+	PUSH	AF				; Сохраняем флаг переноса
+	CALL	LineNumberFromStr		; Получаем номер строки в DE
+	PUSH	DE				; Запоминаем номер строки
 	CALL	Tokenize			; Запускаем токенизатор. В C возвращается длина токенизированной строки, а в А = 0
-	LD	B,A					; Теперь BC=длина строки
-	POP	DE					; Восстанавливаем номер строки
-	POP	AF					; Восстанавлливаем флаг переноса
+	LD	B,A				; Теперь BC=длина строки
+	POP	DE				; Восстанавливаем номер строки
+	POP	AF				; Восстанавлливаем флаг переноса
 	JP	NC, Exec			; Если у нас строка без номера, то сразу исполняем
 
-;StoreProgramLine
-;Here's where a program line has been typed, which we now need to store in program memory.
+; StoreProgramLine
+; Here's where a program line has been typed, which we now need to store in program memory.
 
 StoreProgramLine:
         PUSH    DE
@@ -1283,8 +1285,8 @@ Tokenize:
         LD      C,05H			; Initialise line length to 5
         LD      DE,LINE_BUFFER		; ie, output ptr is same as input ptr at start.
 TokenizeNext:
+	LD      A,(HL)			; Получение введенного символа
 ;If char is a space, jump ahead to write it out.
-	LD      A,(HL)
         CP      ' '
         JP      Z,WriteChar
 ;If char is a " (indicating a string literal) then freely copy up to the closing ". Obviously we don't want to tokenize string literals.
@@ -1294,20 +1296,25 @@ TokenizeNext:
 ;If char is null then we've reached the end of input, and can exit this function.
         OR      A
         JP      Z,Exit
+; Обработка DATA
         LD      A,(DATA_STM)
         OR      A
         LD      B,A
-        LD      A,(HL)
+        LD      A,(HL)			; Восстанавливаем введенноый символа
         JP      NZ,WriteChar
+; Обработка ?
         CP      '?'
         LD      A, TK_PRINT		; Замена ? на PRINT
         JP      Z, WriteChar
+;
         LD      A,(HL)
         CP      '0'
         JP      C,L041A
         CP      '<'
         JP      C,WriteChar
-;Here's where we start to see if we've got a keyword. B здесь содержит 0 (см. код выше где OR A; LD B,A)
+
+; Here's where we start to see if we've got a keyword. B здесь содержит 0 (см. код выше где OR A; LD B,A)
+
 L041A:  PUSH    DE			; Preserve output ptr.
         LD      DE,KEYWORDS-1		; 
         PUSH    HL			; Preserve input ptr.
@@ -1372,7 +1379,7 @@ FreeCopy:
         JP      FreeCopyLoop
 
 ; NextKeyword. Advances keyword ptr in DE to point to the next keyword in the table, then jumps back to KwCompare to see if it matches. Note we also increment the keyword ID.
-	
+
 NextKeyword:
 	POP     HL			; Restore input ptr
         PUSH    HL
@@ -1407,6 +1414,7 @@ ResetInput:
 InputLine:
 	LD      HL,LINE_BUFFER
         LD      B,01H
+
 ;Get a character and jump out of here if user has pressed 'Enter'. 
 InputNext:
 	CALL    InputChar
@@ -1610,7 +1618,7 @@ L0547:  EX      DE,HL
         RST     SyntaxCheck
         DB	TK_TO
 ;Evaluate expression following 'TO', and push the result of that expression (a floating point number of course) on the stack
-        CALL    L0966		; Eval numeric expression
+        CALL    EvalNumericExpression		; Eval numeric expression
         PUSH    HL
         CALL    FCopyToBCDE
         POP     HL
@@ -1627,7 +1635,7 @@ L0547:  EX      DE,HL
         JP      NZ,PushStepValue
 ;STEP clause has been given so we evaluate it and get it into BCDE. The sign of this value becomes the direction byte (0x01 for fowards, 0xFF for backwards).
         RST     NextChar
-        CALL    L0966		; Eval numeric expression
+        CALL    EvalNumericExpression		; Eval numeric expression
         PUSH    HL
         CALL    FCopyToBCDE
         POP     HL
@@ -1828,8 +1836,9 @@ Cont:
         EX      DE,HL
         RET     
 
+; Похоже, что мертвый код 
 
-        CALL    L0FB9
+        CALL    EvalByteExpression
         RET     NZ
 
         INC     A
@@ -1856,18 +1865,26 @@ CharIsAlpha:
 
 GetSubscript:
 	RST     NextChar
-L0642:  CALL    L0966
-L0645:  RST     FTestSign
+L0642:  CALL    EvalNumericExpression
+
+; If subscript is negative then jump to FC error below.
+FTestPositiveIntegerExpression:
+	RST     FTestSign
         JP      M,FunctionCallError
-L0649:  LD      A,(FACCUM+3)
+
+;Likewise, if subscript is >32767 then fall into FC error, otherwise exit to FAsInteger.
+FTestIntegerExpression:
+	LD      A,(FACCUM+3)
         CP      90H
         JP      C,FAsInteger
+
         LD      BC,9080H
         LD      DE,0000H
         CALL    FCompare
         LD      D,C
         RET     Z
 
+; Invalid function call (FC) error..
 FunctionCallError:
 	LD      E,ERR_FC
         JP      Error
@@ -2108,7 +2125,7 @@ CopyNumeric:
 
 	CHK	075Ch, "Сдвижка кода"
 On:
-        CALL    L0FB9
+        CALL    EvalByteExpression
         LD      A,(HL)
         LD      B,A
         CP      TK_GOSUB
@@ -2484,7 +2501,9 @@ ForLoopIsComplete:
         RST     NextChar
         CALL    L0920
 
-L0966:  CALL    EvalExpression
+; Evalute expression and check is it value is Numeric
+EvalNumericExpression:
+	CALL    EvalExpression
 L0969:  DB	0F6H			;OR 37H - это сброс флага CY
 L096A:	SCF				;37H
 L096B:  LD      A,(VALTYP)
@@ -2596,12 +2615,12 @@ L09E6:  LD      (VALTYP),A
         JP      Z,FIn
 ;If the character is a leading '-' then jump head to EvalMinusTerm
         CP      TK_MINUS		;0A5H
-        JP      Z,EvalMinusTerm	;L0A1E
-        CP      22H
+        JP      Z,EvalMinusTerm		; L0A1E
+        CP      '"'			; 22H
         JP      Z,L0D50
-        CP      0A2H
+        CP      TK_NOT			; 0A2H
         JP      Z,L0AF9
-        CP      0A0H
+        CP      TK_FN			; 0A0H
         JP      Z,L0CCD
 ;If the character is the keyword ID of an inline function them jump ahead to deal with that.
         SUB     TK_SGN			; 0AEH
@@ -2658,7 +2677,7 @@ EvalInlineFn:
         EX      (SP),HL
         PUSH    HL
         EX      DE,HL
-        CALL    L0FB9
+        CALL    EvalByteExpression
         EX      DE,HL
         EX      (SP),HL
         JP      L0A6D
@@ -2685,7 +2704,7 @@ FAnd:
 	XOR	A	; AFh
         PUSH    AF
         CALL    L0969
-        CALL    L0649
+        CALL    FTestIntegerExpression
         POP     AF
         EX      DE,HL
         POP     BC
@@ -2693,7 +2712,7 @@ FAnd:
         EX      DE,HL
         CALL    FLoadFromBCDE
         PUSH    AF
-        CALL    L0649
+        CALL    FTestIntegerExpression
         POP     AF
         POP     BC
         LD      A,C
@@ -2783,7 +2802,7 @@ L0AEF:	INC     A
 L0AF9:  LD      D,5AH
         CALL    L0978
         CALL    L0969
-        CALL    L0649
+        CALL    FTestIntegerExpression
         LD      A,E
         CPL     
         LD      C,A
@@ -3113,7 +3132,7 @@ L0CCD:  CALL    L0D10
         JP      Z,Error
         CALL    FCopyToMem
         POP     HL
-        CALL    L0966
+        CALL    EvalNumericExpression
         DEC     HL
         RST     NextChar
         JP      NZ,SyntaxError
@@ -3540,7 +3559,7 @@ Mid:
         JP      Z,L0F60
         RST     SyntaxCheck
         DB	','
-        CALL    L0FB9
+        CALL    EvalByteExpression
 L0F60:  RST     SyntaxCheck
         DB	')'
         POP     AF
@@ -3586,7 +3605,7 @@ OutD:	EQU	$+1
         JP      Z,L0F96
         RST     SyntaxCheck
         DB	','
-        CALL    L0FB9
+        CALL    EvalByteExpression
 L0F96:  POP     BC
 InD:	EQU	$+1
 L0F97:  IN      A,(00H)			; Self-modified code
@@ -3606,24 +3625,24 @@ L0FA2:  POP     BC
         INC     B
         DEC     B
         JP      Z,FunctionCallError
-        RET     
+        RET
 
-L0FAC:  CALL    L0FB9
+L0FAC:  CALL    EvalByteExpression
         LD      (InD),A			; 0F98H
         LD      (OutD),A		; 0F84H
         RST     SyntaxCheck
         DB	','
-        DB	06h	;LD      B,..
+        DB	06h			; LD B,..
 L0FB8:	RST	NextChar
-L0FB9:  CALL    L0966
-L0FBC:  CALL    L0645
+EvalByteExpression:  CALL    EvalNumericExpression
+L0FBC:  CALL    FTestPositiveIntegerExpression
         LD      A,D
         OR      A
         JP      NZ,FunctionCallError
         DEC     HL
         RST     NextChar
         LD      A,E
-        RET     
+        RET
 
 	CHK	0Fc8H, "Сдвижка кода"
 Val:
@@ -3768,7 +3787,7 @@ L1051:  LD      (VAR_BASE),HL
         JP      UpdateLinkedList
 
 ; Какой-то мертвый код...
-        CALL    L0645
+        CALL    FTestPositiveIntegerExpression
         LD      A,(DE)
         JP      L0CAB
 
@@ -3778,7 +3797,7 @@ L1051:  LD      (VAR_BASE),HL
 L1067:  PUSH    DE
         RST     SyntaxCheck
         DB	','
-        CALL    L0FB9
+        CALL    EvalByteExpression
         POP     DE
         LD      (DE),A
         RET     
@@ -3788,21 +3807,21 @@ L1067:  PUSH    DE
 	CHK	1724h, "Сдвижка кода"
 Peek:	
         RST     FTestSign
-        CALL    L0649
+        CALL    FTestIntegerExpression
         LD      A,(DE)
         JP      L0CAB
 	
 	CHK	172CH, "Сдвижка кода"
 Poke:
-        CALL    L0966
+        CALL    EvalNumericExpression
         RST     FTestSign
-        CALL    L0649
+        CALL    FTestIntegerExpression
         JP      L1067
 	
 	CHK	1736h, "Сдвижка кода"
 Usr:
         RST     FTestSign
-        CALL    L0649
+        CALL    FTestIntegerExpression
         EX      DE,HL
         CALL    CallHL
 	JP	L0CAB
@@ -3839,7 +3858,7 @@ Cls:	PUSH	HL
 	CALL	0F809H
 	JP	SetCurPos
 
-Cur:	CALL	L0FB9
+Cur:	CALL	EvalByteExpression
 	CP	40H
 	JP	NC, FunctionCallError
 	ADD	A, 20H
@@ -3847,7 +3866,7 @@ Cur:	CALL	L0FB9
 
 	RST	SyntaxCheck
 	DB	','
-	CALL	L0FB9
+	CALL	EvalByteExpression
 
 	CP	19H
 	JP	NC, FunctionCallError
@@ -3868,17 +3887,17 @@ SetCurPos:
 	LD	C, A
 	JP	0F809H
 
-Plot:	CALL	L0FB9
+Plot:	CALL	EvalByteExpression
 	LD	(GPOSX), A		; 01954H
 	RST	SyntaxCheck
 	DB	','
 
-	CALL	L0FB9
+	CALL	EvalByteExpression
 	LD	(GPOSY), A		; 01955H
 	RST	SyntaxCheck
 	DB	','
 
-	CALL	L0FB9
+	CALL	EvalByteExpression
 	LD	(GFILL), A		; 01956H
 
 L17C5:	LD	A, (GPOSX)		; 01954H
@@ -3979,11 +3998,11 @@ szHello:
 
 	CHK	176ah, "Сдвижка кода"
 Cur:
-	CALL    L0FB9
+	CALL    EvalByteExpression
         LD      (POSX),A		; 1957H
         RST     SyntaxCheck
         DB	','
-        CALL    L0FB9
+        CALL    EvalByteExpression
         LD      (POSY),A		; 1958H
         CP      20H
         JP      NC,FunctionCallError
@@ -4042,15 +4061,15 @@ ClsLoop:
 
 	CHK	17C7H, "Сдвижка кода"
 Plot:
-        CALL    L0FB9
+        CALL    EvalByteExpression
         LD      (GPOSX),A		; 1954H
         RST     SyntaxCheck
         DB	','
-        CALL    L0FB9
+        CALL    EvalByteExpression
         LD      (GPOSY),A		; 1955H
         RST     SyntaxCheck
         DB	','
-        CALL    L0FB9
+        CALL    EvalByteExpression
         LD      (GFILL),A		; 1956H
 
 L17DD:  LD      A,(GPOSX)		; 1954H
@@ -4123,11 +4142,11 @@ POPHLRET:
         RET     
 
 Line:
-        CALL    L0FB9
+        CALL    EvalByteExpression
         LD      (GPOSX2),A		; 1952H
         RST     SyntaxCheck
         DB	','
-        CALL    L0FB9
+        CALL    EvalByteExpression
         LD      (GPOSY2),A		; 1953H
         PUSH    HL
         LD      HL,0100H
