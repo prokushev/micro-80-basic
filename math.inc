@@ -475,6 +475,7 @@ L1171:        INC     BC
         LD      B,L
         XOR     D
         db	38h, 82h
+
 	CHK	117eh, "Сдвижка кода"
 Log:
 L117E:  RST     FTestSign
@@ -1382,7 +1383,7 @@ L154F:  LD      HL,FNegate
 	CHK	1554h, "Сдвижка кода"
 Sqr:
         CALL    FPush
-        LD      HL,1539H
+        LD      HL,ONE_HALF
         CALL    FLoadFromMem
 
 	CHK	155dh, "Сдвижка кода"
