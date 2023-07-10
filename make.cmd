@@ -1,3 +1,5 @@
+rem Стандартные бейсики
+
 asw -lU basic80.asm > basic80.lst
 p2bin basic80.p basic80.bin
 
@@ -21,6 +23,11 @@ p2bin basic80.p basic80-ut88.bin
 
 asw -lU ctrlbas.asm > ctrlbas.lst
 p2bin ctrlbas.p ctrlbas.bin
+
+rem Мой и варианты
+
+asw -lU -D BASICNEW=1 basic80.asm > basic80-new.lst
+p2bin basic80.p basic80-new.bin
 
 bin2rk basic80.bin
 bin2rk ctrlbas.bin $2800

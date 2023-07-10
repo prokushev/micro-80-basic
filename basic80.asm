@@ -19,6 +19,7 @@
 ; !!Развернутые сообщения об ошибках
 ; !!Отвязать по максимуму от работы в ОЗУ (версия для ROM-диска? Мысль интересная, т.к можно высвободить гору ОЗУ. 
 ;   Больше актуально не для М-80, а для РК-86. При этом для самого интерпретатора можно заполучить 32Кб для стандартного ROM-диска).
+; !?Добавить обратно NULL
 ;
 ; БЕЙСИК для МИКРО-80/РАДИО-86РК - Общее устройство
 ;
@@ -225,7 +226,9 @@ RK86	EQU	0	; Модификации для "Бейсик для Радио-86Р�
 	ifndef UT88
 UT88	EQU	0	; Модификации для "Бейсик для ЮТ-88"
 	endif
+	ifndef BASICNEW
 BASICNEW	EQU	0	; Включить мои изменения в коде
+	endif
 ANSI	EQU	0	; Включить поддержку совместимости с ANSI Minimal Basic
 GOST	EQU	0	; Включить поддержку совместимости с ГОСТ 27787-88
 
@@ -241,14 +244,14 @@ OPTION	EQU	1	; Поддержка команды OPTION
 LET	EQU	1	; Поддержка команды LET
 RANDOMIZE EQU	1	; Поддержка команды RANDOMIZE
 END	EQU	1	; Поддержка команды END
-	ELSE
+	ELSE	; BASICNEW
 OPTION	EQU	0	; Поддержка команды OPTION
-LET	EQU	0	; Поддержка команды LET
+LET	EQU	1	; Поддержка команды LET
 RANDOMIZE EQU	0	; Поддержка команды RANDOMIZE
-END	EQU	0	; Поддержка команды END
+END	EQU	1	; Поддержка команды END
 	ENDIF
 	ENDIF
-	ELSE
+	ELSE	; NOT BASICNEW
 OPTION	EQU	0	; Поддержка команды OPTION
 LET	EQU	0	; Поддержка команды LET
 RANDOMIZE EQU	0	; Поддержка команды RANDOMIZE
@@ -299,10 +302,11 @@ PROGRAM_BASE_INIT	EQU	2200H
 ; переход на код инициализации.
 
 	IF	BASICNEW
-	ORG	100H
-RST	MACRO	adr
-	CALL	adr
-	ENDM
+	ORG	0
+;	ORG	100H
+;RST	MACRO	adr
+;	CALL	adr
+;	ENDM
 	ELSE
 	ORG	0
 	ENDIF
@@ -366,12 +370,12 @@ CompareHLDE:
 	LD	A,L
 	SUB	E
 	RET
-;
-; TERMINAL_X and TERMINAL_Y
-; Variables controlling the current X and Y positions of terminal output
 
-TERMINAL_Y:	DB		01
-TERMINAL_X:	DB		00
+;
+
+NULLS:	DB	01	; Число нолей-1, которое надо вывести после перевода строки (это было нужно для терминалов)
+TERMINAL_X:	DB		00	; Variable controlling the current X positions of terminal output
+
 ;
 ;FTestSign (RST 5)
 ;Tests the state of FACCUM. This part returns with A=0 and zero set if FACCUM==0, the tail of the function sets the sign flag and A accordingly (0xFF is negative, 0x01 if positive) before returning.
@@ -407,488 +411,8 @@ RST6_CONT:
 RST6RET:	EQU	$+1
 	JP	04F9H		; Это самомодифицирующийся код, см. PushNextWord.
 
-
-; токены и прочие данные
-; 1.2 Ключевые слова
-;
-; Всего существует три типа ключевых слов:
-;
-; Основные ключевые слова. These typically start a statement; examples are LET, PRINT, GOTO and so on.
-; Вспомогательные слова. Used in statements but not as part of an expression, eg TO, STEP, TAB
-; Функции. Only used in expressions, eg, SIN, RND, INT.
-; 
-;
-; KW_INLINE_FNS
-; Таблица указателей на функции.
-;
-
-KW_INLINE_FNS:
-	DW	Sgn
-	DW	Int
-	DW	Abs
-	DW	Usr
-	DW	Fre
-	DW	Inp
-	DW	Pos
-	DW	Sqr
-	DW	Rnd
-	DW	Log
-	DW	Exp
-	DW	Cos
-	DW	Sin
-	DW	Tan
-	DW	Atn
-	DW	Peek
-	DW	Len
-	DW	Str
-	DW	Val
-	DW	Asc
-	DW	Chr
-	DW	Left
-	DW	Right
-	DW	Mid
-
-; KW_ARITH_OP_FNS
-;
-; Таблица указателей на функции арифметических операций.
-; Каждая запись состоит из трех байт. Первый байт - это
-; приоритет, следующие два байта - указатель на функцию.
-
-KW_ARITH_OP_FNS:
-	DB	079h
-	DW	FAdd	; + 144C
-	DB	079h
-	DW	FSub	; - 107D
-	DB	07Bh
-	DW	FMul	; * 11BA
-	DB	07Bh
-	DW	FDiv	; / 1218
-	DB	07Fh
-	DW	FPower	; ^ 155D
-	DB	50H
-	DW	FAnd	; AND 0A77
-	DB	46H
-	DW	FOr	; OR 0A76
-
- 
-; KEYWORDS
-;
-; Строковые константы для всех ключевых слов, включая арифметические операторы. Последний символ определяется установкой в 1 старшего разряда.
-; Конец таблицы отмечается нулевым байтом.
-
-; Основные ключевые слова
-
-	CHK	088h, "Сдвижка кода"
-; LET и END выкинули зачем-то... И этим поломали совместимость... В отчечественных бейсиках так много где произошло...
-
-; Таблица токенов. В основном в Бейсиках от M$ начало токенов либо 80h, либо 81h. Когда произошла сдвижка,
-; не выяснял. В советских Бейсиках в основе лежит эта таблица токенов, которая расширялась разными версиями.
-
-TOKEN	MACRO	name
-name	EQU	Q
-Q	SET	Q+1
-	ENDM
-
-KEYWORDS:
-Q	SET	80h
-	TOKEN	TK_CLS
-	DB	"CL", 'S'+80h	;	80
-	TOKEN	TK_FOR
-	DB	"FO", 'R'+80h	;	81
-	TOKEN	TK_NEXT
-	DB	"NEX", 'T'+80h	;	82
-	TOKEN	TK_DATA
-	DB	"DAT", 'A'+80h	;	83
-	TOKEN	TK_INPUT
-	DB 	"INPU", 'T'+80h	;	84
-	TOKEN	TK_DIM
-	DB 	"DI", 'M'+80h	;	85
-	TOKEN	TK_READ
-	DB 	"REA", 'D'+80h	;	86
-	TOKEN	TK_CUR
-	DB 	"CU",	'R'+80h	;	87
-	TOKEN	TK_GOTO
-	DB 	"GOT", 'O'+80h	;	88
-	TOKEN	TK_RUN
-	DB 	"RU", 'N'+80h	;	89
-	TOKEN	TK_IF
-	DB 	"I", 'F'+80h	;	8A
-	TOKEN	TK_RESTORE
-	DB 	"RESTOR", 'E'+80h	;	8B
-	TOKEN	TK_GOSUB
-	DB 	"GOSU", 'B'+80h	;	8C
-	TOKEN	TK_RETURN
-	DB 	"RETUR", 'N'+80h;	8D
-	TOKEN	TK_REM
-	DB 	"RE", 'M'+80h	;	8E
-	TOKEN	TK_STOP
-	DB 	"STO", 'P'+80h	;	8F
-	TOKEN	TK_OUT
-	DB	"OU", 'T'+80h	;	90
-	TOKEN	TK_ON
-	DB	"O", 'N'+80h	;	91
-	TOKEN	TK_PLOT
-	DB	"PLO", 'T'+80h	;	92
-	TOKEN	TK_LINE
-	DB	"LIN", 'E'+80h	;	93
-	TOKEN	TK_POKE
-	DB	"POK", 'E'+80h	;	94
-	TOKEN	TK_PRINT
-	DB 	"PRIN", 'T'+80h	;	95
-	TOKEN	TK_DEF
-	DB	"DE", 'F'+80h	;	96
-	TOKEN	TK_CONT
-	DB	"CON", 'T'+80h	;	97
-	TOKEN	TK_LIST
-	DB 	"LIS", 'T'+80h	;	98
-	TOKEN	TK_CLEAR
-	DB 	"CLEA", 'R'+80h	;	99
-	TOKEN	TK_MLOAD
-	DB	"MLOA", 'D'+80h	;	9a
-	TOKEN	TK_MSAVE
-	DB	"MSAV", 'E'+80h	;	9b
-	TOKEN	TK_NEW
-	DB 	"NE" , 'W'+80h	;	9c
-	IF	OPTION
-	TOKEN	TK_OPTION
-	DB	"OPTIO", 'N'+80h
-	ENDIF
-	IF	LET
-	TOKEN	TK_LET
-	DB	"LE", 'T'+80h
-	ENDIF
-	IF	RANDOMIZE
-	TOKEN	TK_RANDOMIZE
-	DB	"RANDOMIZE", 'E'+80h
-	ENDIF
-	IF	END
-	TOKEN	TK_END
-	DB	"EN", 'D'+80h
-	ENDIF
-
-TKCOUNT	EQU	Q-80H
-
-;Supplementary keywords
-	TOKEN	TK_TAB
-	DB 	"TAB", '('+80h	;	9d
-	TOKEN	TK_TO
-	DB 	"T", 'O'+80h	;	9e
-	TOKEN	TK_SPC
-	DB	"SPC", '('+80h	;	9f
-	TOKEN	TK_FN
-	DB	"F", 'N'+80h	;	a0
-	TOKEN	TK_THEN
-	DB 	"THE", 'N'+80h	;	a1
-	TOKEN	TK_NOT
-	DB	"NO", 'T'+80h	;	a2
-	TOKEN	TK_STEP
-	DB 	"STE", 'P'+80h	;	a3
-
-;Arithmetic and logical operators
-	TOKEN	TK_PLUS
-	DB 	"+"+80h		;	a4
-	TOKEN	TK_MINUS
-	DB 	"-"+80h		;	a5
-	TOKEN	TK_MUL
-	DB	"*"+80h		;	a6
-	TOKEN	TK_DIV
-	DB 	"/"+80h		;	a7
-	TOKEN	TK_POWER
-	DB	'^'+80h		;	a8
-	TOKEN	TK_AND
-	DB	"AN", 'D'+80h	;	a9
-	TOKEN	TK_OR
-	DB	"O", 'R'+80h	;	aa
-	TOKEN	TK_GT
-	DB 	">"+80h		;	ab
-	TOKEN	TK_EQ
-	DB	"="+80h		;	ac
-	TOKEN	TK_LT
-	DB 	"<"+80h		;	ad
-
-;Inline keywords
-	TOKEN	TK_SGN
-	DB 	"SG", 'N'+80h	;	ae
-	TOKEN	TK_INT
-	DB 	"IN", 'T'+80h	;	af
-	TOKEN	TK_ABS
-	DB 	"AB", 'S'+80h	;	b0
-	TOKEN	TK_USR
-	DB 	"US", 'R'+80h	;	b1
-	TOKEN	TK_FRE
-	DB	"FR", 'E'+80h	;	b2
-	TOKEN	TK_INP
-	DB	"IN", 'P'+80h	;	b3
-	TOKEN	TK_POS
-	DB	"PO", 'S'+80h	;	b4
-	TOKEN	TK_SQR
-	DB 	"SQ", 'R'+80h	;	b5
-	TOKEN	TK_RND
-	DB 	"RN", 'D'+80h	;	b6
-	TOKEN	TK_LOG
-	DB	"LO", 'G'+80h	;	b7
-	TOKEN	TK_EXP
-	DB	"EX", 'P'+80h	;	b8
-	TOKEN	TK_COS
-	DB	"CO", 'S'+80h	;	b9
-	TOKEN	TK_SIN
-	DB 	"SI", 'N'+80h	;	ba
-	TOKEN	TK_TAN
-	DB	"TA", 'N'+80h	;	bb
-	TOKEN	TK_ATN
-	DB	"AT", 'N'+80h	;	bc
-	TOKEN	TK_PEEK
-	DB	"PEE", 'K'+80h	;	bd
-	TOKEN	TK_LEN
-	DB	"LE", 'N'+80h	;	be
-	TOKEN	TK_STRS
-	DB	"STR", '$'+80h	;	bf
-	TOKEN	TK_VAL
-	DB	"VA", 'L'+80h	;	c0
-	TOKEN	TK_ASC
-	DB	"AS", 'C'+80h	;	c1
-	TOKEN	TK_CHRS
-	DB	"CHR", '$'+80h	;	c2
-	TOKEN	TK_LEFTS
-	DB	"LEFT", '$'+80h	;	c3
-	TOKEN	TK_RIGHTS
-	DB	"RIGHT", '$'+80h	;c4
-	TOKEN	TK_MIDS
-	DB	"MID", '$'+80h	;	c5
-; --------------- Это потом из микрона возмем
-;c7:SCREEN$( 1eee 1fd8 1a39
-;c8: INKEY$ 1ef6 1fda 1685
-;c9: AT 1efc 1fdc 009b
-;ca: & 1efe 1fde 16a9
-;cb: BEEP 1eff 1fe0 0279
-;cc: PAUSE 1f03 1fe2 7913
-;cd: VERIFY 1f08 1fe4 0f11
-;ce: HOME 1f0e 1fe6 4e7b
-;cf: EDIT 1f12 1fe8 7b10
-;d0: DELETE 1f16 1fea 10b0
-;d1: MERGE 1f1c 1fec 137f
-;d2: AUTO 1f21 1fee 5014
-;d3: HIMEM 1f25 1ff0 09a6
-;d4: @ 1f2a 1ff2 a546
-;d5: ASN 1f2b 1ff4 4d09
-;d6: ADDR 1f2e 1ff6 2849
-;d7: PI 1f32 1ff8 2943
-;d8: RENUM 1f34 1ffa 4f52
-;d9: ACS 1f39 1ffc 2f4e
-;da: LG 1f3c 1ffe 3838
-;db: LPRINT 1f3e 2000 6e65
-;dc: LLIST 1f44 2002 6075
-;Null terminator.
-	DB	00	 	 	
- 
-;
-;KW_GENERAL_FNS
-;Pointers to the functions for the 20 general keywords at the start of the KEYWORDS table above.
-
-	CHK	0170H, "Сдвижка кода"
-	
-KW_GENERAL_FNS:
-; Altair 4k			;	Altair 4K	MBASIC 5.2
-	DW	Cls		;	END
-	DW	For		;	FOR
-	DW	Next		;	NEXT
-	DW	Data		;	DATA
-	DW	Input		;	INPUT
-	DW	Dim		;	DIM
-	DW	Read		;	READ
-	DW	Cur		;	LET
-	DW	Goto		;	GOTO
-	DW	Run		;	RUN
-	DW	If		;	IF
-	DW	Restore		;	RESTORE
-	DW	Gosub		;	GOSUB
-	DW	Return		;	RETURN
-	DW	Rem		;	REM
-	DW	Stop		;	STOP
-	DW	Out		;	PRINT
-	DW	On		;	LIST
-	DW	Plot		;	CLEAR
-	DW	Line		;	NEW
-; МИКРО-80
-	DW	Poke		;			ONGOTO
-	DW	Print		;			NULL
-	DW	Def		;			WAIT
-	DW	Cont		;			DEF
-	DW	List		;			POKE
-	DW	Clear		;			CONT
-	DW	Mload		;			CLOAD
-	DW	Msave		;			OUT
-	DW	New		;			LPRINT
-				;			LLIST
-	IF	OPTION
-	DW	Option
-	ENDIF
-	IF	LET
-	DW	Let
-	ENDIF
-	IF	RANDOMIZE
-	DW	Randomize
-	ENDIF
-	IF	END
-	DW	End
-	ENDIF
-
-;1.3 Коды ошибок и глобальные переменные
-;
-; Таблица двухсимвольных кодов для 18 ошибок.
-
-;Ошибка 01. В программе встретился оператор NEXT, для которого не был выполнен соответствующий оператор FOR.
-;Ошибка 02. Неверный синтаксис.
-;Ошибка 03. В программе встретился оператор RETURN без предварительного выполнения оператора GOSUB.
-;Ошибка 04. При выполнении программы не хватает данных для оператора READ. т.е. данных, описанных операторами DATA меньше, чем переменных в операторах READ.
-;Ошибка 05. Аргумент функции не соответствует области определения данной функции. Например, отрицательный или нулевой аргумент функции LOG(X), отрицательный аргумент у функции SQR(X) и т. д.
-;Ошибка 06. Переполнение при выполнении арифметических операций Результат любой операции не может быть больше +1,7-1035 или меньше -1,7-1035.
-;Ошибка 07. Недостаточен объем памяти. Возможные причины:
-;	велик текст программы:
-;	слишком длинны массивы данных:
-;	вложенность подпрограмм и циклов больше нормы;
-;	слишком много переменных.
-;Ошибка 08. Нет строки с данным номером. Возникает при выполнении операторов перехода.
-;Ошибка 09. Индекс не соответствует размерности массива.
-;Ошибка 10. Повторное выполнение операторов DIM или DEF, описывающих массив или функцию, которые уже были описаны ранее.
-;Ошибка 11. Деление на ноль.
-;Ошибка 12. Попытка выполнить операторы INPUT или DEP в непосредственном режиме.
-;Ошибка 13. Несоответствие типов данных. Возникает при попытке символьной переменной присвоить числовое значение и наоборот.
-;Ошибка 14. Переполнение буферной области памяти, отведенной для хранения символьных переменных. Для расширения объема буфера служит директива CLEAR.
-;Ошибка 15. Длина символьной переменной превышает 255.
-;Ошибка 16. Выражение, содержащее символьные переменные, слишком сложно для интерпретатора.
-;Ошибка 17. Невозможность продолжения выполнения программы по директиве CONT.
-;Ошибка 18. Обращение к функции, не описанной оператором DEF.
-
-
-ERROR_CODES:
-ERR_NF	EQU	$-ERROR_CODES
-	DB	'0','1'+80h	; 00 NEXT without FOR
-ERR_SN	EQU	$-ERROR_CODES
-	DB	'0','2'+80h	; 02 Syntax Error
-ERR_RG	EQU	$-ERROR_CODES
-	DB	'0','3'+80h	; 04 RETURN without GOSUB
-ERR_OD	EQU	$-ERROR_CODES
-	DB	'0','4'+80h	; 06 Out of Data
-ERR_FC	EQU	$-ERROR_CODES
-	DB	'0','5'+80h	; 08 Illegal Function Call
-ERR_OV	EQU	$-ERROR_CODES
-	DB	'0','6'+80h	; 0A Overflow
-ERR_OM	EQU	$-ERROR_CODES
-	DB	'0','7'+80h	; 0C Out of memory
-ERR_US	EQU	$-ERROR_CODES
-	DB	'0','8'+80h	; 0E Undefined Subroutine
-ERR_BS	EQU	$-ERROR_CODES
-	DB	'0','9'+80h	; 10 Bad Subscript
-ERR_DD	EQU	$-ERROR_CODES
-	DB	'1','0'+80h	; 12 Duplicate Definition
-ERR_DZ	EQU	$-ERROR_CODES
-	DB	'1','1'+80h	; 14 Division by zero
-ERR_ID	EQU	$-ERROR_CODES
-	DB	'1','2'+80h	; 16 Invalid in Direct mode
-ERR_TM	EQU	$-ERROR_CODES
-	DB	'1','3'+80h	; 18 Type mismatch
-ERR_SO	EQU	$-ERROR_CODES
-	DB	'1','4'+80h	; 1AH Out of string space
-ERR_LS	EQU	$-ERROR_CODES
-	DB	'1','5'+80h	; 1CH String too long
-ERR_ST	EQU	$-ERROR_CODES
-	DB	'1','6'+80h	; 1EH String formula too complex
-ERR_CN	EQU	$-ERROR_CODES
-	DB	'1','7'+80h	; 20H Can't continue
-ERR_UF	EQU	$-ERROR_CODES
-	DB	'1','8'+80h	; 22H Undefined function
-
-	CHK 01ceh, "Сдвижка кода"
-
-;LINE_BUFFER
-;Buffer for a line of input or program, 73 bytes long.
-;
-;The line buffer is prefixed with this comma. It's here because the INPUT handler defers to the READ handler,
-;which expects items of data (which the line buffer is treated as) to be prefixed with commas. Quite a neat trick!
-
-	DB	','
-LINE_BUFFER: 
-        DB	9ch
-	DB	65 DUP (0)
-	DB	32h, 32h, 37h, 30h
-	NOP
-
-	CHK     0216h, "Сдвижка кода"
-TMPSTACK:
-	NOP     
-ControlChar:
-	DB		00		; Тип символа: 00 - обычный символ, FF - управляющий
-DIM_OR_EVAL:
-	DB	0			; Обработка массива или...
-VALTYP:
-	DB	01h			; Тип переменной: 00 - числовая, 01 - символьная
-DATA_STM:
-	DB	0			; Признак обработки TK_DATA
-MEMSIZ:	DW	MEM_TOP			; Размер памяти //021BH
-
-TEMPPT:	DW	TMPST			; POINTER AT FIRST FREE TEMP DESCRIPTOR
-					; INITIALIZED TO POINT TO TEMPST
-;TEMPST:	DS	STRSIZ*NUMTMP
-TMPST:	LD      B,00H			; STORAGE FOR NUMTMP TEMP DESCRIPTORS
-        LD      L,E
-        LD      (BC),A
-        LD      BC,8900H
-        RLA     
-        NOP     
-        NOP     
-        NOP     
-        NOP     
-        LD      B,00H
-        LD      L,E
-        LD      (BC),A
-STR_TOP:
-	DW	MEM_TOP
-	DW	01D5H
-DATA_LINE:
-	DW	0000H				; Номер строка с DATA, где возникла ошибка
-NO_ARRAY:
-	DB	00H				; Флаг, что переменная-массив недопустима (для TK_FOR, например)
-INPUT_OR_READ:
-	DB	00H				; Выполняем INPUT или READ
-PROG_PTR_TEMP:
-	DW	1722h				; Мусор, можно=0
-PROG_PTR_TEMP2:
-	DW	01d5h				; Мусор, можно=0
-CURRENT_LINE:
-	DW	0FFFFH		; Номер текущей исполняемой строки FFFF - никакая не исполняется
-OLD_LINE:
-	DB	6eh, 0ah	; Номер строки для CONT
-OLD_TEXT:
-	db	0,0		; Адрес(?) для CONT
-	CHK	0241H, "Сдвижка кода"
-STACK_TOP:
-	DW	MEM_TOP-50	; Верхушка стека бейсика. Размер (50) для РК86 используется для вычисления при инициализации.
-PROGRAM_BASE:
-	DW	PROGRAM_BASE_INIT+01h
-VAR_BASE:
-	DW	PROGRAM_BASE_INIT+03h
-VAR_ARRAY_BASE:
-	DW	PROGRAM_BASE_INIT+03h
-VAR_TOP:
-	DW	PROGRAM_BASE_INIT+03h
-DATA_PROG_PTR:
-	DW	PROGRAM_BASE_INIT
-FACCUM:	DB	1fh,02h,84h,87h	; Видимо, мусор. Заменить на DD	0 ?
-FTEMP:	DB	0c2h
-FBUFFER:
-; Small buffer (13 bytes) used by the math package functions FOut and Sqr.
-	DB	20h
-	db	32h, 35h,36h, 0 ; "256"
-	db	30h, 30h,30h, 0	; "000"
-	CHK	025bh, "Сдвижка кода"
-	db	0, 0, 0, 0
-szError:	DB		"o{ibk", "a"+80h, 00h		; "ОШИБКА"
-szIn:		DB		"  w", " "+80h, 00h 			; "  В "
-szOK:		DB		0Dh, 0Ah, "="+080h, ">", 0Dh, 0Ah, 00h		; "=>"
-szStop:		DB		0Dh, 0Ah, "stop", " "+080h, 00h		; "СТОП "
-		
-; конец токенов
+	; Блок данных
+	include "data.inc"
 
 ;=========================
 ;= 1.4 Utility Functions =
@@ -1302,15 +826,25 @@ TokenizeNext:
         LD      B,A
         LD      A,(HL)			; Восстанавливаем введенноый символа
         JP      NZ,WriteChar
+
 ; Обработка ?
         CP      '?'
         LD      A, TK_PRINT		; Замена ? на PRINT
         JP      Z, WriteChar
+
+	IF	BASICNEW
+; Обработка '
+        LD      A,(HL)			; Восстанавливаем введенноый символа
+        CP      "'"
+        LD      A, TK_REM		; Замена ' на REM
+        JP      Z, WriteChar
+	ENDIF
+
 ;
-        LD      A,(HL)
-        CP      '0'
-        JP      C,L041A
-        CP      '<'
+        LD      A,(HL)			; Восстанавливаем введенноый символа
+        CP      '0'			; Меньше '0'?
+        JP      C,L041A			; Ищем ключевое слово
+        CP      ';'+1			; 0123456789:;
         JP      C,WriteChar
 
 ; Here's where we start to see if we've got a keyword. B здесь содержит 0 (см. код выше где OR A; LD B,A)
@@ -1506,9 +1040,14 @@ InputChar:
 	CP	04H		; F5
 	CALL	Z, L19A8
 	RET
+
+	if	BASICNEW
+	else
 	NOP
 	NOP
-PRNDUP:	DB	0H		; Флаг дублирования вывода на принтер 0 - выключит >0 - включить
+	include "prnflag.inc"
+	endif
+
 	ELSE
 
         JP      Z,0F800h
@@ -1789,63 +1328,80 @@ L05E0:  LD      (DATA_PROG_PTR),HL
 
 TestBreakKey:
 	CALL    0F812h
-        NOP     
+	IF	BASICNEW
+	ELSE
+        NOP
+	ENDIF
         RET     Z
 
 CheckBreak:
 	CALL    InputChar
         CP      03H
-	
-	CHK	05efh, "Сдвижка кода"
-Stop:
-        RET     NZ
 
-        OR      0C0H
-        LD      (PROG_PTR_TEMP),HL
-L05F5:  POP     BC
+	CHK	05efh, "Сдвижка кода"
+
+;STOP / END
+;
+; The keywords STOP and END are synonymous.
+; Но по STOP мы запоминаем адрес останова для последующего
+; восстановления по CONT
+; We don't need to do anything other than lose the return address and fall into Main.
+
+Stop:
+	RET	NZ		; Syntax Error if args
+	DB	0F6H            ; Устанавливаем флаг "STOP" и пропускаем RET NZ ; OR 0C0H
+End:	RET     NZ		; Syntax Error if args
+	LD      (PROG_PTR_TEMP),HL	; Сохраняем адрес останова во временную переменную
+InputBreak:			; При входе по InputBreak Z=0
+	POP     BC		; Убираем адрес возврата из стека
 
 EndOfProgram:
-	PUSH    AF
-        LD      HL,(CURRENT_LINE)
-        LD      A,L
-        AND     H
-        INC     A
-        JP      Z,L0609
-        LD      (OLD_LINE),HL
-        LD      HL,(PROG_PTR_TEMP)
-        LD      (OLD_TEXT),HL
+	PUSH    AF		; Сохраняем флаг "STOP" для последующего использования
+	LD      HL,(CURRENT_LINE)	; Получаем текущий номер строки
+	LD      A,L			; Проверяем, что текущая строка =0FFFFH
+	AND     H
+	INC     A
+	JP      Z,L0609			; Если да, то это прерывание в операторе INPUT
+	LD      (OLD_LINE),HL		; Сохраняем номер строки останова
+	LD      HL,(PROG_PTR_TEMP)	; Сохранаяем адрес останова из временной переменной
+	LD      (OLD_TEXT),HL		; для последующего восстановления по CONT
 L0609:  XOR     A
         LD      (ControlChar),A
         POP     AF
-        LD      HL, szStop
-        JP      NZ, PrintInLine
-        JP      Main
+        LD      HL, szStop		; Сообщение "СТОП"
+        JP      NZ, PrintInLine		; Если флаг "STOP", то печатаем сообщение
+        JP      Main			; Иначе уходим в диалоговый режим
 
 	CHK	0617H, "Сдвижка кода"
 Cont:	
-        RET     NZ
+	RET     NZ			; Ощибка, если есть аргументы
+	LD      E,ERR_CN		; Подготавливаем номер ошибки
+	LD      HL,(OLD_TEXT)		; Восстанавливаем адрес останова
+	LD      A,H
+	OR      L
+	JP      Z,Error			; Если он нулевой, то ошибка
+	EX      DE,HL
+	LD      HL,(OLD_LINE)		; Восстанавливаем номер строки
+	LD      (CURRENT_LINE),HL
+	EX      DE,HL			; HL=Адрес, DE=Строка
+	RET				; Продолжаем выполнение со места останова
 
-        LD      E,ERR_CN
-        LD      HL,(OLD_TEXT)
-        LD      A,H
-        OR      L
-        JP      Z,Error
-        EX      DE,HL
-        LD      HL,(OLD_LINE)
-        LD      (CURRENT_LINE),HL
-        EX      DE,HL
-        RET     
+; Похоже, что мертвый код. В оригинале это реализация команды NULL,
+; которая определяла, сколько нулей выводить после конца строки.
 
-; Похоже, что мертвый код 
-
-        CALL    EvalByteExpression
-        RET     NZ
+Null:
+	IF	BASICNEW
+	RET				; К следующей команде
+	ELSE
+	CALL    EvalByteExpression	; Парсим байт
+        RET     NZ			; Общибка, если не байт
 
         INC     A
-        CP      48H
+        CP      48H			; Проверяем максимум
         JP      NC,FunctionCallError
-        LD      (TERMINAL_Y),A
-        RET     
+        LD      (NULLS),A		; Сохраняем, сколько выводить нулей
+        RET				; К следующей команде
+	ENDIF
 ;
 ;CharIsAlpha
 ;If character pointed to by HL is alphabetic, the carry flag is reset otherwise set.
@@ -1858,7 +1414,6 @@ CharIsAlpha:
         CP      'Z'+1
         CCF
         RET
-
 
 ;GetSubscript
 ;Gets the subscript of an array variable encountered in an expression or a DIM declaration. The subscript is returned as a positive integer in CDE.
@@ -2033,11 +1588,8 @@ Return:
 		
 ;Safe to fall into FindNextStatement, since we're already at the end of the line!...
 
- 
-
 ;FindNextStatement
 ;Finds the end of the statement or the end of the program line.
-
 
 ;Rem is jumped to in two places - it is the REM handler, and also when an IF statement's condition evals to false and the rest of the line needs to be skipped. Luckily in both these cases, C just happens to be loaded with a byte that cannot occur in the program so the null byte marking the end of the line is found as expected.
 
@@ -2179,8 +1731,10 @@ NoThen:
 ;Prints something! It can be an empty line, a single expression/literal, 
 ;or multiple expressions/literals seperated by tabulation directives 
 ;(comma, semi-colon, or the TAB keyword).
-		
+
+; Похоже, это мертвый код
         DEC     HL
+
 PrintLoop:
 	RST     NextChar
 
@@ -2238,7 +1792,7 @@ NewLine:
         RST     OutChar
         LD      A,0AH
         RST     OutChar
-L07E5:  LD      A,(TERMINAL_Y)
+L07E5:  LD      A,(NULLS)
 PrintNullLoop:
 	DEC     A
         LD      (TERMINAL_X),A
@@ -2249,11 +1803,10 @@ PrintNullLoop:
         RST     OutChar
         POP     AF
         JP      PrintNullLoop
-		
 
 ;ToNextTabBreak
 ;Calculate how many spaces are needed to get us to the next tab-break then jump to PrintSpaces to do it.
-		
+
 L07F4:  LD      A,(TERMINAL_X)
         CP      30H
         CALL    NC,NewLine
@@ -2296,8 +1849,10 @@ ExitTab:
         RST     NextChar
         JP      L0794
 
-szRepeat:
-	DB	"?powtorite wwod", ' '+80h, 0Dh, 0Ah, 00
+	IF	BASICNEW
+	ELSE
+	include "szrepeat.inc"
+	ENDIF
 		
 L0840:  LD      A, (INPUT_OR_READ)
         OR      A
@@ -2328,7 +1883,7 @@ L0866:  PUSH    HL
         OR      A
         DEC     HL
         POP     BC
-        JP      Z,L05F5
+        JP      Z,InputBreak
         PUSH    BC
         JP      ReadParse
 
@@ -2413,8 +1968,11 @@ L08D1:  EX      (SP),HL
         POP     HL
         RET     
 
-szOverflow:
-	DB	"?li{nie danny", "e"+80h, 0dh, 0ah, 0
+	IF	BASICNEW
+	ELSE
+	include "szoverflow.inc"
+	ENDIF
+
 
 ReadError:
 	CALL    FindNextStatement
@@ -3425,7 +2983,7 @@ L0E77:  PUSH    BC
         EX      (SP),HL
         PUSH    HL
         JP      L0D75
-	
+
 L0EAE:  POP     HL
         EX      (SP),HL
         RST     PushNextWord
@@ -3538,7 +3096,7 @@ L0F22:	LD	C, 0
         POP     DE
         CALL    L0EC5
         JP      L0D75
-	
+
 	CHK	0f44h, "Сдвижка кода"
 Right:
         CALL    L0F9F
@@ -3634,7 +3192,8 @@ L0FAC:  CALL    EvalByteExpression
         DB	','
         DB	06h			; LD B,..
 L0FB8:	RST	NextChar
-EvalByteExpression:  CALL    EvalNumericExpression
+EvalByteExpression:
+	CALL    EvalNumericExpression
 L0FBC:  CALL    FTestPositiveIntegerExpression
         LD      A,D
         OR      A
@@ -3698,7 +3257,7 @@ Puncher:
 	ELSE
         NOP
 	ENDIF
-        RET     
+        RET
 
 	IF	BASICNEW
 	; Ниже указанный код нигде не вызывается...
@@ -3706,6 +3265,7 @@ Puncher:
 L0FFA:	PUSH    HL
         LD      A,0D3H
 	ENDIF
+
 L0FFD:  CALL    Puncher
         CALL    Puncher2
         LD      A,(HL)
@@ -3747,10 +3307,12 @@ L1041:	LD	A, D
 	CALL	0F815h
 L1049:	JP	0F86Ch
 
+	IF	BASICNEW
+	ELSE
 	NOP
 	NOP
+	ENDIF
 
-L104E:	CALL	0F82DH
 	ELSE
         RST     NextChar
         RET     
@@ -3781,17 +3343,22 @@ L1040:  CALL    Reader
         DEC     B
         JP      NZ,L1040
 	ENDIF
-L1051:  LD      (VAR_BASE),HL
+
+L1051:
+	IF	RK86
+	CALL	0F82DH
+	ENDIF
+	LD      (VAR_BASE),HL
         LD      HL,szOK
         CALL    PrintString
         JP      UpdateLinkedList
 
-; Какой-то мертвый код...
+; Какой-то мертвый код..., похоже на другую реализацию PEEK
         CALL    FTestPositiveIntegerExpression
         LD      A,(DE)
         JP      L0CAB
 
-; Тоже похоже на мертвый код
+; Тоже мертвый код, , похоже на другую реализацию POKE
         CALL    L0642
 
 L1067:  PUSH    DE
@@ -4037,12 +3604,7 @@ L17A1:  LD      D,00H
 Cls:
 ; Здесь можно было бы просто вывести 01fH через МОНИТОР и было бы портабельно...
 ; Но МИКРО-80 не умеет получать и сохранять координаты курсора.
-	IF	BASICNEW
-	; TODO Сначала сохраняем позицию курсора
-	LD	C, 01FH
-	CALL	0F809H
-	; TODO Потом восстанавливаем позицию курсора
-	ELSE	
+
         PUSH    HL
         LD      HL,0E800H
         LD      DE,1A00H
@@ -4057,7 +3619,6 @@ ClsLoop:
         JP      NZ, ClsLoop
         POP     HL
         RET
-	ENDIF
 
 	CHK	17C7H, "Сдвижка кода"
 Plot:
@@ -4150,9 +3711,9 @@ Line:
         LD      (GPOSY2),A		; 1953H
         PUSH    HL
         LD      HL,0100H
-        LD      (194EH),HL
+        LD      (L194E),HL
         LD      HL,0001H
-        LD      (1950H),HL
+        LD      (L1950),HL
         LD      HL,(GPOSX)		; 1954H
 	IF	RK86
 	LD	A,31h
@@ -4170,7 +3731,7 @@ Line:
         ADD     A,01H
         LD      E,A
         LD      A,0FFH
-        LD      (1950H),A
+        LD      (L1950),A
 L187B:  LD      A,(GPOSY2)		; 1953H
         SUB     H
         LD      D,A
@@ -4180,20 +3741,20 @@ L187B:  LD      A,(GPOSY2)		; 1953H
         ADD     A,01H
         LD      D,A
         LD      A,0FFH
-        LD      (194FH),A
+        LD      (L194F),A
 L188D:  LD      A,E
         CP      D
         JP      P,L18A8
         LD      B,E
         LD      E,D
         LD      D,B
-        LD      A,(1950H)
-        LD      (194EH),A
-        LD      A,(194FH)
-        LD      (1951H),A
+        LD      A,(L1950)
+        LD      (L194E),A
+        LD      A,(L194F)
+        LD      (L1951),A
         XOR     A
-        LD      (1950H),A
-        LD      (194FH),A
+        LD      (L1950),A
+        LD      (L194F),A
 L18A8:  LD      A,E
         RRA     
         LD      C,A
@@ -4209,10 +3770,10 @@ L18AD:  LD      A,E
 	ENDIF
         SUB     H
         LD      H,A
-        LD      A,(1950H)
+        LD      A,(L1950)
         ADD     A,L
         LD      (GPOSX),A		; 1954H
-        LD      A,(1951H)
+        LD      A,(L1951)
         ADD     A,H
         LD      (GPOSY),A		; 1955H
         LD      A,D
@@ -4226,10 +3787,10 @@ L18AD:  LD      A,E
         SUB     E
         LD      C,A
         LD      HL,(GPOSX)		; 1954H
-        LD      A,(194EH)
+        LD      A,(L194E)
         ADD     A,L
         LD      (GPOSX),A		; 1954H
-        LD      A,(194FH)
+        LD      A,(L194F)
         ADD     A,H
         LD      (GPOSY),A		; 1955H
 L18E4:  PUSH    BC
@@ -4291,22 +3852,12 @@ L1938:  LD      A,08H
         JP      NZ,L1936
         DEC     B
         JP      NZ,L1938
-	IF	RK86
-        JP      L104E
-	ELSE
         JP      L1051
+
+	if	BASICNEW
+	ELSE
+	include "tmpvars.inc"
 	ENDIF
-        NOP     
-        NOP
-	NOP
-	NOP
-GPOSX2:	DB	0			; Вторая графическая координата X (для LINE)
-GPOSY2:	DB	0		; Вторая графическая координата Y (для LINE)
-GPOSX:	DB	0		; Графическая координата X
-GPOSY:	DB	0		; Графическая координата Y
-GFILL:	DB	0		; Ставить точки или стереть точку
-POSX:	DB	0
-POSY:	DB	0
 	IF	RK86
 
 L1959:	CALL	InputChar
