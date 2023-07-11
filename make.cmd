@@ -21,6 +21,15 @@ p2bin basic80.p basic80-rk86-32.bin
 asw -lU -D UT88=1 basic80.asm > basic80-ut88.lst
 p2bin basic80.p basic80-ut88.bin
 
+asw -lU -D UT88=1 -D RAM=12 basic80.asm > basic80-ut88-12.lst
+p2bin basic80.p basic80-ut88-12.bin
+
+asw -lU -D UT88=1 -D RAM=32 basic80.asm > basic80-ut88-32.lst
+p2bin basic80.p basic80-ut88-32.bin
+
+asw -lU -D UT88=1 -D RAM=48 basic80.asm > basic80-ut88-48.lst
+p2bin basic80.p basic80-ut88-48.bin
+
 asw -lU ctrlbas.asm > ctrlbas.lst
 p2bin ctrlbas.p ctrlbas.bin
 
@@ -47,6 +56,15 @@ p2bin basic80.p basic80-rk86-service-32.bin
 asw -lU -D SERVICE=1 -D UT88=1 basic80.asm > basic80-ut88-service.lst
 p2bin basic80.p basic80-ut88-service.bin
 
+asw -lU -D SERVICE=1 -D UT88=1 -D RAM=12 basic80.asm > basic80-ut88-service-12.lst
+p2bin basic80.p basic80-ut88-service-12.bin
+
+asw -lU -D SERVICE=1 -D UT88=1 -D RAM=32 basic80.asm > basic80-ut88-service-32.lst
+p2bin basic80.p basic80-ut88-service-32.bin
+
+asw -lU -D SERVICE=1 -D UT88=1 -D RAM=48 basic80.asm > basic80-ut88-service-48.lst
+p2bin basic80.p basic80-ut88-service-48.bin
+
 rem Мои варианты
 
 asw -lU -D BASICNEW=1 basic80.asm > basic80-new.lst
@@ -55,6 +73,5 @@ p2bin basic80.p basic80-new.bin
 bin2rk basic80.bin
 bin2rk ctrlbas.bin $2800
 
-ctrlbas-micro80
-ctrlbas-rk86
+ctrlbas
 
