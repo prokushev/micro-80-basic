@@ -191,6 +191,6 @@ end;
 begin
 	CheckMicro80File('basic80.bin');
 	CheckFile('basic80-rk86.bin', rk86sums);
-	CheckFile('basic80-rk86-service.bin', servicesums);
 	CheckFile('basic80-rk86-service.bin', servicesums2);
+	CheckFile('basic80-rk86-service.bin', servicesums);
 end.
