@@ -23,6 +23,8 @@
 ;   для стандартного ROM-диска).
 ; !?Добавить обратно NULL
 ;
+; Для микроши f82d есть? Или как-то по другому?
+;
 ; БЕЙСИК для МИКРО-80/РАДИО-86РК - Общее устройство
 ;
 ; Как распределяется память
@@ -206,21 +208,15 @@
 
 ; Конфигурация
 
-	IFNDEF	RAM
-RAM	EQU	16
-	ENDIF
+	ifndef MIKROSHA
+MIKROSHA EQU	0	; Модификации для "Бейсик для Микроша"
+	endif
 
-; Верхний адрес доступной памяти. В МИКРО-80 задано жестко, 
-; а в РК-86 настраивается при инициализации
-	IF	RAM=12
-MEM_TOP	EQU	02FFFH
-	ELSEIF	RAM=16
-MEM_TOP	EQU	03FFFH
-	ELSEIF	RAM=32
-MEM_TOP	EQU	07FFFH
-	ELSEIF	RAM=48
-MEM_TOP	EQU	0BFFFH
-	ENDIF
+; Т.к. Микроша близок в РК86, то используем его код в качестве основы
+	if MIKROSHA
+RK86	EQU	1	; Модификации для "Бейсик для Радио-86РК"
+RAM	EQU	32	; Микроша шла только с 32кб
+	endif
 
 	ifndef RK86
 RK86	EQU	0	; Модификации для "Бейсик для Радио-86РК"
@@ -236,6 +232,22 @@ BASICNEW	EQU	0	; Включить мои изменения в коде
 	endif
 ANSI	EQU	0	; Включить поддержку совместимости с ANSI Minimal Basic
 GOST	EQU	0	; Включить поддержку совместимости с ГОСТ 27787-88
+
+	IFNDEF	RAM
+RAM	EQU	16
+	ENDIF
+
+; Верхний адрес доступной памяти. В МИКРО-80 задано жестко, 
+; а в РК-86 настраивается при инициализации
+	IF	RAM=12
+MEM_TOP	EQU	02FFFH
+	ELSEIF	RAM=16
+MEM_TOP	EQU	03FFFH
+	ELSEIF	RAM=32
+MEM_TOP	EQU	07FFFH
+	ELSEIF	RAM=48
+MEM_TOP	EQU	0BFFFH
+	ENDIF
 
 	IF	BASICNEW
 	IF	ANSI
@@ -262,6 +274,7 @@ LET	EQU	0	; Поддержка команды LET
 RANDOMIZE EQU	0	; Поддержка команды RANDOMIZE
 END	EQU	0	; Поддержка команды END
 	ENDIF
+
 
 	IF	BASICNEW
 CHK	MACRO	adr, msg
@@ -3373,6 +3386,10 @@ L100E:  LD      A,(DE)
 	JP	0F82DH
 
 ContInit:
+	IF	MIKROSHA
+	LD	HL, 75FFH
+	DB	12 DUP (0)
+	ELSE
 	LD	HL, (VAR_BASE)
 	INC	H
 	EX	DE, HL
@@ -3380,20 +3397,32 @@ ContInit:
 	RST	CompareHLDE
 	JP	C, L1041
 	CALL	0F830H
+	ENDIF
 	LD	(MEMSIZ), HL		;021bh
 	LD	(STR_TOP), HL
 	LD	SP, HL
 	LD	HL, 0FFCEH		; -50
 	ADD	HL, SP
 	LD	(STACK_TOP), HL		;0241h
+	IF	MIKROSHA
+	NOP
+	NOP
+	NOP
+	ELSE
 	CALL	L19B8
+	ENDIF
 	JP	Main
 
 L1041:	LD	A, D
 	CALL	0F815h
 	LD	A, E
 	CALL	0F815h
-L1049:	JP	0F86Ch
+L1049:	
+	IF	MIKROSHA
+	JP	0F800H
+	ELSE
+	JP	0F86Ch
+	ENDIF
 
 	IF	BASICNEW
 	ELSE
@@ -3501,7 +3530,11 @@ Init:	XOR     A
 	JP	ContInit
 
 szHello:
+	IF	MIKROSHA
+	DB	01FH,"*mikro{a* BASIC   ", 0DH, 0AH, 0
+	ELSE
 	DB	01FH,"*radio-86rk* BASIC", 0DH, 0AH, 0
+	ENDIF
 
 Cls:	PUSH	HL
 	CALL	0F81EH
@@ -3646,7 +3679,7 @@ InitLoop:
 
 szHello:
 	IF	UT88
-	DB		1Fh, 0Dh, 0Ah, "* UT-88 *  BASIC", 0
+	DB		1Fh, "*UT-88* BASIC   ", 0Dh, 0Ah, 0
 	ELSE
 	DB		1Fh, 0Dh, 0Ah, "*MikrO/80* BASIC", 0
 	ENDIF

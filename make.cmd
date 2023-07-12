@@ -35,6 +35,13 @@ if errorlevel 1 goto error
 
 rem ------------------------------------------------------------
 
+asw -lU -D MIKROSHA=1 basic80.asm > basic80-mikrosha-32kb.lst
+if errorlevel 1 goto error
+p2bin basic80.p bin\mikrosha\basic80-mikrosha-32kb.bin
+if errorlevel 1 goto error
+
+rem ------------------------------------------------------------
+
 asw -lU -D UT88=1 -D RAM=12 basic80.asm > basic80-ut88-12kb.lst
 if errorlevel 1 goto error
 p2bin basic80.p bin\ut-88\basic80-ut88-12kb.bin
@@ -139,6 +146,8 @@ bin2rk bin\micro-80\basic80-service-48kb.bin
 
 bin2rk bin\radio-86rk\basic80-rk86-16kb.bin
 bin2rk bin\radio-86rk\basic80-rk86-32kb.bin
+
+bin2rk bin\mikrosha\basic80-mikrosha-32kb.bin
 
 bin2rk bin\radio-86rk\basic80-rk86-service-16kb.bin
 bin2rk bin\radio-86rk\basic80-rk86-service-32kb.bin
