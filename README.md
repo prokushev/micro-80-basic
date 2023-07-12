@@ -1,4 +1,7 @@
 # * МИКРО/80 * BASIC
+
+![](docs/micro80hello.png)
+
 # * РАДИО-86РК * BASIC 
 # * ЮТ-88 * BASIC
 # * МИКРО/80 * BASIC-SERVICE
