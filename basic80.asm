@@ -635,11 +635,11 @@ StoreProgramLine:
         PUSH    BC
         RST     NextChar
         PUSH    AF
-        CALL    FindProgramLine
+        CALL    FindProgramLine			; Ищем строку в программе
         PUSH    BC
-        JP      NC,InsertProgramLine
+        JP      NC,InsertProgramLine		; Если не нашли, то вставляем строку
 
-;Carry was set by the call to FindProgramLine, meaning that the line already exists.
+; Carry was set by the call to FindProgramLine, meaning that the line already exists.
 ; So we have to remove the old program line before inserting the new one in it's place.
 ; To remove the program line we simply move the remainder of the program 
 ;(ie every line that comes after it) down in memory.
@@ -658,8 +658,10 @@ RemoveProgramLineLoop:
         LD      L,C
         INC     HL
         LD      (VAR_BASE),HL
+
 ;To insert the program line, firstly the program remainder (every line that comes
 ; after the one to be inserted) must be moved up in memory to make room.
+
 InsertProgramLine:
 	POP     DE
         POP     AF
@@ -718,11 +720,11 @@ FindEndOfLine:
         EX      DE,HL
         JP      UpdateLinkedListLoop
 
-;FindProgramLine
-;Given a line number in DE, this function returns the address of that progam line in BC.
+; FindProgramLine
+; Given a line number in DE, this function returns the address of that progam line in BC.
 ; If the line doesn't exist, then BC points to the next line's address, ie where the 
-;line could be inserted. Carry flag is set if the line exists, otherwise carry reset.
-		
+; line could be inserted. Carry flag is set if the line exists, otherwise carry reset.
+
 FindProgramLine:
 	LD      HL,(PROGRAM_BASE)
 FindProgramLineInMem:
@@ -748,7 +750,7 @@ FindProgramLineInMem:
         RET     NC
 
         JP      FindProgramLineInMem
-		
+
 ; New
 ; Команда NEW. Записывает нулевой номер строки в конец области программ (т.е. пустая программа),
 ; обновляет указатель на область переменных и переходит в ResetAll.
@@ -4215,9 +4217,9 @@ L1AC4:	LD	A, C
 	ENDIF
 	CALL	0F803H
 	CP	45H
-	JP	Z, 01B72H
+	JP	Z, L1B72
 	CP	41H
-	JP	Z, 01B2CH
+	JP	Z, L1B2C
 	CP	" "
 	IF	RK86
 	JP	C, L195C
@@ -4246,16 +4248,16 @@ L1AE8:	LD	A, B
 L1AFA:	LD	HL, (L0227)
 	EX	DE, HL
 	LD	HL, 000AH
-	Add	HL, DE
+	ADD	HL, DE
 	LD	(L0227), HL
 	RET
 
 L1B06:	LD	HL, (L0227)
-L1B09:	CALL	01465H
-	LD	HL, 01CFH
+L1B09:	CALL	PrintInt
+	LD	HL, LINE_BUFFER
 	LD	B, 1
-	LD	DE, 0253H
-	LD	A, (DE)
+	LD	DE, FBUFFER+1
+L1B14:	LD	A, (DE)
 	CP	0
 	JP	Z, L1B25
 	LD	(HL), A
@@ -4264,7 +4266,7 @@ L1B09:	CALL	01465H
 	CALL	L1B51
 	INC	B
 	INC	DE
-	JP	01B14H
+	JP	L1B14
 
 L1B25:	LD	A, 20H
 	LD	(HL), A
@@ -4280,14 +4282,14 @@ L1B2C:	POP	HL
 	LD	(0495H), HL
 	LD	HL, L1CF8
 	CALL	0F818H
-	CALL	007DCH
+	CALL	NewLine
 	JP	L1B5C
 
 L1B44:	LD	L, 07DH
 	LD	(0495H), HL
-	LD	HL, (021BH)
+	LD	HL, (MEMSIZ)
 	LD	SP, HL
-	JP	02FDH
+	JP	Main
 
 L1B50:	INC	A
 L1B51:	LD	(TERMINAL_X),A
@@ -4300,27 +4302,27 @@ L1B5C:	CALL	L1B06
 	CALL	InputNext
 	RST	NextChar
 	PUSH	AF
-	CALL	00661H
+	CALL	LineNumberFromStr
 	EX	DE, HL
 	LD	(L0227), HL
 	EX	DE, HL
 	JP	Z, L1B58
 	JP	0031AH
-	LD	HL, L1CEE
+L1B72:	LD	HL, L1CEE
 	CALL	0F818H
-	LD	HL, 01B93H
+	LD	HL, L1B93
 	LD	(0030EH), HL
 	LD	A, 1
 	LD	(004BDH), A
 	CALL	InputLine
-	CALL	01C55H
+	CALL	L1C55
 	LD	A, 0C9H
 	LD	(007D7H), A
 	LD	A, 0B8H
 	LD	(004C9H), A
-	LD	HL, (L0039)
+L1B93:	LD	HL, (L0039)
 	EX	DE, HL
-	CALL	00385H
+	CALL	FindProgramLine
 	PUSH	BC
 L1B9B:	POP	HL
 	RST	PushNextWord
@@ -4329,7 +4331,7 @@ L1B9B:	POP	HL
 	OR	C
 	JP	Z, L1BE4
 	PUSH	BC
-	CALL	007DCH
+	CALL	NewLine
 	RST	PushNextWord
 	EX	(SP), HL
 	CALL	L1B09
@@ -4345,7 +4347,7 @@ L1BAC:	POP	HL
 	SUB	07FH
 	LD	C, A
 	PUSH	HL
-	LD	DE, 00088H
+	LD	DE, KEYWORDS
 L1BC3:	PUSH	DE
 L1BC4:	LD	A, (DE)
 	INC	DE
