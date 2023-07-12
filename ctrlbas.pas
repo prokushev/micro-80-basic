@@ -189,8 +189,8 @@ begin
 end;
 
 begin
-	CheckMicro80File('basic80.bin');
-	CheckFile('basic80-rk86.bin', rk86sums);
-	CheckFile('basic80-rk86-service.bin', servicesums2);
-	CheckFile('basic80-rk86-service.bin', servicesums);
+	CheckMicro80File('bin\micro-80\basic80-16kb.bin');
+	CheckFile('bin\radio-86rk\basic80-rk86-16kb.bin', rk86sums);
+	CheckFile('bin\radio-86rk\basic80-rk86-service-16kb.bin', servicesums2);
+	CheckFile('bin\radio-86rk\basic80-rk86-service-16kb.bin', servicesums);
 end.

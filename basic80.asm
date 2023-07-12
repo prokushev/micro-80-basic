@@ -1077,7 +1077,7 @@ L04BD:	EQU	$+1
 	NOP
 	NOP
 	SCF
-	CALL	C, 01B50H
+	CALL	C, L1B50
 	ELSE	; SERVICE
         CP      48H
         CALL    Z,NewLine
@@ -1085,19 +1085,23 @@ L04BD:	EQU	$+1
         LD      (TERMINAL_X),A
 	ENDIF	; SERVICE
 
-L04CD:  POP     AF
-        PUSH    BC
-        LD      C,A
-        PUSH    AF
+L04CD:	POP     AF
+	PUSH    BC
+	LD      C,A
+	PUSH    AF
 	IF	RK86
 	CALL	L19C0
 	ELSE
-        CALL    0F809h
+	IF	UT88
+	CALL	L1959
+	ELSE
+	CALL	0F809h
 	ENDIF
-        POP     AF
-        POP     BC
-        NOP     
-        RET     
+	ENDIF
+	POP	AF
+	POP	BC
+	NOP
+	RET
 
 ;InputChar
 ;Gets one char of input from the user.		
@@ -3983,14 +3987,14 @@ L1995:
 	LD	A, 08H
 	RST	OutChar
 	JP	L19EE
-	ELSE
+	ELSE	; SERVICE
 	LD	A, 08H
 	RST	OutChar
 	LD	A, ' '
 	RST	OutChar
 	LD	A, 08H
 	JP	Backspace
-	ENDIF
+	ENDIF	; SERVICE
 L19A0:	LD	A, (ControlChar)
 	CPL
 	LD	(ControlChar), A
@@ -4040,8 +4044,18 @@ L19E5:	LD	A,(HL)
 	LD	(HL), 0FH
 	POP	HL
 	RET
+	ELSE	; RK86
+	IF	UT88
+L1959:	PUSH	AF
+	AND	07FH
+	LD	C, A
+	CALL	0F809H
+	POP	AF
+	RET
+	DB	31 DUP (0)
 	ELSE
 	DB	40 DUP (0)
+	ENDIF
 	DB	0CH
 	IF	SERVICE
 	DB	19 DUP (0)
@@ -4052,9 +4066,9 @@ L1995:	DEC	B
 	RST	OutChar
 	JP	L19EE
 	DB	32 DUP (0)
-	ELSE
+	ELSE	; SERVICE
 	DB	62 DUP (0)
-	ENDIF
+	ENDIF	; SERVICE
 	CHK	19c0h, "Сдвижка кода"
 	DB 72h, 61h, 7Ah, 72h, 61h, 62h, 6Fh, 74h,  41h, 4Eh, 4Fh, 20h, 44h, 4Ch, 71h, 20h	; "РАЗРАБОТANO DLЯ "
 	DB 76h, 75h, 72h, 6Eh, 61h, 6Ch, 61h, 20h,  72h, 61h, 64h, 69h, 6Fh, 20h, 60h, 6Fh	; "ЖУРНАЛА РАДИО МО"
