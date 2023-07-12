@@ -159,6 +159,12 @@ bin2rk bin\ut-88\basic80-ut88-service-48kb.bin
 :if errorlevel 1 goto error
 :bin2rk bin\ut-88\basictest.bin
 
+:asw -lU renum.asm > renum.lst
+:if errorlevel 1 goto error
+:p2bin renum.p renum.bin
+:if errorlevel 1 goto error
+:bin2rk renum.bin
+
 :fpc ctrlbas
 ctrlbas
 
