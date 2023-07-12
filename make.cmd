@@ -132,9 +132,26 @@ bin2rk bin\micro-80\basic80-16kb.bin
 bin2rk bin\micro-80\basic80-32kb.bin
 bin2rk bin\micro-80\basic80-48kb.bin
 
+bin2rk bin\micro-80\basic80-service-12kb.bin
+bin2rk bin\micro-80\basic80-service-16kb.bin
+bin2rk bin\micro-80\basic80-service-32kb.bin
+bin2rk bin\micro-80\basic80-service-48kb.bin
+
 bin2rk bin\radio-86rk\basic80-rk86-16kb.bin
+bin2rk bin\radio-86rk\basic80-rk86-32kb.bin
+
+bin2rk bin\radio-86rk\basic80-rk86-service-16kb.bin
+bin2rk bin\radio-86rk\basic80-rk86-service-32kb.bin
 
 bin2rk bin\ut-88\basic80-ut88-12kb.bin
+bin2rk bin\ut-88\basic80-ut88-16kb.bin
+bin2rk bin\ut-88\basic80-ut88-32kb.bin
+bin2rk bin\ut-88\basic80-ut88-48kb.bin
+
+bin2rk bin\ut-88\basic80-ut88-service-12kb.bin
+bin2rk bin\ut-88\basic80-ut88-service-16kb.bin
+bin2rk bin\ut-88\basic80-ut88-service-32kb.bin
+bin2rk bin\ut-88\basic80-ut88-service-48kb.bin
 
 :asw -lU basictest.asm > basictest.lst
 :if errorlevel 1 goto error
