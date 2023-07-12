@@ -4075,7 +4075,8 @@ L19EE:	LD	A, (L04BD)
 	ENDIF
 
 	IF	SERVICE
-L1A00:	LD	DE, TK_CLS+KEYWORDS-80H
+; Тут еще подумать... Не очень удобно напрямую прописаны адреса...
+L1A00:	LD	DE, TK_CLS+KEYWORDS-FIRST_TK
 	CP	"2"
 	RET	Z
 	LD	E, 8BH
@@ -4203,7 +4204,7 @@ L1AC4:	LD	A, C
 	CP	45H
 	JP	Z, 01B72H
 	CP	41H
-	JP	Z, 01B2CH
+	JP	Z, L1B2C
 	CP	" "
 	IF	RK86
 	JP	C, L195C
