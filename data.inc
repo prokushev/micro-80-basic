@@ -33,6 +33,9 @@ KW_INLINE_FNS:
 	DW	Str
 	DW	Val
 	DW	Asc
+	IF	BASICNEW
+	DW	Pi
+	ENDIF
 	DW	Chr
 	DW	Left
 	DW	Right
@@ -140,6 +143,14 @@ Q	SET	FIRST_TK
 	DB	"MSAV", 'E'+80h	;	9b
 	TOKEN	TK_NEW
 	DB 	"NE" , 'W'+80h	;	9c
+	IF	BASICNEW
+	TOKEN	TK_SYSTEM
+	DB	"SYSTE", 'M'+80h
+	TOKEN	TK_MONITOR
+	DB	"MONITO", 'R'+80h
+	TOKEN	TK_HOME
+	DB	"HOM", 'E'+80h
+	ENDIF
 	IF	OPTION
 	TOKEN	TK_OPTION
 	DB	"OPTIO", 'N'+80h
@@ -157,7 +168,7 @@ Q	SET	FIRST_TK
 	DB	"EN", 'D'+80h
 	ENDIF
 
-TKCOUNT	EQU	Q-80H
+TKCOUNT	EQU	Q-FIRST_TK
 
 ;Supplementary keywords
 	TOKEN	TK_TAB
@@ -238,6 +249,10 @@ TKCOUNT	EQU	Q-80H
 	DB	"VA", 'L'+80h	;	c0
 	TOKEN	TK_ASC
 	DB	"AS", 'C'+80h	;	c1
+	IF	BASICNEW
+	TOKEN	TK_PI
+	DB	"P", 'I'+80h
+	ENDIF
 	TOKEN	TK_CHRS
 	DB	"CHR", '$'+80h	;	c2
 	TOKEN	TK_LEFTS
@@ -246,6 +261,8 @@ TKCOUNT	EQU	Q-80H
 	DB	"RIGHT", '$'+80h	;c4
 	TOKEN	TK_MIDS
 	DB	"MID", '$'+80h	;	c5
+TK_INLINE_COUNT EQU Q-TK_SGN
+
 ; --------------- Это потом из микрона возмем
 ;c7:SCREEN$( 1eee 1fd8 1a39
 ;c8: INKEY$ 1ef6 1fda 1685
@@ -254,7 +271,6 @@ TKCOUNT	EQU	Q-80H
 ;cb: BEEP 1eff 1fe0 0279
 ;cc: PAUSE 1f03 1fe2 7913
 ;cd: VERIFY 1f08 1fe4 0f11
-;ce: HOME 1f0e 1fe6 4e7b
 ;cf: EDIT 1f12 1fe8 7b10
 ;d0: DELETE 1f16 1fea 10b0
 ;d1: MERGE 1f1c 1fec 137f
@@ -311,6 +327,12 @@ KW_GENERAL_FNS:
 	DW	Msave		;			OUT
 	DW	New		;			LPRINT
 				;			LLIST
+	IF	BASICNEW
+	DW	Monitor
+	DW	Monitor		; SYSTEM то же, что и MONITOR (пока)
+	DW	Home
+	ENDIF
+
 	IF	OPTION
 	DW	Option
 	ENDIF
@@ -353,6 +375,44 @@ KW_GENERAL_FNS:
 
 
 ERROR_CODES:
+	IF	BASICNEW
+ERR_NF	EQU	$-ERROR_CODES
+	DB	'NEXT bez FOR',0
+ERR_SN	EQU	$-ERROR_CODES
+	DB	'sintaksi~eskaq',0
+ERR_RG	EQU	$-ERROR_CODES
+	DB	'RETURN bez GOSUB',0
+ERR_OD	EQU	$-ERROR_CODES
+	DB	'malo dannyh pri DATA', 0
+ERR_FC	EQU	$-ERROR_CODES
+	DB	'newernyj argument', 0
+ERR_OV	EQU	$-ERROR_CODES
+	DB	'0','6'+80h	; 0A Overflow
+ERR_OM	EQU	$-ERROR_CODES
+	DB	'0','7'+80h	; 0C Out of memory
+ERR_US	EQU	$-ERROR_CODES
+	DB	'0','8'+80h	; 0E Undefined Subroutine
+ERR_BS	EQU	$-ERROR_CODES
+	DB	'0','9'+80h	; 10 Bad Subscript
+ERR_DD	EQU	$-ERROR_CODES
+	DB	'1','0'+80h	; 12 Duplicate Definition
+ERR_DZ	EQU	$-ERROR_CODES
+	DB	'1','1'+80h	; 14 Division by zero
+ERR_ID	EQU	$-ERROR_CODES
+	DB	'1','2'+80h	; 16 Invalid in Direct mode
+ERR_TM	EQU	$-ERROR_CODES
+	DB	'1','3'+80h	; 18 Type mismatch
+ERR_SO	EQU	$-ERROR_CODES
+	DB	'1','4'+80h	; 1AH Out of string space
+ERR_LS	EQU	$-ERROR_CODES
+	DB	'1','5'+80h	; 1CH String too long
+ERR_ST	EQU	$-ERROR_CODES
+	DB	'1','6'+80h	; 1EH String formula too complex
+ERR_CN	EQU	$-ERROR_CODES
+	DB	'1','7'+80h	; 20H Can't continue
+ERR_UF	EQU	$-ERROR_CODES
+	DB	'1','8'+80h	; 22H Undefined function
+	ELSE
 ERR_NF	EQU	$-ERROR_CODES
 	DB	'0','1'+80h	; 00 NEXT without FOR
 ERR_SN	EQU	$-ERROR_CODES
@@ -389,6 +449,7 @@ ERR_CN	EQU	$-ERROR_CODES
 	DB	'1','7'+80h	; 20H Can't continue
 ERR_UF	EQU	$-ERROR_CODES
 	DB	'1','8'+80h	; 22H Undefined function
+	ENDIF
 
 	CHK 01ceh, "Сдвижка кода"
 
@@ -439,7 +500,7 @@ L0229:	DW	0
 	DB	0
 	DB	0
 	ENDIF
-        LD      B,00H
+L022B:        LD      B,00H
         LD      L,E
         LD      (BC),A
 STR_TOP:
@@ -484,14 +545,19 @@ FBUFFER:
 	db	30h, 30h,30h, 0	; "000"
 	CHK	025bh, "Сдвижка кода"
 	db	0, 0, 0, 0
+	if	BASICNEW
+szError:	DB		" o{ibka", 00h		; "ОШИБКА"
+	else
 szError:	DB		"o{ibk", "a"+80h, 00h		; "ОШИБКА"
+	endif
 szIn:		DB		"  w", " "+80h, 00h 			; "  В "
 szOK:		DB		0Dh, 0Ah, "="+080h, ">", 0Dh, 0Ah, 00h		; "=>"
 szStop:		DB		0Dh, 0Ah, "stop", " "+080h, 00h		; "СТОП "
 
 	if	BASICNEW
-	include "szrepeat.inc"
-	include "szoverflow.inc"
+	include "szRepeat.inc"
+	include "szOverflow.inc"
+	include "szHello.inc"
 	include "prnflag.inc"
 	include "tmpvars.inc"
 	endif

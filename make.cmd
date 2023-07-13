@@ -127,10 +127,11 @@ if errorlevel 1 goto error
 
 rem Мои варианты
 
-asw -lU -D BASICNEW=1 basic80.asm > basic80-new.lst
+asw -lU -D SERVICE=0 -D BASICNEW=1 basic80.asm > basic80-new-16kb.lst
 if errorlevel 1 goto error
-p2bin basic80.p basic80-new.bin
+p2bin basic80.p bin\micro-80\basic80-new-16kb.bin
 if errorlevel 1 goto error
+bin2rk bin\micro-80\basic80-new-16kb.bin
 
 bin2rk ctrlbas.bin $2800
 

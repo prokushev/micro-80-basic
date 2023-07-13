@@ -9,8 +9,6 @@
 ; По ходу разбора встречаются мысли и хотелки.
 ;
 ; Общие хотелки:
-; !?Добавить обратно поддержку LET
-; !?Добавить обратно поддержку END
 ; !!Добавить поддержку каналов и потоков, как в Sinclair Basic, не забывая совместимость с ECMA стандартом
 ; !!Отвязаться от RST и пересобрать с адреса 100h. Вначале добавить CP/M адаптер. При наличии поддержки дисковых фунок - адаптер не цепляем. 
 ; !!Добавить OPTION BASE для управления индеском массива (Совместимость ANSI)
@@ -304,11 +302,18 @@ SCRADDR	EQU	077C2H
 	ELSE
 
 	IF SERVICE
+
 SCRBUF			EQU	1D00H
 PROGRAM_BASE_INIT	EQU	2500H
+
+	ELSE
+	IF	BASICNEW
+SCRBUF			EQU	1E00H
+PROGRAM_BASE_INIT	EQU	2600H
 	ELSE
 SCRBUF			EQU	1A00H
 PROGRAM_BASE_INIT	EQU	2200H
+	ENDIF
 	ENDIF
 
 	ENDIF
@@ -335,9 +340,9 @@ PROGRAM_BASE_INIT	EQU	2200H
 	IF	BASICNEW
 	ORG	0
 ;	ORG	100H
-;RST	MACRO	adr
-;	CALL	adr
-;	ENDM
+RST	MACRO	adr
+	CALL	adr
+	ENDM
 	ELSE
 	ORG	0
 	ENDIF
@@ -376,12 +381,15 @@ SyntaxCheck:
 ; also the zero flag is set if a null character has been reached.
 
 NextChar:
+	IF	BASICNEW
+	JP	NextChar2
+	ELSE
 	INC	HL
 	LD	A,(HL)
 	CP	':'			; 3AH
 	RET	NC			; End of statement or bigger
 	JP	NextChar_tail
-
+	ENDIF
 ;OutChar (RST 3)
 ;Prints a character to the terminal.
 
@@ -428,6 +436,7 @@ PushNextWord:
 ;
 ;
 ;
+	ORG	38H
 RST7:
 	RET
 L0039:	DW	0
@@ -442,7 +451,10 @@ RST6RET:	EQU	$+1
 	JP	04F9H		; Это самомодифицирующийся код, см. PushNextWord.
 
 	; Блок данных
+	IF	BASICNEW
+	ELSE
 	include "data.inc"
+	ENDIF
 
 ;=========================
 ;= 1.4 Utility Functions =
@@ -597,10 +609,14 @@ Error:
         LD      A,'?'
         RST     OutChar
         ADD     HL,DE
+	IF	BASICNEW
+	CALL    PrintString
+	ELSE
         LD      A,(HL)
         RST     OutChar
         RST     NextChar
         RST     OutChar
+	ENDIF
         LD      HL, szError
 PrintInLine:
 	CALL    PrintString
@@ -831,15 +847,17 @@ InputLineWithQ:
         RST     OutChar
         JP      InputLine
 		
-;Tokenize
-;Tokenises LINE_BUFFER, replacing keywords with their IDs. On exit, C holds the length of the tokenised line plus a few bytes to make it a 
-;complete program line.
+; Tokenize
+;
+; Токенизирует строку в буфере LINE_BUFFER, заменяя ключевые слова кодом токена.
+; На выходе C содержит длину токенизированной строки плюс несколько байт
+; для завершения строки программы.
 
 Tokenize:
 	XOR     A
-        LD      (DATA_STM),A
-        LD      C,05H			; Initialise line length to 5
-        LD      DE,LINE_BUFFER		; ie, output ptr is same as input ptr at start.
+	LD      (DATA_STM),A
+	LD      C,05H			; Initialise line length to 5
+	LD      DE,LINE_BUFFER		; ie, output ptr is same as input ptr at start.
 TokenizeNext:
 	LD      A,(HL)			; Получение введенного символа
 ;If char is a space, jump ahead to write it out.
@@ -908,12 +926,12 @@ NotAKeyword:
 	POP 	HL			; Restore input ptr
 	LD 	A, (HL)			; and get input char
 ; Write character, and advance buffer pointers.
-        POP     DE			; Restore output ptr
+        POP	DE			; Restore output ptr
 WriteChar:
-	INC     HL			; Advance input ptr
-        LD      (DE),A			; Store output char
-        INC     DE			; Advance output ptr
-        INC     C			; C++ (arf!).
+	INC	HL			; Advance input ptr
+        LD	(DE),A			; Store output char
+        INC	DE			; Advance output ptr
+        INC	C			; C++ (arf!).
 ; If we've just written the ID of keyword REM then we need to freecopy the rest of the line.
 ; Here we test for REM (8E) and jump back to the outer loop if it isn't. Note that if it is
 ; REM, then we set B to 0 so the freecopy won't stop prematurely.
@@ -1353,12 +1371,12 @@ ExecANotZero:
 ExecA:
 ; Все ключевые слова >=0x80. Если это не ключевое слово, то считаем, что LET было не введено и это команда LET.
 	SUB     80H
-        JP      C,Let
+	JP	C,Let
 ; Если это не основное слово, то это синтаксическая ошибка.
         CP      TKCOUNT
         JP      NC,SyntaxError
 ; Вычисляем адрес обработчика команды в таблице обработчиков в HL, сохранив текущий указатель программы в DE.
-        RLCA    			;	BC = A*2
+        RLCA				;	BC = A*2
         LD      C,A
         LD      B,00H
         EX      DE,HL
@@ -2274,7 +2292,7 @@ L09E6:  LD      (VALTYP),A
         JP      Z,L0AF9
         CP      TK_FN			; 0A0H
         JP      Z,L0CCD
-;If the character is the keyword ID of an inline function them jump ahead to deal with that.
+; Если символ является ключевым словом, то это встроенная функция, тогда обрабатываем ее.
         SUB     TK_SGN			; 0AEH
         JP      NC,EvalInlineFn
 ;The only possibility left is a bracketed expression. Here we check for an opening bracket, recurse into EvalExpression, and return.
@@ -2307,16 +2325,17 @@ EvalVarTerm:
         POP     HL
         RET     
 
-;Evaluate an inline function. First we get the offset into the KW_INLINE_FNS table into BC and stick it on the stack.
+; Evaluate an inline function. First we get the offset into the KW_INLINE_FNS table into BC and stick it on the stack.
 EvalInlineFn:
 	LD      B,00H
-        RLCA    
-        LD      C,A
-        PUSH    BC
-        RST     NextChar
-        LD      A,C
-        CP      ')'
-        JP      C,L0A65
+	RLCA    
+	LD      C,A
+	PUSH    BC
+;Evaluate function argument
+	RST     NextChar
+	LD      A,C
+        CP      2*(TK_LEFTS-TK_SGN)-1		; Это строковые функции fn$
+        JP      C,L0A65				; Нет, обычная
         RST     SyntaxCheck
 	DB	'('
 	CALL	EvalExpression
@@ -2488,7 +2507,7 @@ L0B1F:  CALL    CharIsAlpha
         JP      C,SyntaxError
         XOR     A
         LD      C,A
-        LD      (VALTYP),A		; A=0
+        LD      (VALTYP),A		; A=0, т.е. числовая переменная
         RST     NextChar
         JP      C,L0B34
         CALL    CharIsAlpha
@@ -2500,7 +2519,7 @@ L0B35:  RST     NextChar
         JP      NC,L0B35
 L0B3F:  SUB     '$'			; 24H
         JP      NZ,L0B4C
-        INC     A			; A=1
+        INC     A			; A=1, т.е. строковая переменная
         LD      (VALTYP),A
         RRCA    
         ADD     A,C
@@ -2708,6 +2727,16 @@ L0C74:  LD      HL,(PROG_PTR_TEMP2)
         RST     NextChar
         RET     
 
+	IF	BASICNEW
+Pi:
+	LD	HL, PiConst
+	CALL	FLoadFromMem
+	RET
+	
+PiConst:
+	DB	0DBH, 00FH, 049H, 081H	; PI/2
+	ENDIF
+
 	CHK	0C7Ah, "Сдвижка кода"
 Fre:
         LD      HL,(VAR_TOP)
@@ -2849,7 +2878,7 @@ L0D2F:  LD      A,(HL)
         RET     
 
 L0D43:  CALL    L0DAA
-L0D46:  LD      HL,022BH
+L0D46:  LD      HL,L022B
         PUSH    HL
         LD      (HL),A
         INC     HL
@@ -2877,7 +2906,7 @@ L0D65:  CP      22H
         CALL    L0D46
         RST     CompareHLDE
         CALL    NC,L0D2F
-L0D75:  LD      DE,022BH
+L0D75:  LD      DE,L022B
         LD      HL,(TEMPPT)		;021DH
         LD      (FACCUM),HL
         LD      A,01H
@@ -3417,7 +3446,7 @@ L1041:	LD	A, D
 	CALL	0F815h
 	LD	A, E
 	CALL	0F815h
-L1049:	
+L1049:
 	IF	MIKROSHA
 	JP	0F89DH
 	ELSE
@@ -3470,6 +3499,15 @@ L1051:
         CALL    PrintString
         JP      UpdateLinkedList
 
+	IF	BASICNEW
+Monitor:
+; Команд не поддерживает аргументов.
+	RET     NZ
+	JP	0F800H
+Home:
+	LD	C, 1FH
+	JP	0F809H
+	ELSE
 ; Какой-то мертвый код..., похоже на другую реализацию PEEK
         CALL    FTestPositiveIntegerExpression
         LD      A,(DE)
@@ -3477,6 +3515,8 @@ L1051:
 
 ; Тоже мертвый код, , похоже на другую реализацию POKE
         CALL    L0642
+
+	ENDIF
 
 L1067:  PUSH    DE
         RST     SyntaxCheck
@@ -3529,11 +3569,9 @@ Init:	XOR     A
 	CALL	0F818H
 	JP	ContInit
 
-szHello:
-	IF	MIKROSHA
-	DB	01FH,"*mikro{a* BASIC   ", 0DH, 0AH, 0
+	IF	BASICNEW
 	ELSE
-	DB	01FH,"*radio-86rk* BASIC", 0DH, 0AH, 0
+	include "szHello.inc"
 	ENDIF
 
 Cls:	PUSH	HL
@@ -3677,11 +3715,9 @@ InitLoop:
         JP      InitLoop
 	ENDIF
 
-szHello:
-	IF	UT88
-	DB		1Fh, "*UT-88* BASIC   ", 0Dh, 0Ah, 0
+	IF	BASICNEW
 	ELSE
-	DB		1Fh, 0Dh, 0Ah, "*MikrO/80* BASIC", 0
+	include "szHello.inc"
 	ENDIF
 
 	CHK	176ah, "Сдвижка кода"
@@ -4583,4 +4619,8 @@ L1CE0:	LD	A, (TERMINAL_X)
 
 L1CEE:	DB	00DH, 00AH, "EDIT*", 00DH, 00AH, 000H
 L1CF8:	DB	00DH, 00AH, "AUTO*", 000H
+	ENDIF
+	; Блок данных
+	IF	BASICNEW
+	include "data.inc"
 	ENDIF
