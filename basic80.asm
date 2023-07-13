@@ -2334,7 +2334,10 @@ EvalInlineFn:
 ;Evaluate function argument
 	RST     NextChar
 	LD      A,C
-        CP      2*(TK_LEFTS-TK_SGN)-1		; Это строковые функции fn$
+	IF	BASICNEW
+	CP	'('				; 
+	ENDIF
+        CP      2*(TK_LEFTS-TK_SGN)-1		; Это строковые функции fn$ с несколькими параметрами
         JP      C,L0A65				; Нет, обычная
         RST     SyntaxCheck
 	DB	'('
@@ -2734,7 +2737,8 @@ Pi:
 	RET
 	
 PiConst:
-	DB	0DBH, 00FH, 049H, 081H	; PI/2
+	;DB	0DBH, 00FH, 049H, 081H	; PI/2
+	DB	0dbh, 0fh, 49h, 40h
 	ENDIF
 
 	CHK	0C7Ah, "Сдвижка кода"
