@@ -3692,10 +3692,10 @@ Cur:
         DB	','
         CALL    EvalByteExpression
 	IF	UT88
-	CP	1DH
+	CP	1CH
 	JP	NC, FunctionCallError
 	LD	C,A
-	LD	A, 3CH
+	LD	A, 3BH
 	SUB	C
         LD      (POSY),A		; 1958H
 	ELSE
@@ -3716,7 +3716,7 @@ SetCurPos:
 	LD	C, A
 	CALL	0F809H
 	LD	A, (POSX)		; 01957H
-	ADD	A,1FH
+	ADD	A,20H
 	LD	C, A
 	JP	0F809H
 	DB	16 DUP (0)
