@@ -3691,9 +3691,18 @@ Cur:
         RST     SyntaxCheck
         DB	','
         CALL    EvalByteExpression
+	IF	UT88
+	CP	1DH
+	JP	NC, FunctionCallError
+	LD	C,A
+	LD	A, 3CH
+	SUB	C
+        LD      (POSY),A		; 1958H
+	ELSE
         LD      (POSY),A		; 1958H
         CP      20H
         JP      NC,FunctionCallError
+	ENDIF
         LD      A,(POSX)		; 1957H
         CP      40H
         JP      NC,FunctionCallError
@@ -3704,14 +3713,13 @@ SetCurPos:
 	LD	C, 59H
 	CALL	0F809H
 	LD	A, (POSY)		; 01958H
-	ADD	A,20H
 	LD	C, A
 	CALL	0F809H
 	LD	A, (POSX)		; 01957H
 	ADD	A,20H
 	LD	C, A
 	JP	0F809H
-	DB	18 DUP (0)
+	DB	16 DUP (0)
 	ELSE
         PUSH    HL
 	; Гасим курсор
