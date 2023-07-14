@@ -393,19 +393,19 @@ ERR_OD	EQU	$-ERROR_CODES
 ERR_FC	EQU	$-ERROR_CODES
 	DB	'newernyj argument', 0
 ERR_OV	EQU	$-ERROR_CODES
-	DB	'0','6'+80h	; 0A Overflow
+	DB	'perepolnenie',0
 ERR_OM	EQU	$-ERROR_CODES
-	DB	'0','7'+80h	; 0C Out of memory
+	DB	'malo ozu',0
 ERR_US	EQU	$-ERROR_CODES
-	DB	'0','8'+80h	; 0E Undefined Subroutine
+	DB	'net stroki',0
 ERR_BS	EQU	$-ERROR_CODES
-	DB	'0','9'+80h	; 10 Bad Subscript
+	DB	'newernyj indeks',0
 ERR_DD	EQU	$-ERROR_CODES
-	DB	'1','0'+80h	; 12 Duplicate Definition
+	DB	'powtornoe opisanie',0
 ERR_DZ	EQU	$-ERROR_CODES
-	DB	'1','1'+80h	; 14 Division by zero
+	DB	'delenie na 0',0
 ERR_ID	EQU	$-ERROR_CODES
-	DB	'1','2'+80h	; 16 Invalid in Direct mode
+	DB	'tolxko w programme',0
 ERR_TM	EQU	$-ERROR_CODES
 	DB	'1','3'+80h	; 18 Type mismatch
 ERR_SO	EQU	$-ERROR_CODES

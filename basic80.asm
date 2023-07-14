@@ -1042,8 +1042,11 @@ L0488:	CP      08H
 	LD	C,A
 	LD	A, B
 	CP	72
+	IF	BASICNEW
+	ELSE
 	NOP
 	NOP
+	ENDIF
 	JP	NC, 01CD8H
 	LD	A, C
 	CP	" "
@@ -1071,11 +1074,14 @@ L04B1:	INC	HL
         JP      NC,InputNext
         CP      01H
         JP      C,InputNext
+	IF	BASICNEW
+	ELSE
         NOP     
         NOP     
         NOP     
         NOP     
 	NOP
+	ENDIF
 	ENDIF	; SERVICE
 ;A normal character has been pressed. Here we store it in LINE_BUFFER, only we don't if the terminal width has been exceeded. If the terminal width is exceeded then we ring the bell (ie print ASCII code 7) and ignore the char. Finally we loop back for the next input character.
         LD      C,A
@@ -1111,11 +1117,14 @@ L04BD:	EQU	$+1
 ; Then we print the character - to do this we loop until the device is ready to receive a char and then write it out.
 
 	IF	SERVICE
+	IF	BASICNEW
+	ELSE
 	NOP
 	NOP
 	NOP
 	NOP
 	NOP
+	ENDIF
 	SCF
 	CALL	C, L1B50
 	ELSE	; SERVICE
@@ -1140,6 +1149,9 @@ L04CD:	POP     AF
 	ENDIF
 	POP	AF
 	POP	BC
+	IF	BASICNEW
+	ELSE
+	ENDIF
 	NOP
 	RET
 
@@ -1172,7 +1184,10 @@ InputChar:
 	ELSE
 
         JP      Z,0F800h
+	if	BASICNEW
+	else
         NOP     
+	endif
         AND     7FH
         CP      0FH
         RET     NZ
@@ -1333,7 +1348,10 @@ EndOfForHandler:
 ExecNext:
 ; Даем пользователю шанс прервать исполнение.
 	CALL    0F812h			;---------------
+	if	BASICNEW
+	else
         NOP				; !! Этот блок можно заменить одним вызовом CALL TestBreakKey
+	endif
         CALL    NZ,CheckBreak		;---------------
 ; Если у нас ':', являющийся разделителем команд (что позволяет иметь несколько команд в строке), то исполняем следующую команду.
         LD      (PROG_PTR_TEMP),HL
