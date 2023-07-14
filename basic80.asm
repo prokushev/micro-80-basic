@@ -308,8 +308,8 @@ PROGRAM_BASE_INIT	EQU	2500H
 
 	ELSE
 	IF	BASICNEW
-SCRBUF			EQU	1E00H
-PROGRAM_BASE_INIT	EQU	2600H
+SCRBUF			EQU	1D00H
+PROGRAM_BASE_INIT	EQU	2500H
 	ELSE
 SCRBUF			EQU	1A00H
 PROGRAM_BASE_INIT	EQU	2200H
@@ -597,9 +597,16 @@ DivideByZero:
 WithoutFOR:
 	LD      E, ERR_NF
 
-;Error
-;Resets the stack, prints an error code (offset into error codes table is given in E), and stops program execution.
+; Error
+;
+; Сбрасывает стек, выводит сообщение об ошибке (смещение 
+; сообщение об ошибке передается в E) и прекращает исполнение
+; программы.
 Error:
+	IF	BASICNEW
+	LD	HL, (CURRENT_LINE)	; Получаем текущую строку
+	LD	(ErrorLine), HL		; И сохраняем ее для получения по ERL
+	ENDIF
 	CALL    ResetStack
         XOR     A
         LD      (ControlChar),A
@@ -1266,7 +1273,7 @@ L0547:  EX      DE,HL
         PUSH    HL
         LD      HL,(CURRENT_LINE)
         EX      (SP),HL
-        CALL    L0969		; Is Numeric
+        CALL    IsNumeric		; Is Numeric
 ;Syntax check that TO clause is next.
         RST     SyntaxCheck
         DB	TK_TO
@@ -2174,7 +2181,7 @@ ForLoopIsComplete:
 ; Evalute expression and check is it value is Numeric
 EvalNumericExpression:
 	CALL    EvalExpression
-L0969:  DB	0F6H			;OR 37H - это сброс флага CY
+IsNumeric:  DB	0F6H			;OR 37H - это сброс флага CY
 L096A:	SCF				;37H
 L096B:  LD      A,(VALTYP)
         ADC     A,A
@@ -2202,7 +2209,7 @@ ArithParse:
 L0986:	POP     BC
         LD      A,B
         CP      78H
-        CALL    NC,L0969
+        CALL    NC,IsNumeric
 ;Get byte following sub-expression. This is where we deal with arithmetic operators. If the byte is less than KWID_+ then return.
         LD      A,(HL)
         LD      D,00H
@@ -2248,7 +2255,7 @@ L09AA:  LD      A,D
         RET     NC
 
         INC     HL
-        CALL    L0969
+        CALL    IsNumeric
 ;Push counter and address of ArithParse onto the stack (the latter so we return to it after the arith fn runs)
 L09D2:  PUSH    BC
         LD      BC,ArithParse
@@ -2309,7 +2316,7 @@ L0A1E:  LD      D,7DH
         LD      HL,(PROG_PTR_TEMP2)
         PUSH    HL
         CALL    FNegate
-L0A2A:	CALL    L0969
+L0A2A:	CALL    IsNumeric
         POP     HL
         RET     
 
@@ -2356,8 +2363,11 @@ EvalInlineFn:
 L0A65:	
 	IF	BASICNEW
 	LD      A,C
+	CP	2*(TK_ERL-TK_SGN)	; Это значение ERL?
+	JP	Z, SkipFnArgs
 	CP	2*(TK_PI-TK_SGN)	; Это значение PI?
 	CALL    NZ, L0A16		; Нет, значит ожидаем параметры
+SkipFnArgs:
 	ELSE
 	CALL    L0A16
 	ENDIF
@@ -2382,7 +2392,7 @@ FOr:
 FAnd:
 	XOR	A	; AFh
         PUSH    AF
-        CALL    L0969
+        CALL    IsNumeric
         CALL    FTestIntegerExpression
         POP     AF
         EX      DE,HL
@@ -2480,7 +2490,7 @@ L0AEF:	INC     A
 	
 L0AF9:  LD      D,5AH
         CALL    L0978
-        CALL    L0969
+        CALL    IsNumeric
         CALL    FTestIntegerExpression
         LD      A,E
         CPL     
@@ -2743,6 +2753,13 @@ Pi:
 	
 PiConst:
 	DB	0DAh, 0Fh, 49h, 82h
+
+Erl:
+	LD	HL, (ErrorLine)
+	LD	A, H
+	LD	B, L
+	JP	WordFromABToFACCUM
+
 	ENDIF
 
 	CHK	0C7Ah, "Сдвижка кода"
@@ -2794,7 +2811,7 @@ Def:
         RST     SyntaxCheck
 	DB	'('
 	CALL	GetVar
-        CALL    L0969
+        CALL    IsNumeric
         RST     SyntaxCheck
         DB	')'
         RST     SyntaxCheck
@@ -2807,7 +2824,7 @@ Def:
 L0CCD:  CALL    L0D10
         PUSH    DE
         CALL    L0A16
-        CALL    L0969
+        CALL    IsNumeric
         EX      (SP),HL
         RST     PushNextWord
         POP     DE
@@ -2860,11 +2877,11 @@ L0D10:  RST     SyntaxCheck
         OR      (HL)
         LD      B,A
         CALL    L0B1F
-        JP      L0969
+        JP      IsNumeric
 	
 	CHK	0d1fh, "Сдвижка кода"
 Str:
-        CALL    L0969
+        CALL    IsNumeric
         CALL    FOut
         CALL    L0D4F
         CALL    L0EC1

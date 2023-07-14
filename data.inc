@@ -35,6 +35,7 @@ KW_INLINE_FNS:
 	DW	Asc
 	IF	BASICNEW
 	DW	Pi
+	DW	Erl
 	ENDIF
 	DW	Chr
 	DW	Left
@@ -254,6 +255,8 @@ TKCOUNT	EQU	Q-FIRST_TK
 	IF	BASICNEW
 	TOKEN	TK_PI
 	DB	"P", 'I'+80h
+	TOKEN	TK_ERL
+	DB	"ER", 'L'+80h
 	ENDIF
 	TOKEN	TK_CHRS
 	DB	"CHR", '$'+80h	;	c2
@@ -522,6 +525,10 @@ PROG_PTR_TEMP2:
 	DW	01d5h				; Мусор, можно=0
 CURRENT_LINE:
 	DW	0FFFFH		; Номер текущей исполняемой строки FFFF - никакая не исполняется
+	IF	BASICNEW
+ErrorLine:
+	DW	0FFFFH		; Номер строки с ошибкой. Возращается функцией ERL
+	ENDIF
 OLD_LINE:
 	DB	6eh, 0ah	; Номер строки для CONT
 OLD_TEXT:
