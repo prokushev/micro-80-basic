@@ -36,6 +36,7 @@ KW_INLINE_FNS:
 	IF	BASICNEW
 	DW	Pi
 	DW	Erl
+	DW	Err
 	ENDIF
 	DW	Chr
 	DW	Left
@@ -257,6 +258,8 @@ TKCOUNT	EQU	Q-FIRST_TK
 	DB	"P", 'I'+80h
 	TOKEN	TK_ERL
 	DB	"ER", 'L'+80h
+	TOKEN	TK_ERR
+	DB	"ER", 'R'+80h
 	ENDIF
 	TOKEN	TK_CHRS
 	DB	"CHR", '$'+80h	;	c2
@@ -383,41 +386,78 @@ KW_GENERAL_FNS:
 ERROR_CODES:
 	IF	BASICNEW
 ERR_NF	EQU	$-ERROR_CODES
-	DB	'NEXT bez FOR',0
+	DW	ErrNF
 ERR_SN	EQU	$-ERROR_CODES
-	DB	'sintaksi~eskaq',0
+	DW	ErrSN
 ERR_RG	EQU	$-ERROR_CODES
-	DB	'RETURN bez GOSUB',0
+	DW	ErrRG
 ERR_OD	EQU	$-ERROR_CODES
-	DB	'malo dannyh pri DATA', 0
+	DW	ErrOD
 ERR_FC	EQU	$-ERROR_CODES
-	DB	'newernyj argument', 0
+	DW	ErrFC
 ERR_OV	EQU	$-ERROR_CODES
-	DB	'perepolnenie',0
+	DW	ErrOV
 ERR_OM	EQU	$-ERROR_CODES
-	DB	'malo ozu',0
+	DW	ErrOM
 ERR_US	EQU	$-ERROR_CODES
-	DB	'net stroki',0
+	DW	ErrUS
 ERR_BS	EQU	$-ERROR_CODES
-	DB	'newernyj indeks',0
+	DW	ErrBS
 ERR_DD	EQU	$-ERROR_CODES
-	DB	'powtornoe opisanie',0
+	DW	ErrDD
 ERR_DZ	EQU	$-ERROR_CODES
-	DB	'delenie na 0',0
+	DW	ErrDZ
 ERR_ID	EQU	$-ERROR_CODES
-	DB	'tolxko w programme',0
+	DW	ErrID
 ERR_TM	EQU	$-ERROR_CODES
-	DB	'1','3'+80h	; 18 Type mismatch
+	DW	ErrTM
 ERR_SO	EQU	$-ERROR_CODES
-	DB	'1','4'+80h	; 1AH Out of string space
+	DW	ErrSO
 ERR_LS	EQU	$-ERROR_CODES
-	DB	'1','5'+80h	; 1CH String too long
+	DW	ErrLS
 ERR_ST	EQU	$-ERROR_CODES
-	DB	'1','6'+80h	; 1EH String formula too complex
+	DW	ErrST
 ERR_CN	EQU	$-ERROR_CODES
-	DB	'1','7'+80h	; 20H Can't continue
+	DW	ErrCN
 ERR_UF	EQU	$-ERROR_CODES
-	DB	'1','8'+80h	; 22H Undefined function
+	DW	ErrUF
+
+ErrNF:
+	DB	'NEXT bez FOR',0
+ErrSN:
+	DB	'sintaksi~eskaq',0
+ErrRG:
+	DB	'RETURN bez GOSUB',0
+ErrOD:
+	DB	'malo dannyh pri DATA', 0
+ErrFC:
+	DB	'newernyj argument', 0
+ErrOV:
+	DB	'perepolnenie',0
+ErrOM:
+	DB	'malo ozu',0
+ErrUS:
+	DB	'net stroki',0
+ErrBS:
+	DB	'newernyj indeks',0
+ErrDD:
+	DB	'powtornoe opisanie',0
+ErrDZ:
+	DB	'delenie na 0',0
+ErrID:
+	DB	'tolxko w programme',0
+ErrTM:
+	DB	'nesootwetstie dannyh', 0
+ErrSO:
+	DB	'mal bufer', 0
+ErrLS:
+	DB	'dlinnaq stroka', 0
+ErrST:
+	DB	'slovno', 0
+ErrCN:
+	DB	'nelxzq',0
+ErrUF:
+	DB	'net DEF', 0
 	ELSE
 ERR_NF	EQU	$-ERROR_CODES
 	DB	'0','1'+80h	; 00 NEXT without FOR
@@ -528,6 +568,8 @@ CURRENT_LINE:
 	IF	BASICNEW
 ErrorLine:
 	DW	0FFFFH		; Номер строки с ошибкой. Возращается функцией ERL
+ErrorCode:
+	DB	0			; Номер ошибки. Возвращяется функцией ERR
 	ENDIF
 OLD_LINE:
 	DB	6eh, 0ah	; Номер строки для CONT
