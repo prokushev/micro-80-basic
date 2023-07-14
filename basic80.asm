@@ -138,7 +138,7 @@
 ; обрабатываются как числа с плавающей точкой.
 ;
 ; Длина имени переменных ограничена максимум двумя символами: первый (обязательный)
-; символ должен быть букврй (латинской), а второй (опциональный) символ - число.
+; символ должен быть буквой (латинской), а второй (опциональный) символ - число.
 ; Таким образом следующие определения некорректны:
 ;
 ; LET FOO=1
@@ -436,7 +436,7 @@ PushNextWord:
 ;
 ;
 ;
-	ORG	38H
+;	ORG	38H
 RST7:
 	RET
 L0039:	DW	0
@@ -2334,9 +2334,6 @@ EvalInlineFn:
 ;Evaluate function argument
 	RST     NextChar
 	LD      A,C
-	IF	BASICNEW
-	CP	'('				; 
-	ENDIF
         CP      2*(TK_LEFTS-TK_SGN)-1		; Это строковые функции fn$ с несколькими параметрами
         JP      C,L0A65				; Нет, обычная
         RST     SyntaxCheck
@@ -2356,7 +2353,15 @@ EvalInlineFn:
         EX      (SP),HL
         JP      L0A6D
 
-L0A65:  CALL    L0A16
+L0A65:	
+	IF	BASICNEW
+	LD      A,C
+	CP	2*(TK_PI-TK_SGN)	; Это значение PI?
+	CALL    NZ, L0A16		; Нет, значит ожидаем параметры
+	ELSE
+	CALL    L0A16
+	ENDIF
+
         EX      (SP),HL
         LD      DE,L0A2A
         PUSH    DE
@@ -2737,8 +2742,7 @@ Pi:
 	RET
 	
 PiConst:
-	;DB	0DBH, 00FH, 049H, 081H	; PI/2
-	DB	0dbh, 0fh, 49h, 40h
+	DB	0DAh, 0Fh, 49h, 82h
 	ENDIF
 
 	CHK	0C7Ah, "Сдвижка кода"
@@ -3109,7 +3113,7 @@ L0E77:  PUSH    BC
         EX      (SP),HL
         CALL    L0EC4
         PUSH    HL
-        LD      HL,(022DH)
+        LD      HL,(L022D)
         EX      DE,HL
         CALL    L0EAE
         CALL    L0EAE
@@ -3191,7 +3195,7 @@ Chr:
         LD      A,01H
         CALL    L0D43
         CALL    L0FBC
-        LD      HL,(022DH)
+        LD      HL,(L022D)
         LD      (HL),E
 L0F10:	POP     BC
         JP      L0D75
@@ -3504,11 +3508,20 @@ L1051:
         JP      UpdateLinkedList
 
 	IF	BASICNEW
+; В МИКРО-80/ЮТ-88 нет "теплого" старта
 Monitor:
+	IF	RK86
+	RET	NZ
+	JP	L1049
+	ENDIF
+Reset:
 ; Команд не поддерживает аргументов.
 	RET     NZ
 	JP	0F800H
+
 Home:
+; Команд не поддерживает аргументов.
+	RET     NZ
 	LD	C, 1FH
 	JP	0F809H
 	ELSE

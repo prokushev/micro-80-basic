@@ -148,6 +148,8 @@ Q	SET	FIRST_TK
 	DB	"SYSTE", 'M'+80h
 	TOKEN	TK_MONITOR
 	DB	"MONITO", 'R'+80h
+	TOKEN	TK_RESET
+	DB	"RESE", 'T'+80h
 	TOKEN	TK_HOME
 	DB	"HOM", 'E'+80h
 	ENDIF
@@ -330,6 +332,7 @@ KW_GENERAL_FNS:
 	IF	BASICNEW
 	DW	Monitor
 	DW	Monitor		; SYSTEM то же, что и MONITOR (пока)
+	DW	Reset
 	DW	Home
 	ENDIF
 
@@ -501,7 +504,7 @@ L0229:	DW	0
 	DB	0
 	ENDIF
 L022B:        LD      B,00H
-        LD      L,E
+L022D:        LD      L,E
         LD      (BC),A
 STR_TOP:
 	DW	MEM_TOP
