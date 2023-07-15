@@ -656,7 +656,8 @@ Main:
 	CALL	PrintString
 
 GetNonBlankLine:
-	CALL	InputLine			; Считываем строку с клавиатуры
+L030E:	EQU	$+1
+	CALL	InputLine			; Самомодифицирующийся код. Считываем строку с клавиатуры
 	RST	NextChar			; Считываем первый символ из буфера. Флаг переноса =1, если это цифра
 	INC	A				; Проверяем на пустую строку. Инкремент/декремент не сбрасывает флаг переноса.
 	DEC	A
@@ -1023,10 +1024,11 @@ InputLine:
 	LD      HL,LINE_BUFFER
         LD      B,01H
 
-;Get a character and jump out of here if user has pressed 'Enter'. 
+; Get a character and jump out of here if user has pressed 'Enter'. 
 InputNext:
 	CALL    InputChar
 ;Deal with backspace.
+
 L0488:	CP      08H
         JP      Z,Backspace
         CP      0DH
@@ -1035,18 +1037,19 @@ L0488:	CP      08H
 	IF	SERVICE
 	IF	RK86
 	CP	0AH
-	ELSE
+	ELSE    ; RK86
 	CP	1AH
-	ENDIF
-	JP	Z, L047D
+	ENDIF	; RK86
+L0495:	EQU	$+1
+	JP	Z, L047D		; Самомодифицирующийся код
 	CP	01FH
-	JP	Z, 01BE4H
+	JP	Z, L1BE4
 	CP	07FH
 	IF	RK86
 	JP	Z, L1995
-	ELSE
+	ELSE	; RK86
 	JP	NC, InputNext
-	ENDIF
+	ENDIF	; RK86
 	LD	C,A
 	LD	A, B
 	CP	72
@@ -1055,10 +1058,10 @@ L0488:	CP      08H
 	NOP
 	NOP
 	ENDIF
-	JP	NC, 01CD8H
+	JP	NC, L1CD8
 	LD	A, C
 	CP	" "
-	JP	C, 01BFBH
+	JP	C, L1BFB
 L04B0:	LD	(HL), C
 L04B1:	INC	HL
 	RST	OutChar
@@ -1133,7 +1136,7 @@ L04BD:	EQU	$+1
 	NOP
 	NOP
 	ENDIF
-	SCF
+L04C9:	SCF				; Самомодифицирующийся код
 	CALL	C, L1B50
 	ELSE	; SERVICE
         CP      48H
@@ -1163,8 +1166,9 @@ L04CD:	POP     AF
 	NOP
 	RET
 
-;InputChar
-;Gets one char of input from the user.		
+; InputChar
+;
+; Получение одного символа от пользователя.
 
 InputChar:
 	CALL	0F803H
@@ -1355,12 +1359,13 @@ EndOfForHandler:
 
 ExecNext:
 ; Даем пользователю шанс прервать исполнение.
-	CALL    0F812h			;---------------
 	if	BASICNEW
+	CALL	TestBreakKey
 	else
+	CALL    0F812h			;---------------
         NOP				; !! Этот блок можно заменить одним вызовом CALL TestBreakKey
-	endif
         CALL    NZ,CheckBreak		;---------------
+	endif
 ; Если у нас ':', являющийся разделителем команд (что позволяет иметь несколько команд в строке), то исполняем следующую команду.
         LD      (PROG_PTR_TEMP),HL
         LD      A,(HL)
@@ -1465,13 +1470,13 @@ L05E0:  LD      (DATA_PROG_PTR),HL
         EX      DE,HL
         RET     
 
-;TestBreakKey
-;Apparently the Altair had a 'break' key, to break program execution. 
-;This little function tests to see if the terminal input device is ready,
+; TestBreakKey
+; Apparently the Altair had a 'break' key, to break program execution. 
+; This little function tests to see if the terminal input device is ready,
 ; and returns if it isn't. If it is ready (ie user has pressed a key) 
-;then it reads the char from the device, compares it to the code for
+; then it reads the char from the device, compares it to the code for
 ; the break key (0x03) and jumps to Stop. Since the first instruction 
-;at Stop is RNZ, this will return at once if the user pressed some other key.
+; at Stop is RNZ, this will return at once if the user pressed some other key.
 
 TestBreakKey:
 	CALL    0F812h
@@ -1925,7 +1930,7 @@ L07D0:  CALL    NZ,L0D96
 ; reset HL to point to the start of the input line buffer, then fall into NewLine.
 		
 TerminateInput:
-	LD      (HL),00H
+	LD      (HL),00H		; Самомодифицирующийся код
 TerminateInput2:
         LD      HL,LINE_BUFFER-1
 		
@@ -4377,16 +4382,16 @@ L1B25:	LD	A, 20H
 
 L1B2C:	POP	HL
 	LD	HL, L1B58
-	LD	(030EH), HL
-	LD	L, 3EH
-	LD	(0495H), HL
-	LD	HL, L1CF8
+	LD	(L030E), HL
+	LD	L, 3EH			; TODO! Это кусок адреса!! 043e -странный прыжок внутрь инструкции...
+	LD	(L0495), HL
+	LD	HL, szAuto
 	CALL	0F818H
 	CALL	NewLine
 	JP	L1B5C
 
-L1B44:	LD	L, 07DH
-	LD	(0495H), HL
+L1B44:	LD	L, 07DH			; TODO! Это кусок адреса
+	LD	(L0495), HL
 	LD	HL, (MEMSIZ)
 	LD	SP, HL
 	JP	Main
@@ -4408,18 +4413,18 @@ L1B5C:	CALL	L1B06
 	EX	DE, HL
 	JP	Z, L1B58
 	JP	0031AH
-L1B72:	LD	HL, L1CEE
+L1B72:	LD	HL, szEdit
 	CALL	0F818H
 	LD	HL, L1B93
-	LD	(0030EH), HL
+	LD	(L030E), HL
 	LD	A, 1
-	LD	(004BDH), A
+	LD	(L04BD), A
 	CALL	InputLine
 	CALL	L1C55
-	LD	A, 0C9H
-	LD	(007D7H), A
-	LD	A, 0B8H
-	LD	(004C9H), A
+	LD	A, 0C9H			; RET
+	LD	(TerminateInput), A
+	LD	A, 0B8H			; CP B
+	LD	(L04C9), A
 L1B93:	LD	HL, (L0039)
 	EX	DE, HL
 	CALL	FindProgramLine
@@ -4469,19 +4474,19 @@ L1BD9:	PUSH	HL
 	RST	OutChar
 	JP	L1BAC
 
-L1BE4:	LD	A, 036H
-	LD	(007D7H), A
-	INC	A
-	LD	(004C9H), A
+L1BE4:	LD	A, 036H				; LD (HL),...
+	LD	(TerminateInput), A
+	INC	A				; SCF
+	LD	(L04C9), A
 	LD	A, 20H
-	LD	(004BDH), A
+	LD	(L04BD), A
 	LD	HL, InputLine
-	LD	(0030EH), HL
+	LD	(L030E), HL
 	JP	L1B44
 
 L1BFB:	CP	018H
 	JP	Z, L1CE0
-	LD	A, (0030EH)
+	LD	A, (L030E)
 	CP	80H
 	JP	Z, L1AC4
 	JP	NC, L1C11
@@ -4619,8 +4624,8 @@ L1CE0:	LD	A, (TERMINAL_X)
 	LD	C, A
 	JP	L04B0
 
-L1CEE:	DB	00DH, 00AH, "EDIT*", 00DH, 00AH, 000H
-L1CF8:	DB	00DH, 00AH, "AUTO*", 000H
+szEdit:	DB	00DH, 00AH, "EDIT*", 00DH, 00AH, 000H
+szAuto:	DB	00DH, 00AH, "AUTO*", 000H
 	ENDIF
 	; Блок данных
 	IF	BASICNEW
