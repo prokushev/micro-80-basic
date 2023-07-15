@@ -4383,14 +4383,22 @@ L1B25:	LD	A, 20H
 L1B2C:	POP	HL
 	LD	HL, L1B58
 	LD	(L030E), HL
-	LD	L, 3EH			; TODO! Это кусок адреса!! 043e -странный прыжок внутрь инструкции...
+	IF	BASICNEW
+	LD	HL, L1B3E
+	ELSE
+	LD	L, L1B3E & 0FFH
+	ENDIF
 	LD	(L0495), HL
 	LD	HL, szAuto
 	CALL	0F818H
-	CALL	NewLine
+L1B3E:	CALL	NewLine
 	JP	L1B5C
 
-L1B44:	LD	L, 07DH			; TODO! Это кусок адреса
+L1B44:	IF	BASICNEW
+	LD	HL, L047D
+	ELSE
+	LD	L, L047D & 0FFH
+	ENDIF
 	LD	(L0495), HL
 	LD	HL, (MEMSIZ)
 	LD	SP, HL
