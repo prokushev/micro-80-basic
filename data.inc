@@ -82,6 +82,7 @@ KW_ARITH_OP_FNS:
 TOKEN	MACRO	name
 name	EQU	Q
 Q	SET	Q+1
+name_ADDR equ $
 	ENDM
 
 FIRST_TK	EQU	80H
