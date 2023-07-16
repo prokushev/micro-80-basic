@@ -1053,13 +1053,13 @@ L13AB:  LD      HL,0000H
 
         LD      A,10H
 L13B3:  ADD     HL,HL
-        JP      C,L0BEE
+        JP      C,BadSubscriptError
         EX      DE,HL
         ADD     HL,HL
         EX      DE,HL
         JP      NC,L13C1
         ADD     HL,BC
-        JP      C,L0BEE
+        JP      C,BadSubscriptError
 L13C1:  DEC     A
         JP      NZ,L13B3
         RET     

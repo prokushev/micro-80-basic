@@ -373,30 +373,34 @@ SyntaxCheck:
 	EX	(SP),HL
 	JP	NZ,SyntaxError
 
-;NextChar (RST 2)
+; NextChar (RST 2)
 ;
 ; Возвращает следующий введенный символ из буфера по адресу HL, пропуская символы пробелов.
-; The Carry flag is set if the returned character is not alphanumeric,
-; also the zero flag is set if a null character has been reached.
+; Флаг переноса C выставлен, если возвращаемый символ не алфавитно-цифровой.
+; Также флаг Z выставляется, если символ равен NULL.
 
-NextChar:
 	IF	BASICNEW
-	JP	NextChar2
+	JP	NextChar
 	ELSE
+NextChar:
 	INC	HL
 	LD	A,(HL)
 	CP	':'			; 3AH
 	RET	NC			; End of statement or bigger
 	JP	NextChar_tail
 	ENDIF
-;OutChar (RST 3)
-;Prints a character to the terminal.
+
+	IF	BASICNEW
+	ELSE
+; OutChar (RST 3)
+; Печать символа на терминал.
 
 OutChar:
 	PUSH	AF
 	LD	A,(ControlChar)
 	OR	A
 	JP	OutChar_tail
+	ENDIF
 
 ; CompareHLDE (RST 4)
 ; Сравниает HL и DE с таким же логическим результатом (флаги C и Z), что и стандартное 8-мибитное сравнение.
@@ -1081,7 +1085,7 @@ L04B1:	INC	HL
 	JP	C, L1967
 	CP	1BH
 	JP	Z, L1959			; Обработка Esc-последовательности
-	ELSE
+	ELSE	; RK86
         JP      NC,InputNext
         CP      01H
         JP      C,InputNext
@@ -1093,7 +1097,7 @@ L04B1:	INC	HL
         NOP     
 	NOP
 	ENDIF
-	ENDIF	; SERVICE
+	ENDIF	; RK86
 ;A normal character has been pressed. Here we store it in LINE_BUFFER, only we don't if the terminal width has been exceeded. If the terminal width is exceeded then we ring the bell (ie print ASCII code 7) and ignore the char. Finally we loop back for the next input character.
         LD      C,A
         LD      A,B
@@ -1110,9 +1114,18 @@ IgnoreChar:
 
 	ENDIF	; SERVICE
 
+	IF	BASICNEW
+; OutChar (RST 3)
+; Печать символа на терминал.
+
+OutChar:
+	PUSH	AF
+	LD	A,(ControlChar)
+	OR	A
+	ENDIF
 
 OutChar_tail:
-	JP      NZ,L0DC4
+	JP      NZ,POPAFRET
         POP     AF
         PUSH    AF
 L04BD:	EQU	$+1
@@ -1139,7 +1152,7 @@ L04BD:	EQU	$+1
 L04C9:	SCF				; Самомодифицирующийся код
 	CALL	C, L1B50
 	ELSE	; SERVICE
-        CP      48H
+        CP      72
         CALL    Z,NewLine
         INC     A
         LD      (TERMINAL_X),A
@@ -1162,8 +1175,8 @@ L04CD:	POP     AF
 	POP	BC
 	IF	BASICNEW
 	ELSE
-	ENDIF
 	NOP
+	ENDIF
 	RET
 
 ; InputChar
@@ -1193,7 +1206,7 @@ InputChar:
 	include "prnflag.inc"
 	endif
 
-	ELSE
+	ELSE	; RK86
 
         JP      Z,0F800h
 	if	BASICNEW
@@ -1208,144 +1221,14 @@ InputChar:
         CPL     
         LD      (ControlChar),A
         RET     
-	ENDIF
-
-;1.7 LIST Handler
-;List
-;Lists the program. As the stored program is in tokenised form 
-;(ie keywords are represented with single byte numeric IDs) LIST
-; is more complex than a simple memory dump. When it meets a 
-;keyword ID it looks it up in the keywords table and prints it.
+	ENDIF	; ENDIF
 
 	CHK	04EEH, "Сдвижка кода"
-List:
-        CALL    LineNumberFromStr
-        RET     NZ
+	INCLUDE "stList.inc"
 
-        POP     BC
-        CALL    FindProgramLine
-        PUSH    BC
-ListNextLine:
-	POP     HL
-        RST     PushNextWord
-	POP     BC
-        LD      A,B
-        OR      C
-        JP      Z,Main
-        CALL    TestBreakKey
-        PUSH    BC
-        CALL    NewLine
-        RST     PushNextWord
-        EX      (SP),HL
-        CALL    PrintInt
-        LD      A,' '
-L050D:  POP     HL
-ListChar:
-	RST     OutChar
-        LD      A,(HL)
-        OR      A
-        INC     HL
-        JP      Z,ListNextLine
-        JP      P,ListChar
-        SUB     7FH
-        LD      C,A
-        PUSH    HL
-        LD      DE, KEYWORDS
-L051F:  PUSH    DE
-ToNextKeyword:
-	LD      A,(DE)
-        INC     DE
-        OR      A
-        JP      P,ToNextKeyword
-        DEC     C
-        POP     HL
-        JP      NZ,L051F
-PrintKeyword:
-	LD      A,(HL)
-        OR      A
-        JP      M,L050D
-        RST     OutChar
-        INC     HL
-        JP      PrintKeyword
-
-;1.8 FOR Handler
-;For
-;Although FOR indicates the beginning of a program loop, the handler only gets 
-;called the once. Subsequent iterations of the loop return to the following
-;statement or program line, not the FOR statement itself.
 
 	CHK	0535H, "Сдвижка кода"
-For:		
-        LD      A,64H
-        LD      (NO_ARRAY),A
-; First we call LET to assign the initial value to the variable. On return, HL points to the next bit of program (the TO clause with any luck)
-        CALL    Let
-;Stick program ptr onto stack. We lose the return address, since we don't need it as this function conveniently falls into ExecNext by itself.
-        EX      (SP),HL
-        CALL    GetFlowPtr
-;Get program ptr into DE.
-        POP     DE
-        JP      NZ,L0547
-        ADD     HL,BC
-        LD      SP,HL
-;HL=prog ptr, DE=stack. Here we check we've at least 8*4 bytes of space to use for the flow struct.
-L0547:  EX      DE,HL
-        CALL    CheckEnoughVarSpace2
-        DB	08H
-;Get pointer to end of statement (or end of program line) onto stack. This is the prog ptr that NEXT will return to.
-        PUSH    HL
-        CALL    FindNextStatement
-        EX      (SP),HL
-;Push current line number onto stack.
-        PUSH    HL
-        LD      HL,(CURRENT_LINE)
-        EX      (SP),HL
-        CALL    IsNumeric		; Is Numeric
-;Syntax check that TO clause is next.
-        RST     SyntaxCheck
-        DB	TK_TO
-;Evaluate expression following 'TO', and push the result of that expression (a floating point number of course) on the stack
-        CALL    EvalNumericExpression		; Eval numeric expression
-        PUSH    HL
-        CALL    FCopyToBCDE
-        POP     HL
-        PUSH    BC
-        PUSH    DE
-;Initialise the STEP value in BCDE to 1.
-        LD      BC,8100H
-        LD      D,C
-        LD      E,D
-;If a STEP clause has not been given, skip ahead with the direction byte (in A) as 0x01.
-        LD      A,(HL)
-        CP      TK_STEP
-        LD      A,01H
-        JP      NZ,PushStepValue
-;STEP clause has been given so we evaluate it and get it into BCDE. The sign of this value becomes the direction byte (0x01 for fowards, 0xFF for backwards).
-        RST     NextChar
-        CALL    EvalNumericExpression		; Eval numeric expression
-        PUSH    HL
-        CALL    FCopyToBCDE
-        POP     HL
-        RST     FTestSign
-;Initialise the STEP value in BCDE to 1.
-PushStepValue:
-	PUSH    BC
-        PUSH    DE
-;Push A onto stack. (A=1 if no step clause, else ???)
-        PUSH    AF
-        INC     SP
-        
-;Push the prog ptr to the end of the FOR statement (kept on PROG_PTR_TEMP) on the stack.
-	PUSH    HL
-	
-	
-        LD      HL,(PROG_PTR_TEMP)
-        EX      (SP),HL
-;Push TK_FOR onto the stack, and fall into ExecNext
-EndOfForHandler:
-	LD      B,TK_FOR
-        PUSH    BC
-        INC     SP
+	INCLUDE "stFor.inc"
 
 ;		
 ; 1.9 Исполнение
@@ -1408,7 +1291,7 @@ ExecANotZero:
 
 ExecA:
 ; Все ключевые слова >=0x80. Если это не ключевое слово, то считаем, что LET было не введено и это команда LET.
-	SUB     80H
+	SUB     FIRST_TK
 	JP	C,Let
 ; Если это не основное слово, то это синтаксическая ошибка.
         CP      TKCOUNT
@@ -1438,6 +1321,14 @@ ExecA:
 ; Это дублирующий код из RST NextChar. Аналог последовательности RST NextChar ! RET
 ; Можно убрать для экономии размера.
 ;
+; NextChar (RST 2)
+;
+; Возвращает следующий введенный символ из буфера по адресу HL, пропуская символы пробелов.
+; Флаг переноса C выставлен, если возвращаемый символ не алфавитно-цифровой.
+; Также флаг Z выставляется, если символ равен NULL.
+	IF	BASICNEW
+NextChar:
+	ENDIF
 NextChar2:
 	INC     HL
         LD      A,(HL)
@@ -1464,9 +1355,21 @@ NextChar_tail:
 Restore:
 	EX      DE,HL
         LD      HL,(PROGRAM_BASE)
+	IF	BASICNEW
+	JP	Z, Restore0		; Номер строки не задан
+	EX	DE,HL
+	CALL	LineNumberFromStr
+	PUSH	HL
+	CALL	FindProgramLine
+	LD	H, B
+	LD	L, C
+	POP	DE
+	JP	NC, UnknownStringError
+Restore0:
+	ENDIF
         DEC     HL
 SetDataPtr:
-L05E0:  LD      (DATA_PROG_PTR),HL
+	LD      (DATA_PROG_PTR),HL
         EX      DE,HL
         RET     
 
@@ -1715,6 +1618,7 @@ Goto:
         DEC     HL
         RET     C
 
+UnknownStringError:
         LD      E,ERR_US
         JP      Error
 		
@@ -1786,7 +1690,7 @@ Let:	CALL    GetVar
         POP     AF
         PUSH    DE
         RRA     
-        CALL    L096B
+        CALL    CheckType
         JP      Z,CopyNumeric
 L072B:  PUSH    HL
         LD      HL,(FACCUM)
@@ -1939,14 +1843,25 @@ TerminateInput2:
 
 NewLine:
 	LD      A,0DH
+	IF	BASICNEW
+	ELSE
         LD      (TERMINAL_X),A
+	ENDIF
         RST     OutChar
         LD      A,0AH
         RST     OutChar
-L07E5:  LD      A,(NULLS)
+PrintNull:
+	IF	BASICNEW
+	XOR	A
+        LD      (TERMINAL_X),A
+	ENDIF
+	LD      A,(NULLS)
 PrintNullLoop:
 	DEC     A
+	IF	BASICNEW
+	ELSE
         LD      (TERMINAL_X),A
+	ENDIF
         RET     Z
 
         PUSH    AF
@@ -2018,14 +1933,15 @@ Input:
         CP      '"'				; 22H
         LD      A,00H
         LD      (ControlChar),A
-        JP      NZ,L0866
-        CALL    L0D50
+        JP      NZ,NoPrompt
+        CALL    GetStringConstant
         RST     SyntaxCheck
         DB	';'
         PUSH    HL
         CALL    L0D96
         POP     HL
-L0866:  PUSH    HL
+NoPrompt:
+	PUSH    HL
         CALL    L0D02
         CALL    InputLineWithQ
         INC     HL
@@ -2212,9 +2128,11 @@ ForLoopIsComplete:
 ; Evalute expression and check is it value is Numeric
 EvalNumericExpression:
 	CALL    EvalExpression
-IsNumeric:  DB	0F6H			;OR 37H - это сброс флага CY
-L096A:	SCF				;37H
-L096B:  LD      A,(VALTYP)
+IsNumeric:
+	DB	0F6H			;OR 37H - это сброс флага CY
+IsString:
+	SCF				;37H
+CheckType:  LD      A,(VALTYP)
         ADC     A,A
         RET     PE
 
@@ -2325,7 +2243,7 @@ L09E6:  LD      (VALTYP),A
         CP      TK_MINUS		;0A5H
         JP      Z,EvalMinusTerm		; L0A1E
         CP      '"'			; 22H
-        JP      Z,L0D50
+        JP      Z,GetStringConstant
         CP      TK_NOT			; 0A2H
         JP      Z,L0AF9
         CP      TK_FN			; 0A0H
@@ -2380,7 +2298,7 @@ EvalInlineFn:
 
         RST     SyntaxCheck
         DB	','
-        CALL    L096A
+        CALL    IsString
         EX      DE,HL
         LD      HL,(FACCUM)
         EX      (SP),HL
@@ -2472,7 +2390,7 @@ L0AB0:	OR      D
         POP     BC
         POP     DE
         PUSH    AF
-        CALL    L096B
+        CALL    CheckType
         LD      HL,L0AEF
         PUSH    HL
         JP      Z,FCompare
@@ -2683,7 +2601,8 @@ L0BD8:  INC     HL
         POP     AF
         CP      (HL)
         JP      Z,L0C52
-L0BEE:  LD      E,ERR_BS
+BadSubscriptError:
+	LD      E,ERR_BS
         JP      Error
 	
 L0BF3:  LD      DE,0004H
@@ -2725,7 +2644,7 @@ L0C17:  LD      (HL),C
         LD      C,E
         EX      DE,HL
         ADD     HL,DE
-        JP      C,L0BEE
+        JP      C,BadSubscriptError
         CALL    CheckEnoughMem
         LD      (VAR_TOP),HL
 L0C34:  DEC     HL
@@ -2758,7 +2677,7 @@ L0C57:	POP	HL
         EX      (SP),HL
         PUSH    AF
         RST     CompareHLDE
-        JP      NC,L0BEE
+        JP      NC,BadSubscriptError
         PUSH    HL
         CALL    L13AB
         POP     DE
@@ -2789,6 +2708,7 @@ PiConst:
 
 Erl:
 	LD	HL, (ErrorLine)
+WordFromHLToFACCUM:
 	LD	A, H
 	LD	B, L
 	JP	WordFromABToFACCUM
@@ -2946,7 +2866,8 @@ L0D46:  LD      HL,L022B
         INC     HL
         JP      L0CFC
 L0D4F:  DEC     HL
-L0D50:  LD      B,22H
+GetStringConstant:
+	LD      B,'"'
         LD      D,B
 L0D53:  PUSH    HL
         LD      C,0FFH
@@ -2989,15 +2910,16 @@ PrintString:
 L0D96:  CALL    L0EC1
         CALL    FLoadBCDEfromMem
         INC     E
-L0D9D:  DEC     E
+PrintStringLoop:
+	DEC     E
         RET     Z
 
         LD      A,(BC)
         RST     OutChar
         CP      0DH
-        CALL    Z,L07E5
+        CALL    Z,PrintNull
         INC     BC
-        JP      L0D9D
+        JP      PrintStringLoop
 		
 L0DAA:  OR      A
 	DB	0EH			; LD C,...
@@ -3016,7 +2938,8 @@ L0DAC:	POP	AF
         LD      (STR_TOP),HL
         INC     HL
         EX      DE,HL
-L0DC4:  POP     AF
+POPAFRET:
+	POP     AF
         RET     
 
 L0DC6:  POP     AF
@@ -3153,7 +3076,7 @@ L0E77:  PUSH    BC
         EX      (SP),HL
         CALL    EvalTerm
         EX      (SP),HL
-        CALL    L096A
+        CALL    IsString
         LD      A,(HL)
         PUSH    HL
         LD      HL,(FACCUM)
@@ -3192,7 +3115,7 @@ L0EB5:  DEC     L
         INC     DE
         JP      L0EB5
 
-L0EBE:  CALL    L096A
+L0EBE:  CALL    IsString
 L0EC1:  LD      HL,(FACCUM)
 L0EC4:  EX      DE,HL
 L0EC5:  LD      HL,(TEMPPT)		;021DH
@@ -4321,9 +4244,9 @@ L1AC4:	LD	A, C
 	JP	C, InputNext
 	ENDIF
 	CALL	0F803H
-	CP	45H
+	CP	"E"
 	JP	Z, L1B72
-	CP	41H
+	CP	"A"
 	JP	Z, L1B2C
 	CP	" "
 	IF	RK86
@@ -4336,7 +4259,7 @@ L1ADC:	CALL	L1A00
 	JP	NC, L1CD8
 	JP	InputNext
 L1AE8:	LD	A, B
-	CP	48H
+	CP	72
 	RET	NC
 	LD	A, (DE)
 	LD	C, A
