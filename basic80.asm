@@ -2976,6 +2976,7 @@ L0DF2:  EX      DE,HL
         OR      A
         CALL    L0E32
         JP      L0DF2
+
 L0E05:  POP     BC
 L0E06:  EX      DE,HL
         LD      HL,(VAR_TOP)
@@ -3115,7 +3116,7 @@ L0EB5:  DEC     L
         INC     DE
         JP      L0EB5
 
-L0EBE:  CALL    IsString
+EvalString:  CALL    IsString
 L0EC1:  LD      HL,(FACCUM)
 L0EC4:  EX      DE,HL
 L0EC5:  LD      HL,(TEMPPT)		;021DH
@@ -3137,18 +3138,20 @@ L0EC5:  LD      HL,(TEMPPT)		;021DH
         LD      C,(HL)
         LD      HL,(STR_TOP)
         RST     CompareHLDE
-        JP      NZ,L0EE5
+        JP      NZ,POPHLRET2
         LD      B,A
         ADD     HL,BC
         LD      (STR_TOP),HL
-L0EE5:  POP     HL
+POPHLRET2:
+	POP     HL
         RET     
 
 	CHK	0EE7h, "Сдвижка кода"
 Len:
         LD      BC,ByteFromAToFACCUM
         PUSH    BC
-L0EEB:  CALL    L0EBE
+GetStringLength:
+	CALL    EvalString
         XOR     A
         LD      D,A
         LD      (VALTYP),A
@@ -3157,15 +3160,7 @@ L0EEB:  CALL    L0EBE
         RET     
 
 	CHK	0ef6h, "Сдвижка кода"
-Asc:
-        CALL    L0EEB
-        JP      Z,FunctionCallError
-        INC     HL
-        INC     HL
-        RST     PushNextWord
-        POP     HL
-        LD      A,(HL)
-        JP      ByteFromAToFACCUM
+	INCLUDE	"fnAsc.inc"
 
 	CHK	0f04h, "Сдвижка кода"
 Chr:
@@ -3181,9 +3176,11 @@ L0F10:	POP     BC
 Left:
         CALL    L0F9F
         XOR     A
-L0F18:  EX      (SP),HL
+RightCont:
+	EX      (SP),HL
         LD      C,A
-L0F1A:	PUSH    HL
+MidCont:
+	PUSH    HL
 	LD      A,(HL)
         CP      B
         JP      C,L0F22
@@ -3219,7 +3216,7 @@ Right:
         PUSH    DE
         LD      A,(DE)
         SUB     B
-        JP      L0F18
+        JP      RightCont
 
 	CHK	0f4eh, "Сдвижка кода"
 Mid:
@@ -3237,7 +3234,7 @@ L0F60:  RST     SyntaxCheck
         DB	')'
         POP     AF
         EX      (SP),HL
-        LD      BC,L0F1A
+        LD      BC,MidCont
         PUSH    BC
         DEC     A
         CP      (HL)
@@ -3320,7 +3317,7 @@ L0FBC:  CALL    FTestPositiveIntegerExpression
 
 	CHK	0Fc8H, "Сдвижка кода"
 Val:
-        CALL    L0EEB
+        CALL    GetStringLength
         JP      Z,FZero
         LD      E,A
         INC     HL
@@ -3512,13 +3509,17 @@ Home:
 
 	ENDIF
 
-L1067:  PUSH    DE
+	IF	BASICNEW
+	ELSE
+PokeCont:
+	PUSH    DE
         RST     SyntaxCheck
         DB	','
         CALL    EvalByteExpression
         POP     DE
         LD      (DE),A
         RET     
+	ENDIF
 
 	INCLUDE	"MATH.INC"
 	
@@ -3534,15 +3535,20 @@ Poke:
         CALL    EvalNumericExpression
         RST     FTestSign
         CALL    FTestIntegerExpression
-        JP      L1067
+	IF	BASICNEW
+	PUSH    DE
+        RST     SyntaxCheck
+        DB	','
+        CALL    EvalByteExpression
+        POP     DE
+        LD      (DE),A
+        RET     
+	ELSE
+        JP      PokeCont
+	ENDIF
 	
 	CHK	1736h, "Сдвижка кода"
-Usr:
-        RST     FTestSign
-        CALL    FTestIntegerExpression
-        EX      DE,HL
-        CALL    CallHL
-	JP	ByteFromAToFACCUM
+	INCLUDE	"fnUsr.inc"
 
 CallHL:	JP      (HL)
 
