@@ -18,7 +18,7 @@
 ; !!Отвязать по максимуму от работы в ОЗУ (версия для ROM-диска? Мысль интересная, т.к можно высвободить гору ОЗУ. 
 ;   Больше актуально не для М-80/ЮТ-88, а для РК-86. При этом для самого интерпретатора можно заполучить 32Кб
 ;   для стандартного ROM-диска).
-; !?Добавить обратно NULL
+; !!Добавить IF x GOSUB
 ;
 ; Для микроши f82d есть? Или как-то по другому?
 ;
@@ -414,8 +414,10 @@ CompareHLDE:
 	RET
 
 ;
-
+	IF	BASICNEW
+	ELSE
 NULLS:	DB	01	; Число нолей-1, которое надо вывести после перевода строки (это было нужно для терминалов)
+	ENDIF
 TERMINAL_X:	DB		00	; Variable controlling the current X positions of terminal output
 
 ;
@@ -435,6 +437,8 @@ PushNextWord:
 	EX	(SP),HL
 	LD	(RST6RET),HL
 	POP	HL
+	IF	BASICNEW
+	ELSE
 	JP	RST6_CONT		; Отличие от Altair - место для обработчика RST 7
 ;
 ;
@@ -442,9 +446,14 @@ PushNextWord:
 ;	ORG	38H
 RST7:
 	RET
+	ENDIF
+
 L0039:	DW	0
 
+	IF	BASICNEW
+	ELSE
 RST6_CONT:
+	ENDIF
 	LD	C,(HL)
 	INC	HL
 	LD	B,(HL)
@@ -1349,29 +1358,7 @@ NextChar_tail:
 
 	CHK	05DBh, "Сдвижка кода"
 
-; Обработчик команды Restore
-; Сбрасываем указатель данных на адрес перед началом программы.
-
-Restore:
-	EX      DE,HL
-        LD      HL,(PROGRAM_BASE)
-	IF	BASICNEW
-	JP	Z, Restore0		; Номер строки не задан
-	EX	DE,HL
-	CALL	LineNumberFromStr
-	PUSH	HL
-	CALL	FindProgramLine
-	LD	H, B
-	LD	L, C
-	POP	DE
-	JP	NC, UnknownStringError
-Restore0:
-	ENDIF
-        DEC     HL
-SetDataPtr:
-	LD      (DATA_PROG_PTR),HL
-        EX      DE,HL
-        RET     
+	INCLUDE	"stRestore.inc"
 
 ; TestBreakKey
 ; Apparently the Altair had a 'break' key, to break program execution. 
@@ -1395,18 +1382,9 @@ CheckBreak:
 
 	CHK	05efh, "Сдвижка кода"
 
-;STOP / END
-;
-; The keywords STOP and END are synonymous.
-; Но по STOP мы запоминаем адрес останова для последующего
-; восстановления по CONT
-; We don't need to do anything other than lose the return address and fall into Main.
+	INCLUDE "stStop.inc"
+	INCLUDE "stEnd.inc"
 
-Stop:
-	RET	NZ		; Syntax Error if args
-	DB	0F6H            ; Устанавливаем флаг "STOP" и пропускаем RET NZ ; OR 0C0H
-End:	RET     NZ		; Syntax Error if args
-	LD      (PROG_PTR_TEMP),HL	; Сохраняем адрес останова во временную переменную
 InputBreak:			; При входе по InputBreak Z=0
 	POP     BC		; Убираем адрес возврата из стека
 
@@ -1428,35 +1406,10 @@ L0609:  XOR     A
         JP      Main			; Иначе уходим в диалоговый режим
 
 	CHK	0617H, "Сдвижка кода"
-Cont:	
-	RET     NZ			; Ощибка, если есть аргументы
-	LD      E,ERR_CN		; Подготавливаем номер ошибки
-	LD      HL,(OLD_TEXT)		; Восстанавливаем адрес останова
-	LD      A,H
-	OR      L
-	JP      Z,Error			; Если он нулевой, то ошибка
-	EX      DE,HL
-	LD      HL,(OLD_LINE)		; Восстанавливаем номер строки
-	LD      (CURRENT_LINE),HL
-	EX      DE,HL			; HL=Адрес, DE=Строка
-	RET				; Продолжаем выполнение со места останова
 
-; Похоже, что мертвый код. В оригинале это реализация команды NULL,
-; которая определяла, сколько нулей выводить после конца строки.
+	INCLUDE	"stCont.inc"
+	INCLUDE	"stNull.inc"
 
-Null:
-	IF	BASICNEW
-	RET				; К следующей команде
-	ELSE
-	CALL    EvalByteExpression	; Парсим байт
-        RET     NZ			; Общибка, если не байт
-
-        INC     A
-        CP      48H			; Проверяем максимум
-        JP      NC,FunctionCallError
-        LD      (NULLS),A		; Сохраняем, сколько выводить нулей
-        RET				; К следующей команде
-	ENDIF
 ;
 ;CharIsAlpha
 ;If character pointed to by HL is alphabetic, the carry flag is reset otherwise set.
@@ -1475,7 +1428,8 @@ CharIsAlpha:
 
 GetSubscript:
 	RST     NextChar
-L0642:  CALL    EvalNumericExpression
+EvalPisitiveNumericExpression:
+	CALL    EvalNumericExpression
 
 ; If subscript is negative then jump to FC error below.
 FTestPositiveIntegerExpression:
@@ -1547,31 +1501,8 @@ NextLineNumChar:
         JP      NextLineNumChar
 	
 	CHK	0682H, "Сдвижка кода"
-Clear:
-        JP      Z,ClearAll
-        CALL    L0642
-        DEC     HL
-        RST     NextChar
-        RET     NZ
 
-        PUSH    HL
-        LD      HL,(MEMSIZ)
-        LD      A,L
-        SUB     E
-        LD      E,A
-        LD      A,H
-        SBC     A,D
-        LD      D,A
-        JP      C,SyntaxError
-        LD      HL,(VAR_BASE)
-        LD      BC,0028H
-        ADD     HL,BC
-        RST     CompareHLDE
-        JP      NC,OutOfMemory
-        EX      DE,HL
-        LD      (STACK_TOP),HL
-        POP     HL
-        JP      ClearAll
+	INCLUDE	"stClear.inc"
 
 	CHK	06ABH, "Сдвижка кода"
 Run:
@@ -1752,34 +1683,9 @@ OnLoop:
 
         JP      OnLoop
 
-;1.13 IF Keyword Handler
-;If
-;Evaluates a condition. A condition has three mandatory parts : a left-hand side expression, a comparison operator, and a right-hand side expression. Examples are 'A=2', 'B<=4' and so on.
-
-;The comparison operator is one or more of the three operators '>', '=', and '<'. Since these three operators can appear more than once, and in any order, the code does something rather clever to convert them to a single 'comparison operator value'. This value has bit 0 set if '>' is present, bit 1 for '=', and bit 2 for '<'. Thus the comparison operators '<=' and '=<' are both 6, likewise '>=' and '=>' are both 3, and '<>' is 5
-
-;You can therefore get away with stupid operators such as '>>>>>' (value 1, the same as a single '>') and '>=<' (value 7), the latter being particularly dense as it causes the condition to always evaluate to true.
-
 	CHK	0778h, "Сдвижка кода"
-If:
-        CALL    EvalExpression
-        LD      A,(HL)
-        CP      TK_GOTO			; !!Добавить IF x GOSUB
-        JP      Z, NoThen
-        RST     SyntaxCheck
-        DB	TK_THEN
-        DEC     HL
-NoThen:
-	RST     FTestSign
-        JP      Z,Rem
 
-;Condition evaluated to True. Here we get the first character of the THEN statement,
-; and if it's a digit then we jump to GOTO's handler as it's an implicit GOTO. 
-;Otherwise we jump to near the top of Exec to run the THEN statement.
-	
-        RST     NextChar
-        JP      C,Goto			; Если число, то это GOTO
-        JP      ExecANotZero		; Если конец строки, то возврат, иначе исполняем команду
+	INCLUDE "stIf.inc"
 		
 ;1.14 Printing
 ;Print
@@ -1787,8 +1693,11 @@ NoThen:
 ;or multiple expressions/literals seperated by tabulation directives 
 ;(comma, semi-colon, or the TAB keyword).
 
+	IF	BASICNEW
+	ELSE
 ; Похоже, это мертвый код
         DEC     HL
+	ENDIF
 
 PrintLoop:
 	RST     NextChar
@@ -1850,6 +1759,9 @@ NewLine:
         RST     OutChar
         LD      A,0AH
         RST     OutChar
+	IF	BASICNEW
+	RET
+	ELSE
 PrintNull:
 	IF	BASICNEW
 	XOR	A
@@ -1869,6 +1781,7 @@ PrintNullLoop:
         RST     OutChar
         POP     AF
         JP      PrintNullLoop
+	ENDIF
 
 ;ToNextTabBreak
 ;Calculate how many spaces are needed to get us to the next tab-break then jump to PrintSpaces to do it.
@@ -2069,7 +1982,8 @@ L0914:  RST     NextChar
 	CHK	091Dh, "Сдвижка кода"
 Next:
         LD      DE,0000H
-L0920:  CALL    NZ,GetVar
+NextLoop:
+	CALL    NZ,GetVar
 ;Save the prog ptr in HL to PROG_PTR_TEMP. This currently points to the end of the NEXT statement, and we need to get it back later in case we find that the FOR loop has completed.
         LD      (PROG_PTR_TEMP),HL
 ;GetFlowPtr to get access to the FOR flow struct on the stack.
@@ -2123,7 +2037,7 @@ ForLoopIsComplete:
         CP      ','			;2CH
         JP      NZ,ExecNext
         RST     NextChar
-        CALL    L0920
+        CALL    NextLoop
 
 ; Evalute expression and check is it value is Numeric
 EvalNumericExpression:
@@ -2917,7 +2831,10 @@ PrintStringLoop:
         LD      A,(BC)
         RST     OutChar
         CP      0DH
+	IF	BASICNEW
+	ELSE
         CALL    Z,PrintNull
+	ENDIF
         INC     BC
         JP      PrintStringLoop
 		
@@ -3147,17 +3064,8 @@ POPHLRET2:
         RET     
 
 	CHK	0EE7h, "Сдвижка кода"
-Len:
-        LD      BC,ByteFromAToFACCUM
-        PUSH    BC
-GetStringLength:
-	CALL    EvalString
-        XOR     A
-        LD      D,A
-        LD      (VALTYP),A
-        LD      A,(HL)
-        OR      A
-        RET     
+
+	INCLUDE	"fnLen.inc"
 
 	CHK	0ef6h, "Сдвижка кода"
 	INCLUDE	"fnAsc.inc"
@@ -3316,26 +3224,7 @@ L0FBC:  CALL    FTestPositiveIntegerExpression
         RET
 
 	CHK	0Fc8H, "Сдвижка кода"
-Val:
-        CALL    GetStringLength
-        JP      Z,FZero
-        LD      E,A
-        INC     HL
-        INC     HL
-        RST     PushNextWord
-        LD      H,B
-        LD      L,C
-        ADD     HL,DE
-        LD      B,(HL)
-        LD      (HL),D
-        EX      (SP),HL
-        PUSH    BC
-        LD      A,(HL)
-        CALL    FIn
-        POP     BC
-        POP     HL
-        LD      (HL),B
-        RET     
+	INCLUDE	"fnVal.inc"
 
 ; Подпрогрмамма ввода с READER. В нашем случае - с магнитофона
 	CHK	0FE1H, "Сдвижка кода"
@@ -3445,9 +3334,12 @@ L1049:
         RST     NextChar
         RET     
 
+	IF	BASICNEW
+	ELSE
 ; Предположительно, это две строчки - мертвый код
         LD      (FACCUM),A
         CALL    New2
+	ENDIF
 
 L1023:  LD      B,03H
 L1025:  CALL    Reader
@@ -3505,7 +3397,7 @@ Home:
         JP      ByteFromAToFACCUM
 
 ; Тоже мертвый код, , похоже на другую реализацию POKE
-        CALL    L0642
+        CALL    EvalPisitiveNumericExpression
 
 	ENDIF
 
@@ -3524,11 +3416,7 @@ PokeCont:
 	INCLUDE	"MATH.INC"
 	
 	CHK	1724h, "Сдвижка кода"
-Peek:	
-        RST     FTestSign
-        CALL    FTestIntegerExpression
-        LD      A,(DE)
-        JP      ByteFromAToFACCUM
+	INCLUDE	"fnPeek.inc"
 	
 	CHK	172CH, "Сдвижка кода"
 Poke:
@@ -4188,8 +4076,9 @@ L19EE:	LD	A, (L04BD)
 	ENDIF
 
 	IF	SERVICE
-; Тут еще подумать... Не очень удобно напрямую прописаны адреса...
+
 last_tk_addr	SET	0ffffh
+
 MAP	MACRO   key, token
 	IF	last_tk_addr <> ((token_ADDR & 0FF00H) >> 8)
 	LD	DE, token_ADDR

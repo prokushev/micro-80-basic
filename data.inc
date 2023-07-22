@@ -155,6 +155,8 @@ Q	SET	FIRST_TK
 	DB	"RESE", 'T'+80h
 	TOKEN	TK_HOME
 	DB	"HOM", 'E'+80h
+	TOKEN	TK_NULL
+	DB	"NUL", 'L'+80h
 	ENDIF
 	IF	OPTION
 	TOKEN	TK_OPTION
@@ -341,6 +343,7 @@ KW_GENERAL_FNS:
 	DW	Monitor		; SYSTEM то же, что и MONITOR (пока)
 	DW	Reset
 	DW	Home
+	DW	Null
 	ENDIF
 
 	IF	OPTION
