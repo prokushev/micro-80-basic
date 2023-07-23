@@ -252,25 +252,25 @@ OPTION	EQU	1	; Поддержка команды OPTION
 LET	EQU	1	; Поддержка команды LET
 RANDOMIZE EQU	1	; Поддержка команды RANDOMIZE
 END	EQU	1	; Поддержка команды END
-	ELSE
+	ELSE    ; ANSI
 	IF	GOST
 OPTION	EQU	1	; Поддержка команды OPTION
 LET	EQU	1	; Поддержка команды LET
 RANDOMIZE EQU	1	; Поддержка команды RANDOMIZE
 END	EQU	1	; Поддержка команды END
-	ELSE	; BASICNEW
+	ELSE	; GOST
 OPTION	EQU	0	; Поддержка команды OPTION
 LET	EQU	1	; Поддержка команды LET
 RANDOMIZE EQU	0	; Поддержка команды RANDOMIZE
 END	EQU	1	; Поддержка команды END
-	ENDIF
-	ENDIF
-	ELSE	; NOT BASICNEW
+	ENDIF   ; GOST
+	ENDIF   ; ANSI      
+	ELSE	; BASICNEW
 OPTION	EQU	0	; Поддержка команды OPTION
 LET	EQU	0	; Поддержка команды LET
 RANDOMIZE EQU	0	; Поддержка команды RANDOMIZE
 END	EQU	0	; Поддержка команды END
-	ENDIF
+	ENDIF   ; BASICNEW
 
 
 	IF	BASICNEW
@@ -903,7 +903,7 @@ TokenizeNext:
         LD      A,(DATA_STM)
         OR      A
         LD      B,A
-        LD      A,(HL)			; Восстанавливаем введенноый символа
+        LD      A,(HL)			; Восстанавливаем введенный символа
         JP      NZ,WriteChar
 
 ; Обработка ?
@@ -913,14 +913,14 @@ TokenizeNext:
 
 	IF	BASICNEW
 ; Обработка '
-        LD      A,(HL)			; Восстанавливаем введенноый символа
+        LD      A,(HL)			; Восстанавливаем введенный символа
         CP      "'"
         LD      A, TK_REM		; Замена ' на REM
         JP      Z, WriteChar
 	ENDIF
 
 ;
-        LD      A,(HL)			; Восстанавливаем введенноый символа
+        LD      A,(HL)			; Восстанавливаем введенный символа
         CP      '0'			; Меньше '0'?
         JP      C,L041A			; Ищем ключевое слово
         CP      ';'+1			; 0123456789:;
@@ -1428,7 +1428,7 @@ CharIsAlpha:
 
 GetSubscript:
 	RST     NextChar
-EvalPisitiveNumericExpression:
+EvalPositiveNumericExpression:
 	CALL    EvalNumericExpression
 
 ; If subscript is negative then jump to FC error below.
@@ -2663,14 +2663,8 @@ WordFromABToFACCUM:
         JP      L12DA
 
 	CHK	0CA8h, "Сдвижка кода"
-Pos:
-        LD      A,(TERMINAL_X)
 
-; Преобразует байт из A в число с плавающей точкой в FACCUM
-ByteFromAToFACCUM:
-	LD      B,A
-        XOR     A
-        JP      WordFromABToFACCUM
+	INCLUDE	"fnPos.inc"
 	
 	CHK	0CB0h, "Сдвижка кода"
 Def:
@@ -3033,7 +3027,8 @@ L0EB5:  DEC     L
         INC     DE
         JP      L0EB5
 
-EvalString:  CALL    IsString
+EvalString:
+	CALL    IsString
 L0EC1:  LD      HL,(FACCUM)
 L0EC4:  EX      DE,HL
 L0EC5:  LD      HL,(TEMPPT)		;021DH
@@ -3068,6 +3063,7 @@ POPHLRET2:
 	INCLUDE	"fnLen.inc"
 
 	CHK	0ef6h, "Сдвижка кода"
+
 	INCLUDE	"fnAsc.inc"
 
 	CHK	0f04h, "Сдвижка кода"
@@ -3224,6 +3220,7 @@ L0FBC:  CALL    FTestPositiveIntegerExpression
         RET
 
 	CHK	0Fc8H, "Сдвижка кода"
+
 	INCLUDE	"fnVal.inc"
 
 ; Подпрогрмамма ввода с READER. В нашем случае - с магнитофона
@@ -3381,12 +3378,12 @@ Monitor:
 	JP	L1049
 	ENDIF
 Reset:
-; Команд не поддерживает аргументов.
+; Команда не поддерживает аргументов.
 	RET     NZ
 	JP	0F800H
 
 Home:
-; Команд не поддерживает аргументов.
+; Команда не поддерживает аргументов.
 	RET     NZ
 	LD	C, 1FH
 	JP	0F809H
@@ -3397,7 +3394,7 @@ Home:
         JP      ByteFromAToFACCUM
 
 ; Тоже мертвый код, , похоже на другую реализацию POKE
-        CALL    EvalPisitiveNumericExpression
+        CALL    EvalPositiveNumericExpression
 
 	ENDIF
 

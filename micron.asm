@@ -1,3 +1,5 @@
+	CPU	8080
+	Z80SYNTAX	EXCLUSIVE
 
         ORG     0000h
 
@@ -73,7 +75,7 @@ L0049:  LD      A,(HL)
         EX      DE,HL
         JP      Z,L005D
         EX      DE,HL
-        RST     0x20
+        RST     20H
 L005D:  LD      BC,000Dh
         POP     HL
         RET     Z
@@ -86,7 +88,7 @@ L0066:  CALL    L0086
 L0069:  PUSH    BC
         EX      (SP),HL
         POP     BC
-L006C:  RST     0x20
+L006C:  RST     20H
         LD      A,(HL)
         LD      (BC),A
         RET     Z
@@ -115,7 +117,7 @@ L0086:  PUSH    DE
         EX      DE,HL
         LD      HL,0FFDBh
         ADD     HL,SP
-        RST     0x20
+        RST     20H
         EX      DE,HL
         POP     DE
         RET     NC
@@ -160,7 +162,7 @@ L00CB:  CALL    0F818h
         PUSH    HL
         CALL    L1313
         LD      A,3Ah           ; ':'
-        RST     0x18
+        RST     18H
         LD      A,(208Dh)
         INC     A
         LD      E,A
@@ -186,7 +188,7 @@ L0100:  XOR     A
         ; --- START PROC L010D ---
 L010D:  CALL    L06DA
         ; --- START PROC L0110 ---
-L0110:  RST     0x10
+L0110:  RST     10H
         INC     A
         DEC     A
         JP      Z,L0100
@@ -200,7 +202,7 @@ L0110:  RST     0x10
         JP      NC,L0461
         PUSH    DE
         PUSH    BC
-        RST     0x10
+        RST     10H
         PUSH    AF
         CALL    L0197
         PUSH    BC
@@ -211,7 +213,7 @@ L0133:  LD      A,(DE)
         LD      (BC),A
         INC     BC
         INC     DE
-        RST     0x20
+        RST     20H
         JP      NC,L0133
         LD      H,B
         LD      L,C
@@ -287,10 +289,10 @@ L019A:  LD      B,H
         DEC     HL
         RET     Z
         PUSH    BC
-        RST     0x30
-        RST     0x30
+        RST     30H
+        RST     30H
         POP     HL
-        RST     0x20
+        RST     20H
         POP     HL
         POP     BC
         CCF
@@ -462,7 +464,7 @@ L02B8:  DEC     DE
         LD      (HL),A
         INC     B
         EX      (SP),HL
-        RST     0x20
+        RST     20H
         EX      (SP),HL
         DEC     HL
         JP      NZ,L02B8
@@ -472,7 +474,7 @@ L02C4:  CALL    0F818h
         LD      C,20h           ; ' '
         CALL    0F809h
         LD      A,08h
-L02CE:  RST     0x18
+L02CE:  RST     18H
         DEC     B
         JP      NZ,L02CE
         POP     HL
@@ -489,13 +491,13 @@ L02D7:  LD      A,L
         JP      0F809h
 
         ; --- START PROC L02DF ---
-L02DF:  RST     0x20
+L02DF:  RST     20H
         RET     Z
         INC     HL
         JP      0F809h
 
         ; --- START PROC L02E5 ---
-L02E5:  RST     0x20
+L02E5:  RST     20H
         RET     Z
         LD      A,(2063h)
         DEC     A
@@ -595,12 +597,12 @@ L037F:  LD      A,(2117h)
         POP     BC
         RET
 
-L038E:  EX      AF,AF'
+L038E:  DB	08H
         LD      A,(BC)
         DEC     C
         INC     C
         RRA
-        JR      L03AC+2         ; reference not aligned to instruction
+        DB 018H, 19H
 
 L0395:  LD      A,(DE)
         NOP
@@ -610,7 +612,7 @@ L0397:  CALL    L03B6
         CALL    L0197
         LD      H,B
         LD      L,C
-L03A1:  RST     0x30
+L03A1:  RST     30H
         POP     DE
         LD      A,D
         OR      E
@@ -624,7 +626,7 @@ L03AC:  CALL    L03D1
         ; --- START PROC L03B6 ---
 L03B6:  CALL    L0519
         RET     Z
-        RST     0x08
+        RST     08H
         INC     L
         PUSH    DE
         CALL    L0519
@@ -635,7 +637,7 @@ L03B6:  CALL    L0519
         OR      L
         SCF
         RET     Z
-        RST     0x20
+        RST     20H
         JP      C,L009B
         XOR     A
         SCF
@@ -643,12 +645,12 @@ L03B6:  CALL    L0519
         RET
 
         ; --- START PROC L03D1 ---
-L03D1:  RST     0x30
+L03D1:  RST     30H
         DEC     HL
         EX      (SP),HL
         EX      DE,HL
         LD      HL,(2078h)
-        RST     0x20
+        RST     20H
         POP     BC
         RET     C
         PUSH    BC
@@ -666,7 +668,7 @@ L03E2:  LD      A,64h           ; 'd'
         LD      SP,HL
 L03F4:  EX      DE,HL
         CALL    L0075
-        EX      AF,AF'
+        DB	08h
         PUSH    HL
         CALL    L05B1
         EX      (SP),HL
@@ -674,7 +676,7 @@ L03F4:  EX      DE,HL
         LD      HL,(213Bh)
         EX      (SP),HL
         CALL    L086C
-        RST     0x08
+        RST     08H
         SBC     A,(HL)
         CALL    L0869
         PUSH    HL
@@ -689,12 +691,12 @@ L03F4:  EX      DE,HL
         CP      0A3h
         LD      A,01h
         JP      NZ,L0429
-        RST     0x10
+        RST     10H
         CALL    L0869
         PUSH    HL
         CALL    L11B1
         POP     HL
-        RST     0x28
+        RST     28H
 L0429:  PUSH    BC
         PUSH    DE
         PUSH    AF
@@ -735,7 +737,7 @@ L044F:  LD      (HL),A
         LD      (213Bh),HL
         EX      DE,HL
         ; --- START PROC L0461 ---
-L0461:  RST     0x10
+L0461:  RST     10H
         LD      DE,0436h
         PUSH    DE
 L0466:  RET     Z
@@ -832,11 +834,11 @@ L04F1:  LD      A,(HL)
         RET
 
         ; --- START PROC L04F9 ---
-L04F9:  RST     0x10
+L04F9:  RST     10H
         ; --- START PROC L04FA ---
 L04FA:  CALL    L0869
         ; --- START PROC L04FD ---
-L04FD:  RST     0x28
+L04FD:  RST     28H
         JP      M,L0514
         ; --- START PROC L0501 ---
 L0501:  LD      A,(2150h)
@@ -855,12 +857,12 @@ L0514:  LD      E,08h
 L0519:  DEC     HL
         ; --- START PROC L051A ---
 L051A:  LD      DE,0000h
-L051D:  RST     0x10
+L051D:  RST     10H
         RET     NC
         PUSH    HL
         PUSH    AF
         LD      HL,1998h
-        RST     0x20
+        RST     20H
         JP      C,L009B
         LD      H,D
         LD      L,E
@@ -880,7 +882,7 @@ L051D:  RST     0x10
 L053A:  JP      Z,L01C1
         CALL    L04FA
         DEC     HL
-        RST     0x10
+        RST     10H
         RET     NZ
         PUSH    HL
         LD      HL,(211Bh)
@@ -894,7 +896,7 @@ L053A:  JP      Z,L01C1
         LD      HL,(2145h)
         LD      BC,0028h
         ADD     HL,BC
-        RST     0x20
+        RST     20H
         JP      NC,L0090
         EX      DE,HL
         LD      (2141h),HL
@@ -922,7 +924,7 @@ L057F:  CALL    L0519
 L0582:  CALL    L05B1+2         ; reference not aligned to instruction
         PUSH    HL
         LD      HL,(213Bh)
-        RST     0x20
+        RST     20H
         POP     HL
         INC     HL
         CALL    C,L019A
@@ -964,7 +966,7 @@ L05BA:  LD      A,(HL)
 
         ; --- START PROC L05C8 ---
 L05C8:  CALL    L0A48+1         ; reference not aligned to instruction
-        RST     0x08
+        RST     08H
         XOR     H
         LD      A,(2119h)
         PUSH    AF
@@ -983,14 +985,14 @@ L05E3:  PUSH    HL
         PUSH    HL
         INC     HL
         INC     HL
-        RST     0x30
+        RST     30H
         POP     DE
         LD      HL,(2141h)
-        RST     0x20
+        RST     20H
         POP     DE
         JP      NC,L05FD
         LD      HL,(2145h)
-        RST     0x20
+        RST     20H
         LD      L,E
         LD      H,D
         CALL    C,L0C5F
@@ -1018,7 +1020,7 @@ L0614:  CALL    L0EDC
         LD      B,A
         CP      8Ch
         JP      Z,L0621
-        RST     0x08
+        RST     08H
         ADC     A,B
         DEC     HL
 L0621:  LD      C,E
@@ -1034,17 +1036,17 @@ L0630:  CALL    L0878
         LD      A,(HL)
         CP      88h
         JP      Z,L063C
-        RST     0x08
+        RST     08H
         AND     C
         DEC     HL
-L063C:  RST     0x28
+L063C:  RST     28H
         JP      Z,L05B1+2       ; reference not aligned to instruction
-        RST     0x10
+        RST     10H
         JP      C,L057F
         JP      L0466
 
         ; --- START PROC L0647 ---
-L0647:  RST     0x10
+L0647:  RST     10H
         ; --- START PROC L0648 ---
 L0648:  JP      Z,L06DF
         ; --- START PROC L064B ---
@@ -1058,7 +1060,7 @@ L064B:  RET     Z
         JP      Z,L070C
         CP      0C8h
         JP      NZ,L066B
-        RST     0x10
+        RST     10H
         CALL    L1920
         DEC     HL
         JP      L0708
@@ -1086,7 +1088,7 @@ L066B:  PUSH    HL
         CALL    NC,L06DF
         CALL    L0CC6
         LD      A,20h           ; ' '
-        RST     0x18
+        RST     18H
         XOR     A
 L06A1:  CALL    NZ,L0CC6
 L06A4:  POP     HL
@@ -1098,7 +1100,7 @@ L06A8:  INC     HL
         PUSH    HL
         CALL    L0501
         LD      A,20h           ; ' '
-        RST     0x18
+        RST     18H
         LD      A,D
         OR      A
         JP      Z,L06BD
@@ -1122,7 +1124,7 @@ L06CD:  AND     0Fh
         JP      C,L06D6
         ADD     A,07h
 L06D6:  ADD     A,30h           ; '0'
-        RST     0x18
+        RST     18H
         RET
 
         ; --- START PROC L06DA ---
@@ -1130,9 +1132,9 @@ L06DA:  LD      (HL),00h
         LD      HL,208Fh
         ; --- START PROC L06DF ---
 L06DF:  LD      A,0Dh
-        RST     0x18
+        RST     18H
         LD      A,0Ah
-        RST     0x18
+        RST     18H
         XOR     A
         LD      (2063h),A
         RET
@@ -1152,19 +1154,19 @@ L06FC:  LD      B,A
         ; --- START PROC L06FF ---
 L06FF:  DEC     B
         JP      M,L0707
-        RST     0x18
+        RST     18H
         JP      L06FF
 
         ; --- START PROC L0707 ---
 L0707:  POP     HL
         ; --- START PROC L0708 ---
-L0708:  RST     0x10
+L0708:  RST     10H
         JP      L064B
 
         ; --- START PROC L070C ---
 L070C:  PUSH    AF
         CALL    L0EDA+1         ; reference not aligned to instruction
-        RST     0x08
+        RST     08H
         ADD     HL,HL
         DEC     HL
         POP     AF
@@ -1205,7 +1207,7 @@ L0740:  CP      22h             ; '"'
         LD      B,A
         CP      2Ch             ; ','
         JP      NZ,L009B
-L0759:  RST     0x10
+L0759:  RST     10H
         PUSH    HL
         PUSH    BC
         CALL    L0CC6
@@ -1227,7 +1229,7 @@ L0777:  LD      A,3Fh           ; '?'
         JP      Z,L077D
         LD      A,C
         ; --- START PROC L077D ---
-L077D:  RST     0x18
+L077D:  RST     18H
         LD      DE,2090h
         XOR     A
         LD      (DE),A
@@ -1240,7 +1242,7 @@ L077D:  RST     0x18
         RET     NZ
         ; --- START PROC L078C ---
 L078C:  LD      A,3Fh           ; '?'
-        RST     0x18
+        RST     18H
         LD      A,08h
         JP      L077D
 
@@ -1260,12 +1262,12 @@ L079E:  LD      BC,2CCFh
         OR      A
         JP      NZ,L07FE
         LD      A,2Ch           ; ','
-        RST     0x18
+        RST     18H
         CALL    L078C
 L07B9:  LD      A,(2119h)
         OR      A
         JP      Z,L07D9
-        RST     0x10
+        RST     10H
         LD      D,A
         LD      B,A
         CP      22h             ; '"'
@@ -1280,19 +1282,19 @@ L07CD:  CALL    L0C83
         PUSH    DE
         JP      L05E3
 
-L07D9:  RST     0x10
+L07D9:  RST     10H
         CALL    L126A
         EX      (SP),HL
         CALL    L11BD
         POP     HL
         DEC     HL
-        RST     0x10
+        RST     10H
         JP      Z,L07EC
         CP      2Ch             ; ','
         JP      NZ,L0736
 L07EC:  EX      (SP),HL
         DEC     HL
-        RST     0x10
+        RST     10H
         JP      NZ,L079E+1      ; reference not aligned to instruction
         POP     DE
         LD      A,(2136h)
@@ -1305,7 +1307,7 @@ L07FE:  CALL    L05B1
         OR      A
         JP      NZ,L0817
         INC     HL
-        RST     0x30
+        RST     30H
         LD      A,C
         OR      B
         LD      E,06h
@@ -1317,7 +1319,7 @@ L07FE:  CALL    L05B1
         EX      DE,HL
         LD      (2133h),HL
         EX      DE,HL
-L0817:  RST     0x10
+L0817:  RST     10H
         CP      83h
         JP      NZ,L07FE
         JP      L07B9
@@ -1360,7 +1362,7 @@ L085B:  LD      SP,HL
         LD      A,(HL)
         CP      2Ch             ; ','
         JP      NZ,L0436
-        RST     0x10
+        RST     10H
         CALL    L0823
         ; --- START PROC L0869 ---
 L0869:  CALL    L0878
@@ -1380,7 +1382,7 @@ L0878:  DEC     HL
 L087B:  PUSH    DE
         CALL    L0075
         LD      BC,0E8CDh
-        EX      AF,AF'
+        DB	08H
         LD      (2139h),HL
         ; --- START PROC L0886 ---
 L0886:  LD      HL,(2139h)
@@ -1401,7 +1403,7 @@ L0893:  SUB     0ABh
         LD      D,A
         JP      C,L009B
         LD      (2131h),HL
-        RST     0x10
+        RST     10H
         JP      L0893
 
 L08AD:  LD      A,D
@@ -1439,14 +1441,14 @@ L08D5:  PUSH    BC
         CALL    L1196
         LD      E,B
         LD      D,C
-        RST     0x30
+        RST     30H
         LD      HL,(2131h)
         JP      L087B
 
         ; --- START PROC L08E8 ---
 L08E8:  XOR     A
         LD      (2119h),A
-        RST     0x10
+        RST     10H
         JP      C,L1272
         CALL    L04F1
         JP      NC,L0950
@@ -1478,11 +1480,11 @@ L0907:  JP      Z,L0C80
         SUB     0AEh
         JP      NC,L0961
         ; --- START PROC L0937 ---
-L0937:  RST     0x08
-        JR      Z,L0907
+L0937:  RST     08H
+        DB	28H, 0CDH
         LD      A,B
-        EX      AF,AF'
-        RST     0x08
+        DB	08H
+        RST     08H
         ADD     HL,HL
         RET
 
@@ -1513,7 +1515,7 @@ L0961:  LD      B,00h
         RLCA
         LD      C,A
         PUSH    BC
-        RST     0x10
+        RST     10H
         LD      A,C
         CP      29h             ; ')'
         JP      C,L0994
@@ -1524,11 +1526,11 @@ L0961:  LD      B,00h
         EX      (SP),HL
         JP      L099C
 
-L097B:  RST     0x08
+L097B:  RST     08H
         JR      Z,L094B
         LD      A,B
         EX      AF,AF'
-        RST     0x08
+        RST     08H
         INC     L
         CALL    L086C+1         ; reference not aligned to instruction
         EX      DE,HL
@@ -1612,8 +1614,8 @@ L09DF:  POP     HL
         PUSH    DE
         CALL    L0DEC
         POP     DE
-        RST     0x30
-        RST     0x30
+        RST     30H
+        RST     30H
         CALL    L0DF0
         CALL    L11B4
         POP     HL
@@ -1664,9 +1666,9 @@ L0A28:  LD      D,5Ah           ; 'Z'
         JP      L0886
 
 L0A3F:  DEC     HL
-        RST     0x10
+        RST     10H
         RET     Z
-        RST     0x08
+        RST     08H
         INC     L
         LD      BC,0A3Fh
         PUSH    BC
@@ -1679,12 +1681,12 @@ L0A4E:  CALL    L04F1
         XOR     A
         LD      C,A
         LD      (2119h),A
-        RST     0x10
+        RST     10H
         JP      C,L0A63
         CALL    L04F1
         JP      C,L0A6E
 L0A63:  LD      C,A
-L0A64:  RST     0x10
+L0A64:  RST     10H
         JP      C,L0A64
         CALL    L04F1
         JP      NC,L0A64
@@ -1695,7 +1697,7 @@ L0A6E:  SUB     24h             ; '$'
         RRCA
         ADD     A,C
         LD      C,A
-        RST     0x10
+        RST     10H
 L0A7B:  LD      A,(2135h)
         ADD     A,(HL)
         CP      28h             ; '('
@@ -1706,7 +1708,7 @@ L0A7B:  LD      A,(2135h)
         LD      HL,(2147h)
         EX      DE,HL
         LD      HL,(2145h)
-L0A90:  RST     0x20
+L0A90:  RST     20H
         JP      Z,L0AA7
         LD      A,C
         SUB     (HL)
@@ -1737,7 +1739,7 @@ L0AA7:  PUSH    BC
         LD      (2147h),HL
 L0ABE:  DEC     HL
         LD      (HL),00h
-        RST     0x20
+        RST     20H
         JP      NZ,L0ABE
         POP     DE
         LD      (HL),E
@@ -1766,7 +1768,7 @@ L0AD4:  PUSH    DE
         LD      A,(HL)
         CP      2Ch             ; ','
         JP      Z,L0AD4
-        RST     0x08
+        RST     08H
         ADD     HL,HL
         LD      (2139h),HL
         POP     HL
@@ -1777,7 +1779,7 @@ L0AF4:  LD      A,19h
         EX      DE,HL
         LD      HL,(2149h)
         EX      DE,HL
-        RST     0x20
+        RST     20H
         JP      Z,L0B22
         LD      A,(HL)
         CP      C
@@ -1846,7 +1848,7 @@ L0B46:  LD      (HL),C
         LD      (2149h),HL
 L0B63:  DEC     HL
         LD      (HL),00h
-        RST     0x20
+        RST     20H
         JP      NZ,L0B63
         INC     BC
         LD      H,A
@@ -1873,7 +1875,7 @@ L0B85:  LD      D,0E1h
         INC     HL
         EX      (SP),HL
         PUSH    AF
-        RST     0x20
+        RST     20H
         JP      NC,L0B1D
         PUSH    HL
         CALL    L124F
@@ -1892,7 +1894,7 @@ L0B85:  LD      D,0E1h
         ; --- START PROC L0BA3 ---
 L0BA3:  LD      HL,(2139h)
         DEC     HL
-        RST     0x10
+        RST     10H
         RET
 
 L0BA9:  LD      HL,(2149h)
@@ -1931,14 +1933,14 @@ L0BDF:  CALL    L0C3F
         PUSH    BC
         PUSH    DE
         CALL    L0C31
-        RST     0x08
+        RST     08H
         JR      Z,L0BB8+2       ; reference not aligned to instruction
         LD      C,C
         LD      A,(BC)
         CALL    L086C
-        RST     0x08
+        RST     08H
         ADD     HL,HL
-        RST     0x08
+        RST     08H
         XOR     H
         LD      B,H
         LD      C,L
@@ -1951,18 +1953,18 @@ L0BFC:  CALL    L0C3F
         CALL    L0937
         CALL    L086C
         EX      (SP),HL
-        RST     0x30
+        RST     30H
         POP     DE
-        RST     0x30
+        RST     30H
         POP     HL
-        RST     0x30
-        RST     0x30
+        RST     30H
+        RST     30H
         DEC     HL
         DEC     HL
         DEC     HL
         DEC     HL
         PUSH    HL
-        RST     0x20
+        RST     20H
         PUSH    DE
         LD      E,22h           ; '"'
         JP      Z,L00A7
@@ -1970,7 +1972,7 @@ L0BFC:  CALL    L0C3F
         POP     HL
         CALL    L0869
         DEC     HL
-        RST     0x10
+        RST     10H
         JP      NZ,L009B
         POP     HL
         POP     DE
@@ -1998,7 +2000,7 @@ L0C31:  PUSH    HL
         JP      L00A7
 
         ; --- START PROC L0C3F ---
-L0C3F:  RST     0x08
+L0C3F:  RST     08H
         AND     B
         LD      A,80h
         LD      (2135h),A
@@ -2021,7 +2023,7 @@ L0C5F:  LD      A,(HL)
         PUSH    HL
         CALL    L0CD5
         POP     HL
-        RST     0x30
+        RST     30H
         POP     BC
         CALL    L0C76
         PUSH    HL
@@ -2063,7 +2065,7 @@ L0C95:  CP      22h             ; '"'
         EX      DE,HL
         LD      A,C
         CALL    L0C76
-        RST     0x20
+        RST     20H
         CALL    NC,L0C5F
         ; --- START PROC L0CA5 ---
 L0CA5:  LD      DE,212Bh
@@ -2072,7 +2074,7 @@ L0CA5:  LD      DE,212Bh
         LD      A,01h
         LD      (2119h),A
         CALL    L11C0
-        RST     0x20
+        RST     20H
         LD      E,1Eh
         JP      Z,L00A7
         LD      (211Dh),HL
@@ -2089,7 +2091,7 @@ L0CC6:  CALL    L0DEC
 L0CCD:  DEC     E
         RET     Z
         LD      A,(BC)
-        RST     0x18
+        RST     18H
         INC     BC
         JP      L0CCD
 
@@ -2105,7 +2107,7 @@ L0CD5:  OR      A
         LD      B,0FFh
         ADD     HL,BC
         INC     HL
-        RST     0x20
+        RST     20H
         JP      C,L0CF1
         LD      (212Fh),HL
         INC     HL
@@ -2132,14 +2134,14 @@ L0D00:  LD      (212Fh),HL
         EX      DE,HL
         LD      HL,(211Dh)
         EX      DE,HL
-        RST     0x20
+        RST     20H
         LD      BC,0D0Eh
         JP      NZ,L0D5A
         LD      HL,(2145h)
 L0D1D:  EX      DE,HL
         LD      HL,(2147h)
         EX      DE,HL
-        RST     0x20
+        RST     20H
         JP      Z,L0D31
         LD      A,(HL)
         INC     HL
@@ -2152,7 +2154,7 @@ L0D30:  POP     BC
 L0D31:  EX      DE,HL
         LD      HL,(2149h)
         EX      DE,HL
-        RST     0x20
+        RST     20H
         JP      Z,L0D7D
         CALL    L11B4
         LD      A,E
@@ -2170,14 +2172,14 @@ L0D31:  EX      DE,HL
         EX      DE,HL
         LD      HL,(2131h)
         EX      DE,HL
-        RST     0x20
+        RST     20H
         JP      Z,L0D31
         LD      BC,0D4Eh
 L0D5A:  PUSH    BC
         OR      80h
         ; --- START PROC L0D5D ---
-L0D5D:  RST     0x30
-        RST     0x30
+L0D5D:  RST     30H
+        RST     30H
         POP     DE
         POP     BC
         RET     P
@@ -2187,13 +2189,13 @@ L0D5D:  RST     0x30
         LD      B,H
         LD      C,L
         LD      HL,(212Fh)
-        RST     0x20
+        RST     20H
         LD      H,B
         LD      L,C
         RET     C
         POP     HL
         EX      (SP),HL
-        RST     0x20
+        RST     20H
         EX      (SP),HL
         PUSH    HL
         LD      H,B
@@ -2272,8 +2274,8 @@ L0DA2:  PUSH    BC
         ; --- START PROC L0DD9 ---
 L0DD9:  POP     HL
         EX      (SP),HL
-        RST     0x30
-        RST     0x30
+        RST     30H
+        RST     30H
         POP     BC
         POP     HL
         ; --- START PROC L0DDF ---
@@ -2300,7 +2302,7 @@ L0DF0:  LD      HL,(211Dh)
         LD      C,(HL)
         DEC     HL
         DEC     HL
-        RST     0x20
+        RST     20H
         EX      DE,HL
         RET     NZ
         LD      (211Dh),HL
@@ -2310,7 +2312,7 @@ L0DF0:  LD      HL,(211Dh)
         DEC     DE
         LD      C,(HL)
         LD      HL,(212Fh)
-        RST     0x20
+        RST     20H
         JP      NZ,L0E10
         LD      B,A
         ADD     HL,BC
@@ -2333,7 +2335,7 @@ L0E21:  CALL    L0E16
         JP      Z,L0514
         INC     HL
         INC     HL
-        RST     0x30
+        RST     30H
         POP     HL
         LD      A,(HL)
         JP      L0BDA
@@ -2394,10 +2396,10 @@ L0E7B:  EX      DE,HL
         LD      E,0FFh
         CP      29h             ; ')'
         JP      Z,L0E8D
-        RST     0x08
+        RST     08H
         INC     L
         CALL    L0EDC
-L0E8D:  RST     0x08
+L0E8D:  RST     08H
         ADD     HL,HL
         POP     AF
         EX      (SP),HL
@@ -2440,7 +2442,7 @@ L0EC0:  LD      A,0D3h
 
         ; --- START PROC L0ECB ---
 L0ECB:  EX      DE,HL
-        RST     0x08
+        RST     08H
         ADD     HL,HL
         ; --- START PROC L0ECE ---
 L0ECE:  POP     BC
@@ -2453,7 +2455,7 @@ L0ECE:  POP     BC
         RET
 
         ; --- START PROC L0ED8 ---
-L0ED8:  RST     0x08
+L0ED8:  RST     08H
         INC     L
 L0EDA:  LD      B,0D7h
         ; --- START PROC L0EDC ---
@@ -2464,7 +2466,7 @@ L0EDF:  CALL    L04FD
         OR      A
         JP      NZ,L0514
         DEC     HL
-        RST     0x10
+        RST     10H
         LD      A,E
         RET
 
@@ -2473,7 +2475,7 @@ L0EEB:  CALL    L0E16
         LD      E,A
         INC     HL
         INC     HL
-        RST     0x30
+        RST     30H
         LD      H,B
         LD      L,C
         ADD     HL,DE
@@ -2702,7 +2704,7 @@ L1001:  NOP
         XOR     D
         JR      C,L0F93+1       ; reference not aligned to instruction
         ; --- START PROC L1012 ---
-L1012:  RST     0x28
+L1012:  RST     28H
         JP      PE,L0514
         LD      HL,2150h
         LD      A,(HL)
@@ -2732,7 +2734,7 @@ L1047:  LD      BC,8031h
         LD      DE,7218h
         LD      HL,0D1C1h
         ; --- START PROC L1050 ---
-L1050:  RST     0x28
+L1050:  RST     28H
         RET     Z
         LD      L,00h
         CALL    L112E
@@ -2802,7 +2804,7 @@ L10A4:  CALL    L1196
 L10B0:  POP     BC
         POP     DE
         ; --- START PROC L10B2 ---
-L10B2:  RST     0x28
+L10B2:  RST     28H
         JP      Z,L00A1+1       ; reference not aligned to instruction
         LD      L,0FFh
         CALL    L112E
@@ -2907,7 +2909,7 @@ L112E:  LD      A,B
         RET
 
         ; --- START PROC L114C ---
-L114C:  RST     0x28
+L114C:  RST     28H
         CPL
         POP     HL
 L114F:  OR      A
@@ -2937,7 +2939,7 @@ L1174:  SBC     A,A
         INC     A
         RET
 
-L1178:  RST     0x28
+L1178:  RST     28H
         ; --- START PROC L1179 ---
 L1179:  LD      B,88h
         LD      DE,0000h
@@ -2951,7 +2953,7 @@ L117E:  LD      HL,2150h
         RLA
         JP      L0F64
 
-L118C:  RST     0x28
+L118C:  RST     28H
         RET     P
         ; --- START PROC L118E ---
 L118E:  LD      HL,214Fh
@@ -3035,7 +3037,7 @@ L11E0:  LD      A,B
         JP      Z,L0026+2       ; reference not aligned to instruction
         LD      HL,1172h
         PUSH    HL
-        RST     0x28
+        RST     28H
         LD      A,C
         RET     Z
         LD      HL,214Fh
@@ -3155,7 +3157,7 @@ L127E:  CALL    L0F7C
         CPL
         LD      C,A
         ; --- START PROC L1286 ---
-L1286:  RST     0x10
+L1286:  RST     10H
         JP      C,L12E5
         CP      26h             ; '&'
         JP      NZ,L1294
@@ -3167,7 +3169,7 @@ L1294:  CP      2Eh             ; '.'
         JP      Z,L12C0
         CP      45h             ; 'E'
         JP      NZ,L12C4
-        RST     0x10
+        RST     10H
         PUSH    HL
         LD      HL,12B4h
         EX      (SP),HL
@@ -3184,7 +3186,7 @@ L1294:  CP      2Eh             ; '.'
         POP     AF
         DEC     HL
         ; --- START PROC L12B4 ---
-L12B4:  RST     0x10
+L12B4:  RST     10H
         JP      C,L1307
         INC     D
         JP      NZ,L12C4
@@ -3273,7 +3275,7 @@ L131C:  XOR     A
         ; --- START PROC L1326 ---
 L1326:  LD      HL,2152h
         PUSH    HL
-        RST     0x28
+        RST     28H
         LD      (HL),20h        ; ' '
         JP      P,L1332
         LD      (HL),2Dh        ; '-'
@@ -3420,7 +3422,7 @@ L140A:  CALL    L1196
         POP     BC
         POP     DE
         ; --- START PROC L1415 ---
-L1415:  RST     0x28
+L1415:  RST     28H
         JP      Z,L144F
         LD      A,B
         OR      A
@@ -3497,8 +3499,8 @@ L148F:  EX      AF,AF'
         XOR     D
         XOR     D
         LD      A,(HL)
-        RST     0x38
-        RST     0x38
+        RST     38H
+        RST     38H
         LD      A,A
         LD      A,A
         NOP
@@ -3539,7 +3541,7 @@ L14C7:  LD      B,0F1h
         POP     HL
         JP      L14C7+1         ; reference not aligned to instruction
 
-L14E0:  RST     0x28
+L14E0:  RST     28H
         JP      M,L14FD
         LD      HL,206Dh
         CALL    L11A3
@@ -3580,11 +3582,11 @@ L1518:  CALL    L1196
         CALL    L0F13
         LD      HL,155Ch
         CALL    L0F0D
-        RST     0x28
+        RST     28H
         SCF
         JP      P,L1544
         CALL    L0F04
-        RST     0x28
+        RST     28H
         OR      A
 L1544:  PUSH    AF
         CALL    P,L118E
@@ -3604,7 +3606,7 @@ L1558:  IN      A,(0Fh)
         LD      A,A
         DEC     B
         CP      D
-        RST     0x10
+        RST     10H
         LD      E,86h
         LD      H,H
         LD      H,99h
@@ -3636,7 +3638,7 @@ L1558:  IN      A,(0Fh)
         JP      L10B0
 
         ; --- START PROC L1592 ---
-L1592:  RST     0x28
+L1592:  RST     28H
         CALL    M,L1405
         CALL    M,L118E
         LD      A,(2150h)
@@ -3655,7 +3657,7 @@ L15AD:  LD      HL,15B7h
 
 L15B7:  ADD     HL,BC
         LD      C,D
-        RST     0x10
+        RST     10H
         DEC     SP
         LD      A,B
         LD      (BC),A
@@ -3687,13 +3689,13 @@ L15B7:  ADD     HL,BC
         ADD     A,C
         NOP
         NOP
-        RST     0x28
+        RST     28H
         CALL    L0501
         LD      A,(DE)
         JP      L0BDA
 
 L15E6:  CALL    L0869
-        RST     0x28
+        RST     28H
         CALL    L0501
         PUSH    DE
         CALL    L0ED8
@@ -3701,7 +3703,7 @@ L15E6:  CALL    L0869
         LD      (DE),A
         RET
 
-L15F4:  RST     0x28
+L15F4:  RST     28H
         CALL    L0501
         EX      DE,HL
         CALL    L15FF
@@ -3728,7 +3730,7 @@ L1600:  LD      HL,(L0026)
         LD      HL,1DE4h
         CALL    0F818h
         CALL    L0351
-        RST     0x18
+        RST     18H
         CP      59h             ; 'Y'
         CALL    L01AF
         ; --- START PROC L1635 ---
@@ -3752,7 +3754,7 @@ L1650:  POP     HL
 L1651:  AND     7Fh             ; ''
         LD      (DE),A
         RET     Z
-        RST     0x18
+        RST     18H
         INC     HL
         INC     DE
         LD      A,E
@@ -3780,7 +3782,7 @@ L1679:  LD      A,(HL)
         OR      A
         JP      M,L1650
         LD      (DE),A
-        RST     0x18
+        RST     18H
         INC     HL
         INC     DE
         JP      L1679
@@ -3811,7 +3813,7 @@ L16A9:  POP     HL
         DEC     HL
         ; --- START PROC L16AB ---
 L16AB:  LD      DE,0000h
-L16AE:  RST     0x10
+L16AE:  RST     10H
         JP      M,L16D7
         SUB     30h             ; '0'
         JP      M,L16D7
@@ -3850,19 +3852,19 @@ L16E0:  LD      B,98h
 L16E7:  CALL    L0869
         CALL    L0501
         DEC     HL
-        RST     0x10
+        RST     10H
         RET     NZ
         PUSH    HL
         LD      HL,(2149h)
         LD      BC,0400h
         ADD     HL,BC
         EX      DE,HL
-        RST     0x20
+        RST     20H
 L16FA:  LD      E,20h           ; ' '
         JP      C,L00A7
         EX      DE,HL
         LD      HL,(L0000+1)    ; reference not aligned to instruction
-        RST     0x20
+        RST     20H
         JP      C,L16FA
         EX      DE,HL
         LD      (211Bh),HL
@@ -3879,7 +3881,7 @@ L1716:  CALL    L0519
 L171B:  CALL    L0197
         LD      H,B
         LD      L,C
-        RST     0x30
+        RST     30H
         POP     BC
         LD      A,B
         OR      C
@@ -3895,17 +3897,17 @@ L1730:  CALL    L03B6
         PUSH    BC
         PUSH    BC
 L173C:  POP     HL
-        RST     0x30
+        RST     30H
         POP     DE
         LD      A,D
         OR      E
         JP      Z,L1752
         PUSH    DE
-        RST     0x30
+        RST     30H
         POP     DE
         PUSH    HL
         LD      HL,(2078h)
-        RST     0x20
+        RST     20H
         POP     HL
         JP      NC,L173C
         POP     DE
@@ -3993,7 +3995,7 @@ L17BB:  LD      A,(HL)
         JP      Z,L1BC8
         INC     HL
         INC     HL
-L17C3:  RST     0x10
+L17C3:  RST     10H
         OR      A
         INC     HL
         JP      Z,L17BB
@@ -4010,7 +4012,7 @@ L17C3:  RST     0x10
         CP      8Ch
         JP      NZ,L17C3
 L17E6:  PUSH    HL
-        RST     0x10
+        RST     10H
         POP     HL
         JP      NC,L17C3
         INC     HL
@@ -4022,7 +4024,7 @@ L17E6:  PUSH    HL
         EX      DE,HL
 L17F7:  LD      HL,(2149h)
         EX      DE,HL
-        RST     0x20
+        RST     20H
         POP     DE
         JP      Z,L1813
         LD      A,(HL)
@@ -4032,7 +4034,7 @@ L17F7:  LD      HL,(2149h)
         PUSH    HL
         LD      L,A
         LD      H,B
-        RST     0x20
+        RST     20H
         POP     HL
         JP      Z,L181F
         INC     HL
@@ -4081,7 +4083,7 @@ L183B:  POP     HL
         CPL
         LD      B,A
         CALL    L1870
-L1851:  RST     0x20
+L1851:  RST     20H
         LD      A,(HL)
         LD      (BC),A
         INC     HL
@@ -4122,7 +4124,7 @@ L1886:  CALL    L1870
         LD      C,E
         EX      DE,HL
         LD      HL,(2149h)
-L188F:  RST     0x20
+L188F:  RST     20H
         JP      C,L1859
         LD      A,(HL)
         LD      (BC),A
@@ -4371,7 +4373,7 @@ L1A2F:  PUSH    BC
 L1A39:  POP     HL
         CALL    L18F7
         EX      DE,HL
-        RST     0x08
+        RST     08H
         ADD     HL,HL
         EX      DE,HL
         PUSH    DE
@@ -4379,26 +4381,26 @@ L1A39:  POP     HL
         JP      L0E33
 
         ; --- START PROC L1A46 ---
-L1A46:  RST     0x10
-        RST     0x08
+L1A46:  RST     10H
+        RST     08H
         JR      Z,L1A17
         LD      C,C
         LD      A,(BC)
-        RST     0x08
+        RST     08H
         ADD     HL,HL
         XOR     A
         LD      (2119h),A
         JP      L16D7
 
         ; --- START PROC L1A55 ---
-L1A55:  RST     0x10
+L1A55:  RST     10H
         LD      BC,8249h
         LD      DE,0FDBh
         JP      L11A6
 
         ; --- START PROC L1A5F ---
 L1A5F:  CALL    L0869
-        RST     0x28
+        RST     28H
         POP     BC
         JP      Z,0F803h
         PUSH    BC
@@ -4412,7 +4414,7 @@ L1A5F:  CALL    L0869
 
 L1A77:  CALL    L1A5F
         PUSH    DE
-        RST     0x08
+        RST     08H
         INC     L
         CALL    L0869
         EX      (SP),HL
@@ -4594,7 +4596,7 @@ L1B9A:  OR      A
         CALL    L1AD0
         EX      DE,HL
         LD      HL,(2115h)
-        RST     0x20
+        RST     20H
 L1BB8:  PUSH    AF
 L1BB9:  CALL    0F82Dh
         POP     AF
@@ -4684,7 +4686,7 @@ L1C3B:  LD      BC,0001h
         JP      L1BC8
 
         ; --- START PROC L1C57 ---
-L1C57:  RST     0x10
+L1C57:  RST     10H
         CALL    L0937
         PUSH    HL
         CALL    L1196
@@ -4697,7 +4699,7 @@ L1C57:  RST     0x10
         CALL    L140A
         POP     BC
         POP     DE
-        RST     0x28
+        RST     28H
         JP      Z,L1C7E
         CALL    L10B2
         CALL    L1592
@@ -4717,7 +4719,7 @@ L1C86:  CALL    L1C57
         JP      L1C7E
 
         ; --- START PROC L1C90 ---
-L1C90:  RST     0x10
+L1C90:  RST     10H
         CALL    L0937
         PUSH    HL
         CALL    L1012
@@ -5053,7 +5055,7 @@ L1E16:  LD      C,(HL)
         CALL    NZ,5543h
         JP      NC,4F47h
         LD      D,H
-        RST     0x08
+        RST     08H
         LD      D,D
         LD      D,L
         ADC     A,49h           ; 'I'
@@ -5112,13 +5114,13 @@ L1E52:  PUSH    BC
         PUSH    BC
         LD      C,(HL)
         LD      B,L
-        RST     0x10
+        RST     10H
         LD      D,H
         LD      B,C
         LD      B,D
         XOR     B
         LD      D,H
-        RST     0x08
+        RST     08H
         LD      D,E
         LD      D,B
         LD      B,E
@@ -5160,7 +5162,7 @@ L1E52:  PUSH    BC
         LD      D,C
         JP      NC,4E52h
         CALL    NZ,4F4Ch
-        RST     0x00
+        RST     00H
         LD      B,L
         LD      E,B
         RET     NC
@@ -5253,7 +5255,7 @@ L1EDD:  LD      D,D
         LD      B,C
         LD      D,L
         LD      D,H
-        RST     0x08
+        RST     08H
         LD      C,B
         LD      C,C
         LD      C,L
@@ -5270,7 +5272,7 @@ L1EDD:  LD      D,D
         LD      D,L
         CALL    4341h
         OUT     (4Ch),A         ; 'L'
-        RST     0x00
+        RST     00H
         LD      C,H
         LD      D,B
         LD      D,D
@@ -5364,7 +5366,7 @@ L1FA7:  INC     E
         DEC     BC
         SBC     A,E
         NOP
-        RST     0x10
+        RST     10H
         DEC     BC
         LD      A,(BC)
         INC     D

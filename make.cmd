@@ -125,6 +125,13 @@ if errorlevel 1 goto error
 p2bin basic80.p bin\ut-88\basic80-ut88-service-48kb.bin
 if errorlevel 1 goto error
 
+rem Бейсик-Микрон
+
+:asw -lU -D RK86=1 -D RAM=32 micron.asm > basic-micron-rk86-32kb.lst
+:if errorlevel 1 goto error
+:p2bin micron.p bin\radio-86rk\basic-micron-rk86-32kb.bin
+:if errorlevel 1 goto error
+
 rem Мои варианты
 
 asw -lU -D SERVICE=0 -D BASICNEW=1 basic80.asm > basic80-new-16kb.lst

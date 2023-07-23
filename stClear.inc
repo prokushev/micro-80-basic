@@ -1,6 +1,6 @@
 Clear:
         JP      Z,ClearAll
-        CALL    EvalPisitiveNumericExpression
+        CALL    EvalPositiveNumericExpression
         DEC     HL
         RST     NextChar
         RET     NZ
