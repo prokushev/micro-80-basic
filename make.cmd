@@ -127,10 +127,10 @@ if errorlevel 1 goto error
 
 rem Бейсик-Микрон
 
-:asw -lU -D RK86=1 -D RAM=32 micron.asm > basic-micron-rk86-32kb.lst
-:if errorlevel 1 goto error
-:p2bin micron.p bin\radio-86rk\basic-micron-rk86-32kb.bin
-:if errorlevel 1 goto error
+asw -lU -D RK86=1 -D RAM=32 micron.asm > basic-micron-rk86-32kb.lst
+if errorlevel 1 goto error
+p2bin micron.p bin\radio-86rk\basic-micron-rk86-32kb.bin
+if errorlevel 1 goto error
 
 rem Мои варианты
 

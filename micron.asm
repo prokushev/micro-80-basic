@@ -1527,9 +1527,9 @@ L0961:  LD      B,00h
         JP      L099C
 
 L097B:  RST     08H
-        JR      Z,L094B
+        DB	28H, 0CDH
         LD      A,B
-        EX      AF,AF'
+        db	08h
         RST     08H
         INC     L
         CALL    L086C+1         ; reference not aligned to instruction
@@ -1934,7 +1934,7 @@ L0BDF:  CALL    L0C3F
         PUSH    DE
         CALL    L0C31
         RST     08H
-        JR      Z,L0BB8+2       ; reference not aligned to instruction
+        DB	28H, 0CDH
         LD      C,C
         LD      A,(BC)
         CALL    L086C
@@ -2702,7 +2702,7 @@ L1001:  NOP
         LD      (8076h),HL
         LD      B,L
         XOR     D
-        JR      C,L0F93+1       ; reference not aligned to instruction
+        DB 38h, 82h
         ; --- START PROC L1012 ---
 L1012:  RST     28H
         JP      PE,L0514
@@ -3483,7 +3483,7 @@ L144F:  CALL    L1196
         LD      C,D
         JP      L1050
 
-L148F:  EX      AF,AF'
+L148F:  db 08h
         LD      B,B
         LD      L,94h
         LD      (HL),H
@@ -4383,7 +4383,7 @@ L1A39:  POP     HL
         ; --- START PROC L1A46 ---
 L1A46:  RST     10H
         RST     08H
-        JR      Z,L1A17
+        DB	28H, 0cdh
         LD      C,C
         LD      A,(BC)
         RST     08H
@@ -4763,10 +4763,10 @@ L1CD3:  LD      C,(HL)
         LD      B,L
         LD      E,B
         LD      D,H
-        JR      NZ,L1D3B
+        DB	20H, 64H
         LD      H,L
         LD      A,D
-        JR      NZ,L1D23
+        DB 20H, 44H
         LD      C,A
         LD      D,D
         NOP
@@ -4791,10 +4791,10 @@ L1CD3:  LD      C,(HL)
         LD      D,L
         LD      D,D
         LD      C,(HL)
-        JR      NZ,L1D59
+        DB	20H, 62H
         LD      H,L
         LD      A,D
-        JR      NZ,L1D42
+        DB 20H, 47H
         LD      C,A
         LD      D,E
         LD      D,L
@@ -4804,16 +4804,16 @@ L1CD3:  LD      C,(HL)
         LD      H,C
         LD      L,H
         LD      L,A
-        JR      NZ,L1D6A
+        DB	20H, 64H
         LD      H,C
         LD      L,(HL)
         LD      L,(HL)
         LD      A,C
         LD      L,B
-        JR      NZ,L1D7D
+        DB	20H, 70H
         LD      (HL),D
         LD      L,C
-        JR      NZ,L1D55
+        DB 20H, 44H
         LD      B,C
         LD      D,H
         LD      B,C
@@ -4826,7 +4826,7 @@ L1CD3:  LD      C,(HL)
         LD      L,(HL)
         LD      A,C
         LD      L,D
-        JR      NZ,L1D80
+        DB 20h,61h
         LD      (HL),D
         LD      H,A
         LD      (HL),L
@@ -4852,14 +4852,14 @@ L1D23:  LD      H,L
         LD      H,C
         LD      L,H
         LD      L,A
-        JR      NZ,L1DA9
+        DB	20H,6fh
         LD      A,D
 L1D3B:  LD      (HL),L
         NOP
         LD      L,(HL)
         LD      H,L
         LD      (HL),H
-        JR      NZ,L1DB5
+        DB 20h, 73h
 L1D42:  LD      (HL),H
         LD      (HL),D
         LD      L,A
@@ -4874,7 +4874,7 @@ L1D42:  LD      (HL),H
         LD      L,(HL)
         LD      A,C
         LD      L,D
-        JR      NZ,L1DBB
+        db 20h, 69h
         LD      L,(HL)
         LD      H,H
         LD      H,L
@@ -4890,7 +4890,7 @@ L1D59:  LD      L,A
         LD      L,(HL)
         LD      L,A
         LD      H,L
-        JR      NZ,L1DD2
+        db 20h, 6fh
         LD      (HL),B
         LD      L,C
         LD      (HL),E
@@ -4906,9 +4906,9 @@ L1D6A:  NOP
         LD      L,(HL)
         LD      L,C
         LD      H,L
-        JR      NZ,L1DE2
+        db 20h, 6eh
         LD      H,C
-        JR      NZ,L1DA6+1      ; reference not aligned to instruction
+        db 20h, 30h
         NOP
         LD      (HL),H
         LD      L,A
@@ -4916,8 +4916,8 @@ L1D6A:  NOP
         LD      A,B
         LD      L,E
 L1D7D:  LD      L,A
-        JR      NZ,L1DF7
-L1D80:  JR      NZ,L1DF2
+        db 20h,77h
+L1D80:  db 20h,70h
         LD      (HL),D
         LD      L,A
         LD      H,A
@@ -4944,7 +4944,7 @@ L1D80:  JR      NZ,L1DF2
         LD      L,L
         LD      H,C
         LD      L,H
-        JR      NZ,L1E01
+        DB 20h, 62h
         LD      (HL),L
         LD      H,(HL)
         LD      H,L
@@ -4973,11 +4973,11 @@ L1DB5:  LD      A,B
         LD      L,(HL)
         LD      H,L
 L1DBB:  LD      (HL),H
-        JR      NZ,L1E02
+        db 20h, 44h
         LD      B,L
         LD      B,(HL)
         NOP
-        JR      NZ,L1E32
+        db 20h, 6fh
         LD      A,E
         LD      L,C
         LD      H,D
@@ -4998,21 +4998,20 @@ L1DD2:  DEC     C
         LD      L,A
         LD      (HL),B
         NOP
-        JR      NZ,L1E52
-        JR      NZ,L1E4E+2      ; reference not aligned to instruction
+        db 20h, 77h, 20h,73h
         LD      (HL),H
         LD      (HL),D
         LD      L,A
         LD      L,E
         LD      H,L
-L1DE2:  JR      NZ,L1DE4
+L1DE2:  db 20h, 00h
 L1DE4:  RRA
         LD      B,D
         LD      B,C
         LD      D,E
         LD      C,C
         LD      B,E
-        JR      NZ,L1E16
+        DB 20h, 2ah
         LD      L,L
         LD      L,C
         LD      L,E
@@ -5177,7 +5176,7 @@ L1E52:  PUSH    BC
         ADC     A,50h           ; 'P'
         LD      B,L
         LD      B,L
-        BIT     1,H
+        db 0cbh, 4ch
         LD      B,L
         ADC     A,53h           ; 'S'
         LD      D,H
@@ -5234,7 +5233,7 @@ L1EDD:  LD      D,D
         LD      D,D
         LD      C,C
         LD      B,(HL)
-        EXX
+        db 0d9h
         LD      C,B
         LD      C,A
         LD      C,L
@@ -5283,8 +5282,8 @@ L1EDD:  LD      D,D
         LD      D,E
         CALL    NC,0C200h
         INC     E
-        JP      PO,L2002+1      ; reference not aligned to instruction
-        EX      AF,AF'
+        db 0e2h, 03h,20h
+        db 08h
         OR      C
         DEC     B
         LD      B,B
@@ -5293,12 +5292,12 @@ L1EDD:  LD      D,D
         LD      A,(BC)
         SUB     H
         RLCA
-        JR      NZ,L1F72+1      ; reference not aligned to instruction
+        DB 20h, 08h
         LD      A,A
         DEC     B
         LD      H,E
         DEC     B
-        JR      NC,L1F66
+        db 20h, 19h
         SUB     (HL)
         INC     B
         LD      L,A
@@ -5320,6 +5319,7 @@ L1F72:  AND     15h
         LD      C,B
         LD      B,0DFh
         DEC     BC
+	db 0ddh
         INC     B
         SUB     A
         INC     BC
@@ -5334,11 +5334,11 @@ L1F7C:  LD      A,(6F05h)
         SUB     H
         LD      D,16h
         RLA
-        JR      NC,L1FA7
+        db 30h, 17h
         DEC     SP
         INC     E
         RET     Z
-        JR      L1F7C
+        db 18h, 0e7h
 
 L1F95:  LD      D,9Bh
         NOP
@@ -5373,11 +5373,11 @@ L1FA7:  INC     E
         RET     PO
         INC     D
         LD      (DE),A
-        DJNZ    200Ch
+        db 10h, 4fh
         INC     D
         LD      (DE),A
         DEC     D
-        JR      L1FD7
+        db 10h, 4fh
 
 L1FC2:  LD      A,L
         DEC     D
@@ -5405,9 +5405,9 @@ L1FD7:  LD      C,39h           ; '9'
         LD      A,C
         LD      DE,7B0Fh
         LD      C,(HL)
-        DJNZ    2065h
+	db 10h, 7bh
         OR      B
-        DJNZ    206Ch
+        db 10h, 7fh
         INC     DE
         INC     D
         LD      D,B
@@ -5418,12 +5418,10 @@ L1FD7:  LD      C,39h           ; '9'
         ADD     HL,BC
         LD      C,L
         LD      C,C
-        JR      Z,203Ch
+        db 28h, 43h
         ADD     HL,HL
         LD      D,D
         LD      C,A
         LD      C,(HL)
         CPL
-        JR      C,2038h
-        AND     55h             ; 'U'
-L2002:  POP     BC
+        db 38h,38h
