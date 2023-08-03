@@ -2154,7 +2154,7 @@ L0AB0:	OR      D
         XOR     A
         LD      (VALTYP),A
         PUSH    DE
-        CALL    L0EC1
+        CALL    EvalCurrentString
         POP     DE
         RST     PushNextWord
         RST     PushNextWord
@@ -2253,15 +2253,17 @@ L0B3F:  SUB     '$'			; 24H
         RST     NextChar
 L0B4C:  LD      A,(NO_ARRAY)
         ADD     A,(HL)
-        CP      28H
-        JP      Z,L0B9E
+        CP      '('			;28H
+        JP      Z,GetArrayVar
         XOR     A
         LD      (NO_ARRAY),A
+;Preserve program ptr on stack, and get VAR_ARRAY_BASE into DE and VAR_BASE into HL. This is where we iterate through the stored variables (ie from VAR_BASE to VAR_ARRAY_BASE) to see if the variable has already been declared. 
         PUSH    HL
         LD      HL,(VAR_ARRAY_BASE)
         EX      DE,HL
         LD      HL,(VAR_BASE)
 
+;Loop to find the variable if it's already been allocated. If HL==DE then we've reached VAR_ARRAY_BASE without finding it, and so can jump ahead to allocate a new variable.
 FindVarLoop:
 	RST     CompareHLDE
 	JP      Z,AllocNewVar
@@ -2293,21 +2295,26 @@ AllocNewVar:
         LD      H,B
         LD      L,C
         LD      (VAR_ARRAY_BASE),HL
-L0B8F:  DEC     HL
+InitVarLoop:
+	DEC     HL
         LD      (HL),00H
         RST     CompareHLDE
-        JP      NZ,L0B8F
+        JP      NZ,InitVarLoop
+;Restore variable name to DE and write it to the first 2 bytes of the variable's storage.
         POP     DE
         LD      (HL),E
         INC     HL
         LD      (HL),D
         INC     HL
+;Swap HL and DE so that DE points to the variable value, then restore the prog ptr to HL and return
 L0B9B:  EX      DE,HL
         POP     HL
         RET     
 
 
-L0B9E:  PUSH    HL
+;Accesses or allocates an array variable. The contents of DIM_OR_EVAL indicate whether we're dealing with an array declaration (ie a DIM statement) or whether an array element is being accessed. In the former case DIM_OR_EVAL is 0xEF, otherwise it is 0. 
+GetArrayVar:
+	PUSH    HL
         LD      HL,(DIM_OR_EVAL)
         EX      (SP),HL
         LD      D,00H
@@ -2477,33 +2484,8 @@ Err:
 	ENDIF
 
 	CHK	0C7Ah, "Сдвижка кода"
-Fre:
-        LD      HL,(VAR_TOP)
-        EX      DE,HL
-        LD      HL,0000H
-        ADD     HL,SP
-        LD      A,(VALTYP)
-        OR      A
-        JP      Z,L0C96
-        CALL    L0EC1
-        CALL    GarbageCollection
-        LD      HL,(STACK_TOP)
-        EX      DE,HL
-        LD      HL,(STR_TOP)
-L0C96:  LD      A,L
-        SUB     E
-        LD      C,A
-        LD      A,H
-        SBC     A,D
-WordFromACToFACCUM:
-	LD      B,C
-WordFromABToFACCUM:
-	LD      D,B
-        LD      E,00H
-        LD      HL,VALTYP
-        LD      (HL),E
-        LD      B,90H
-        JP      L12DA
+
+	INCLUDE	"fnFre.inc"
 
 	CHK	0CA8h, "Сдвижка кода"
 
@@ -2578,6 +2560,7 @@ L0D02:  PUSH    HL
 
         LD      E,ERR_ID
         JP      Error
+
 L0D10:  RST     SyntaxCheck
         DB	TK_FN
         LD      A,80H
@@ -2592,7 +2575,7 @@ Str:
         CALL    IsNumeric
         CALL    FOut
         CALL    L0D4F
-        CALL    L0EC1
+        CALL    EvalCurrentString
         LD      BC,L0F10
         PUSH    BC
 L0D2F:  LD      A,(HL)
@@ -2658,7 +2641,7 @@ PrintString1:
         INC     HL
 PrintString:
 	CALL    L0D4F
-L0D96:  CALL    L0EC1
+L0D96:  CALL    EvalCurrentString
         CALL    FLoadBCDEfromMem
         INC     E
 PrintStringLoop:
@@ -2872,7 +2855,8 @@ L0EB5:  DEC     L
 
 EvalString:
 	CALL    IsString
-L0EC1:  LD      HL,(FACCUM)
+EvalCurrentString:
+	LD      HL,(FACCUM)
 L0EC4:  EX      DE,HL
 L0EC5:  LD      HL,(TEMPPT)		;021DH
         DEC     HL

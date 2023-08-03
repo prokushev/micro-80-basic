@@ -799,7 +799,8 @@ Sgn:	RST     FTestSign
 FCharToFloat:
 	LD      B,88H
         LD      DE,0000H
-L12DA:  LD      HL,FACCUM+3
+ReturnInteger:
+	LD      HL,FACCUM+3
         LD      C,A
         LD      (HL),B
         LD      B,00H
@@ -1234,7 +1235,7 @@ PrintInt:
 	EX      DE,HL			; DE=integer
         XOR     A			; A=0 (ends up in C)
         LD      B,98H			; B (ie exponent) = 24
-        CALL    L12DA
+        CALL    ReturnInteger
         LD      HL,PrintString1	;0D92H
         PUSH    HL
 ;FOut
