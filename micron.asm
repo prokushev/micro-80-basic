@@ -1,9 +1,9 @@
-; อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
-;  …‘- คซ๏ €-86
-; อออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออ
+; โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•
+;  ะ‘ะ•ะะกะะ-ะะะะ ะะ ะดะปั ะ ะะ”ะะ-86ะ ะ
+; โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•โ•
 ;
-; โฎ คจง แแฅฌกซฅเ ฅฉแจช -จชเฎญ คซ๏ " คจฎ-86".
-; ฌฅญ  ฌฅโฎช ขง๏โ๋ แ คจง แแฅฌกซฅเ  Altair BASIC 3.2 (4K)
+; ะญัะพ ะดะธะทะฐััะตะผะฑะปะตั€ ะ‘ะตะนัะธะบะฐ-ะะธะบั€ะพะฝ ะดะปั "ะ ะฐะดะธะพ-86ะ ะ".
+; ะะผะตะฝะฐ ะผะตัะพะบ ะฒะทััั ั ะดะธะทะฐััะตะผะฑะปะตั€ะฐ Altair BASIC 3.2 (4K)
 
 	CPU	8080
 	Z80SYNTAX	EXCLUSIVE
@@ -979,7 +979,7 @@ Return:
         EX      (SP),HL
         ; --- START PROC Data ---
 Data:
-	DB	01H, ":"	;LD BC,..3AH ํฌใซจเใฅโ LD C, ":"
+	DB	01H, ":"	;LD BC,..3AH ัะผัะปะธั€ัะตั LD C, ":"
 Rem:	LD	C, 0
         LD      B,00h
 L05B7:  LD      A,C
@@ -1590,7 +1590,10 @@ L099C:  LD      BC,KW_INLINE_FNS
         LD      L,C
         JP      (HL)
 
-L09A5:  OR      0AFh
+FOr:
+	DB	0F6h	;OR 0AFH
+FAnd:
+	XOR	A	; AFh
         PUSH    AF
         CALL    L086C
         CALL    L0501
@@ -1933,7 +1936,7 @@ L0BA3:  LD      HL,(2139h)
         RST     NextChar
         RET
 
-L0BA9:  LD      HL,(2149h)
+Fre:	LD      HL,(2149h)
         EX      DE,HL
         LD      HL,0000h
         ADD     HL,SP
@@ -1959,7 +1962,7 @@ L0BCB:  LD      D,B
         LD      B,90h
         JP      L117E
 
-L0BD7:  LD      A,(2063h)
+Pos:	LD      A,(2063h)
 L0BDA:  LD      B,A
         XOR     A
         JP      L0BCB
@@ -2045,7 +2048,7 @@ L0C3F:  RST     SyntaxCheck
         CALL    L0A4E
         JP      L086C
 
-L0C4E:  CALL    L086C
+Str:	CALL    L086C
         CALL    L1326
         CALL    L0C7F
         CALL    L0DEC
@@ -2356,7 +2359,7 @@ L0DF0:  LD      HL,(211Dh)
 L0E10:  POP     HL
         RET
 
-L0E12:  LD      BC,0BDAh
+Len:	LD      BC,0BDAh
         PUSH    BC
         ; --- START PROC L0E16 ---
 L0E16:  CALL    L0DE9
@@ -2367,7 +2370,7 @@ L0E16:  CALL    L0DE9
         OR      A
         RET
 
-L0E21:  CALL    L0E16
+Asc:	CALL    L0E16
         JP      Z,L0514
         INC     HL
         INC     HL
@@ -2376,7 +2379,7 @@ L0E21:  CALL    L0E16
         LD      A,(HL)
         JP      L0BDA
 
-L0E2F:  CALL    L0EDF
+Chr:	CALL    L0EDF
         POP     BC
 L0E33:  LD      A,01h
         PUSH    DE
@@ -2386,7 +2389,7 @@ L0E33:  LD      A,01h
         LD      (HL),E
         JP      L0CA5
 
-L0E41:  CALL    L0ECB
+Left:	CALL    L0ECB
         XOR     A
 L0E45:  EX      (SP),HL
         LD      C,A
@@ -2418,14 +2421,14 @@ L0E4E:  LD      DE,000Eh
         CALL    L0DF0
         JP      L0CA5
 
-L0E71:  CALL    L0ECB
+Right:	CALL    L0ECB
         POP     DE
         PUSH    DE
         LD      A,(DE)
         SUB     B
         JP      L0E45
 
-L0E7B:  EX      DE,HL
+Mid:	EX      DE,HL
         LD      A,(HL)
         CALL    L0ECE
         PUSH    BC
@@ -2506,7 +2509,7 @@ L0EDF:  CALL    L04FD
         LD      A,E
         RET
 
-L0EEB:  CALL    L0E16
+Val:	CALL    L0E16
         JP      Z,L0F7C
         LD      E,A
         INC     HL
@@ -2534,7 +2537,12 @@ L0F07:  CALL    L11B4
 
         ; --- START PROC L0F0D ---
 L0F0D:  CALL    L11B4
-        LD      HL,0D1C1h
+        DB	21h			;LD      HL,...
+
+FSub:
+	POP	BC			; Get lhs in BCDE.
+	POP	DE
+
         ; --- START PROC L0F13 ---
 L0F13:  CALL    L118E
         ; --- START PROC L0F16 ---
@@ -2739,8 +2747,8 @@ L1001:  NOP
         LD      B,L
         XOR     D
         DB 38h, 82h
-        ; --- START PROC L1012 ---
-L1012:  RST     28H
+        ; --- START PROC Log ---
+Log:	RST     28H
         JP      PE,L0514
         LD      HL,2150h
         LD      A,(HL)
@@ -2768,7 +2776,11 @@ L1012:  RST     28H
         ; --- START PROC L1047 ---
 L1047:  LD      BC,8031h
         LD      DE,7218h
-        LD      HL,0D1C1h
+        DB	21h		;LD      HL,...
+
+FMul:					
+	POP	BC			; Get lhs in BCDE
+	POP	DE
         ; --- START PROC L1050 ---
 L1050:  RST     28H
         RET     Z
@@ -2837,7 +2849,7 @@ L10A4:  CALL    L1196
         LD      BC,8420h
         LD      DE,0000h
         CALL    L11A6
-L10B0:  POP     BC
+FDiv:	POP     BC
         POP     DE
         ; --- START PROC L10B2 ---
 L10B2:  RST     28H
@@ -2975,7 +2987,7 @@ L1174:  SBC     A,A
         INC     A
         RET
 
-L1178:  RST     28H
+Sgn:	RST     28H
         ; --- START PROC L1179 ---
 L1179:  LD      B,88h
         LD      DE,0000h
@@ -2989,7 +3001,7 @@ L117E:  LD      HL,2150h
         RLA
         JP      L0F64
 
-L118C:  RST     28H
+Abs:	RST     28H
         RET     P
         ; --- START PROC L118E ---
 L118E:  LD      HL,214Fh
@@ -3139,8 +3151,8 @@ L122F:  DEC     DE
         DEC     C
         RET
 
-        ; --- START PROC L1236 ---
-L1236:  LD      HL,2150h
+        ; --- START PROC Int ---
+Int:	LD      HL,2150h
         LD      A,(HL)
         CP      98h
         LD      A,(214Dh)
@@ -3280,6 +3292,7 @@ L12E5:  PUSH    DE
         ; --- START PROC L12FC ---
 L12FC:  CALL    L1196
         CALL    L1179
+FAdd:
         POP     BC
         POP     DE
         JP      L0F16
@@ -3451,15 +3464,17 @@ L1405:  LD      HL,118Eh
         EX      (SP),HL
         JP      (HL)
 
-        ; --- START PROC L140A ---
-L140A:  CALL    L1196
+        ; --- START PROC Sqr ---
+Sqr:	CALL    L1196
         LD      HL,13EFh
         CALL    L11A3
+
+FPower:
         POP     BC
         POP     DE
         ; --- START PROC L1415 ---
 L1415:  RST     28H
-        JP      Z,L144F
+        JP      Z,Exp
         LD      A,B
         OR      A
         JP      Z,L0F7D
@@ -3471,7 +3486,7 @@ L1415:  RST     28H
         JP      P,L1437
         PUSH    DE
         PUSH    BC
-        CALL    L1236
+        CALL    Int
         POP     BC
         POP     DE
         PUSH    AF
@@ -3487,18 +3502,18 @@ L1437:  POP     HL
         CALL    Z,L118E
         PUSH    DE
         PUSH    BC
-        CALL    L1012
+        CALL    Log
         POP     BC
         POP     DE
         CALL    L1050
-L144F:  CALL    L1196
+Exp:	CALL    L1196
         LD      BC,8138h
         LD      DE,0AA38h
         CALL    L1050
         LD      A,(2150h)
         CP      88h
         JP      NC,L114C
-        CALL    L1236
+        CALL    Int
         ADD     A,80h
         ADD     A,02h
         JP      C,L114C
@@ -3577,7 +3592,7 @@ L14C7:  LD      B,0F1h
         POP     HL
         JP      L14C7+1         ; reference not aligned to instruction
 
-L14E0:  RST     28H
+Rnd:	RST     28H
         JP      M,L14FD
         LD      HL,206Dh
         CALL    L11A3
@@ -3600,11 +3615,11 @@ L14FD:  CALL    L11B1
         LD      HL,206Dh
         JP      L11BD
 
-        ; --- START PROC L1512 ---
-L1512:  LD      HL,1558h
+        ; --- START PROC Cos ---
+Cos:	LD      HL,1558h
         CALL    L0F07
-        ; --- START PROC L1518 ---
-L1518:  CALL    L1196
+        ; --- START PROC Sin ---
+Sin:	CALL    L1196
         LD      BC,8349h
         LD      DE,0FDBh
         CALL    L11A6
@@ -3612,7 +3627,7 @@ L1518:  CALL    L1196
         POP     DE
         CALL    L10B2
         CALL    L1196
-        CALL    L1236
+        CALL    Int
         POP     BC
         POP     DE
         CALL    L0F13
@@ -3663,18 +3678,20 @@ L1558:  IN      A,(0Fh)
         CP      B
         OR      A
         XOR     D
-        CALL    L1196
-        CALL    L1518
+
+Tan:
+	CALL    L1196
+        CALL    Sin
         POP     BC
         POP     HL
         CALL    L1196
         EX      DE,HL
         CALL    L11A6
-        CALL    L1512
-        JP      L10B0
+        CALL    Cos
+        JP      FDiv
 
-        ; --- START PROC L1592 ---
-L1592:  RST     28H
+        ; --- START PROC Atn ---
+Atn:	RST     28H
         CALL    M,L1405
         CALL    M,L118E
         LD      A,(2150h)
@@ -3725,7 +3742,8 @@ L15B7:  ADD     HL,BC
         ADD     A,C
         NOP
         NOP
-        RST     28H
+
+Peek:	RST     28H
         CALL    L0501
         LD      A,(DE)
         JP      L0BDA
@@ -3740,7 +3758,7 @@ Poke:
         LD      (DE),A
         RET
 
-L15F4:  RST     28H
+Usr:	RST     28H
         CALL    L0501
         EX      DE,HL
         CALL    L15FF
@@ -3824,7 +3842,7 @@ L1679:  LD      A,(HL)
         INC     DE
         JP      L1679
 
-L1685:  CALL    0F81Bh
+Inkey:	CALL    0F81Bh
         OR      A
         LD      E,A
         JP      P,L0E33
@@ -3847,7 +3865,7 @@ L169E:  DEC     C
         JP      NZ,L169C
         RET
 
-L16A9:  POP     HL
+Amp:	POP     HL
         DEC     HL
         ; --- START PROC L16AB ---
 L16AB:  LD      DE,0000h
@@ -4414,7 +4432,7 @@ L1A2F:  PUSH    BC
         POP     BC
         JP      L19FC
 
-L1A39:  POP     HL
+Screen:	POP     HL
         CALL    L18F7
         EX      DE,HL
         RST     SyntaxCheck
@@ -4742,13 +4760,13 @@ L1C57:  RST     NextChar
         LD      D,C
         LD      E,C
         CALL    L0F13
-        CALL    L140A
+        CALL    Sqr
         POP     BC
         POP     DE
         RST     28H
         JP      Z,L1C7E
         CALL    L10B2
-        CALL    L1592
+        CALL    Atn
         POP     HL
         RET
 
@@ -4768,7 +4786,7 @@ L1C86:  CALL    L1C57
 L1C90:  RST     NextChar
         CALL    L0937
         PUSH    HL
-        CALL    L1012
+        CALL    Log
         CALL    L1196
         LD      BC,8213h
         LD      DE,5D8Eh
@@ -5235,86 +5253,51 @@ L1F95:  DW	SyntaxError	; @
 	DW	Lprint		; Lprint      1cab
 	DW	Llist		; Llist       1cba
 
-	if	0
-	DW	Sgn
-	DW	Int
-	DW	Abs
-	DW	Usr
-	DW	Fre
-	DW	Inp
-	DW	Pos
-	DW	Sqr
-	DW	Rnd
-	DW	Log
-	DW	Exp
-	DW	Cos
-	DW	Sin
-	DW	Tan
-	DW	Atn
-	DW	Peek
-	DW	Len
-	DW	Str
-	DW	Val
-	DW	Asc
-	endif
-
 KW_INLINE_FNS:
-        LD      A,B
-        LD      DE,1236h
-        ADC     A,H
-        LD      DE,15F4h
-        XOR     C
-        DEC     BC
-        SBC     A,E
-        NOP
-        RST     NextChar
-        DEC     BC
-        LD      A,(BC)
-        INC     D
-        RET     PO
-        INC     D
-        LD      (DE),A
-        db 10h, 4fh
-        INC     D
-        LD      (DE),A
-        DEC     D
-        db 10h, 4fh
+	DW	Sgn		; 1178
+	DW	Int		; 1236
+	DW	Abs		; 118c
+	DW	Usr		; 15f4
+	DW	Fre		; 0ba9
+	DW	SyntaxError	; Inp
+	DW	Pos		; 0bd7
+	DW	Sqr		; 140a
+	DW	Rnd		; 14e0
+	DW	Log		; 1012
+	DW	Exp		; 144f
+	DW	Cos		; 1512
+	DW	Sin		; 1518
+	DW	Tan		; 157d
+	DW	Atn		; 1592
+	DW	Peek		; 15de
+	DW	Len		; 0e12
+	DW	Str		; 0c4e
+	DW	Val		; 0eeb
+	DW	Asc		; 0e21
+	DW	Chr		; 0e2f
+	DW	Left		; 0e41
+	DW	Right		; 0e71
+	DW	Mid		; 0e7b
 
-L1FC2:  LD      A,L
-        DEC     D
-        SUB     D
-        DEC     D
-        SBC     A,15h
-        LD      (DE),A
-        LD      C,4Eh           ; 'N'
-        INC     C
-        EX      DE,HL
-        LD      C,21h           ; '!'
-        LD      C,2Fh           ; '/'
-        LD      C,41h           ; 'A'
-        LD      C,71h           ; 'q'
-        LD      C,7Bh           ; '{'
-L1FD7:  LD      C,39h           ; '9'
-        LD      A,(DE)
-        ADD     A,L
-        LD      D,9Bh
-        NOP
-        XOR     C
-        LD      D,79h           ; 'y'
-        LD      (BC),A
-        INC     DE
-        LD      A,C
-        LD      DE,7B0Fh
-        LD      C,(HL)
-	db 10h, 7bh
-        OR      B
-        db 10h, 7fh
-        INC     DE
-        INC     D
-        LD      D,B
-        AND     (HL)
-        ADD     HL,BC
-        LD      B,(HL)
-        AND     L
-        ADD     HL,BC
+	DW	Screen		; Screen   1a39
+	DW	Inkey		; Inkey    1685
+	DW	SyntaxError	; At 009b
+	DW	Amp		; &  16a9
+
+KW_ARITH_OP_FNS:
+	DB	079h
+	DW	FAdd	; + 1302
+	DB	079h
+	DW	FSub	; - 0f11
+	DB	07Bh
+	DW	FMul	; * 104e
+	DB	07Bh
+	DW	FDiv	; / 10b0
+	DB	07Fh
+	DW	FPower	; ^ 1413
+	DB	50H
+	DW	FAnd	; AND 09a6
+	DB	46H
+	DW	FOr	; OR 09a5
+
 	DB	"MI(C)RON/88"

@@ -809,62 +809,10 @@ FindProgramLineInMem:
 
         JP      FindProgramLineInMem
 
-; New
-; Команда NEW. Записывает нулевой номер строки в конец области программ (т.е. пустая программа),
-; обновляет указатель на область переменных и переходит в ResetAll.
 
 	CHK	039Dh, "Сдвижка кода"
-New:
-; Команд не поддерживает аргументов.
-	RET     NZ
 
-New2:
-; Записывает два нулевых байта как признак окончание программы в начало области программы.
-	LD      HL,(PROGRAM_BASE)
-        XOR     A
-        LD      (HL),A
-        INC     HL
-        LD      (HL),A
-        INC     HL
-; И устанавливаем область переменных сразу за концом программы.
-        LD      (VAR_BASE),HL
-
-; ResetAll
-; Очищает все.
-		
-ResetAll:
-; Set PROG_PTR_TEMP to just before the start of the program.
-	LD      HL,(PROGRAM_BASE)
-        DEC     HL
-ClearAll:
-	LD      (PROG_PTR_TEMP),HL
-        LD      HL,(MEMSIZ)
-        LD      (STR_TOP),HL
-;Reset the data pointer
-        CALL    Restore
-;Reset variable pointers
-        LD      HL,(VAR_BASE)
-        LD      (VAR_ARRAY_BASE),HL
-        LD      (VAR_TOP),HL
-;Get return address in BC and reset the stack pointer to it's top. 
-ResetStack:
-	POP     BC
-        LD      HL,(STACK_TOP)
-        LD      SP,HL
-
-        LD      HL,TMPST	;021FH
-        LD      (TEMPPT),HL	;021DH
-
-        LD      HL,0000H
-        PUSH    HL
-
-        LD      (OLD_TEXT),HL
-
-        LD      HL,(PROG_PTR_TEMP)
-        XOR     A
-        LD      (NO_ARRAY),A
-        PUSH    BC
-        RET     
+	INCLUDE	"stNew.inc"
 
 ;InputLineWith'?'
 ;Gets a line of input at a '? ' prompt.
@@ -1505,73 +1453,21 @@ NextLineNumChar:
 	INCLUDE	"stClear.inc"
 
 	CHK	06ABH, "Сдвижка кода"
-Run:
-        JP      Z,ResetAll
-        CALL    ClearAll
-        LD      BC,ExecNext
-        JP      GosubBC
+
+	INCLUDE	"stRun.inc"
 	
-;Gosub
-;Gosub sets up a flow struct on the stack and then falls into Goto. The flow struct is KWID_GOSUB, preceded by the line number of the gosub statement, in turn preceded by prog ptr to just after the gosub statement.
 	
 	CHK	06B7H, "Сдвижка кода"
-Gosub:
-        CALL    CheckEnoughVarSpace2
-        DB	03h
-        POP     BC
-        PUSH    HL
-        PUSH    HL
-        LD      HL,(CURRENT_LINE)
-        EX      (SP),HL
-        LD      D,TK_GOSUB
-        PUSH    DE
-        INC     SP
-;Push return address preserved in BC, and fall into GOTO.
-GosubBC:  PUSH    BC
 
-;Goto
-;Sets program execution to continue from the line number argument.
+	INCLUDE	"stGosub.inc"
 
-;Get line number argument in DE and return NZ indicating syntax error if the argument was a non-number .
 	CHK	06C7H, "Сдвижка кода"
-Goto:
-	CALL    LineNumberFromStr
-        CALL    Rem
-        PUSH    HL
-        LD      HL,(CURRENT_LINE)
-        RST     CompareHLDE
-        POP     HL
-        INC     HL
-        CALL    C,FindProgramLineInMem
-        CALL    NC,FindProgramLine
-        LD      H,B
-        LD      L,C
-        DEC     HL
-        RET     C
 
-UnknownStringError:
-        LD      E,ERR_US
-        JP      Error
-		
-		
-; Return
-; Returns program execution to the statement following the last GOSUB. Information about where to return to is kept on the stack in a flow struct (see notes).
+	INCLUDE	"stGoto.inc"
 
 	CHK	06e3h, "Сдвижка кода"
-Return:
-        RET     NZ		;No arguments allowed.
-        LD      D,0FFH
-        CALL    GetFlowPtr
-        LD      SP,HL
-        CP      TK_GOSUB
-        LD      E,ERR_RG
-        JP      NZ,Error
-        POP     HL
-        LD      (CURRENT_LINE),HL
-        LD      HL,ExecNext
-        EX      (SP),HL
 
-;Safe to fall into FindNextStatement, since we're already at the end of the line!...
+	INCLUDE	"stReturn.inc"
 
 ;FindNextStatement
 ; Finds the end of the statement or the end of the program line.
@@ -1604,60 +1500,7 @@ FindNextStatementLoop:
         JP      Z,ExcludeQuote
         JP      FindNextStatementLoop
 
-;1.12 Assigning Variables
-;Let
-;Assigns a value to a variable.
-
-Let:	CALL    GetVar
-        RST     SyntaxCheck
-        DB	TK_EQ			; '='
-        LD      A,(VALTYP)
-        PUSH    AF
-        PUSH    DE
-        CALL    EvalExpression
-        EX      (SP),HL
-        LD      (PROG_PTR_TEMP),HL
-        POP     DE
-        POP     AF
-        PUSH    DE
-        RRA     
-        CALL    CheckType
-        JP      Z,CopyNumeric
-L072B:  PUSH    HL
-        LD      HL,(FACCUM)
-        PUSH    HL
-        INC     HL
-        INC     HL
-        RST     PushNextWord
-        POP     DE
-        LD      HL,(STACK_TOP)
-        RST     CompareHLDE
-        POP     DE
-        JP      NC,L0745
-        LD      HL,(VAR_BASE)
-        RST     CompareHLDE
-        LD      L,E
-        LD      H,D
-        CALL    C,L0D2F
-L0745:  LD      A,(DE)
-        PUSH    AF
-        XOR     A
-        LD      (DE),A
-        CALL    L0EC5
-        POP     AF
-        LD      (HL),A
-        EX      DE,HL
-        POP     HL
-        CALL    L131C
-        POP     HL
-        RET     
-
-CopyNumeric:
-	PUSH    HL
-        CALL    FCopyToMem
-        POP     DE
-        POP     HL
-        RET     
+	INCLUDE	"stLet.inc"
 
 ; Обработчик ON x GOTO/ON x GOSUB
 
