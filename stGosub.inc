@@ -12,7 +12,10 @@ Gosub:
         LD      D,TK_GOSUB
         PUSH    DE
         INC     SP
-;Push return address preserved in BC, and fall into GOTO.
-GosubBC:  PUSH    BC
 
-	; JMP Goto
+;Push return address preserved in BC, and fall into GOTO.
+GosubBC:
+	PUSH    BC
+
+	;JP Goto
+

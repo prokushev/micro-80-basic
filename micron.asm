@@ -12,6 +12,10 @@
 
 DATA_STM	EQU	211Ah
 LINE_BUFFER	EQU	2090h
+CURRENT_LINE	EQU	213Bh
+PROG_PTR_TEMP	EQU	2137h
+VALTYP		EQU	2119h
+
 
 Start:  LD      SP,75FFh
         JP      Init
@@ -41,6 +45,7 @@ L0018:  PUSH    BC
         JP      L0367
 
 L001F:  NOP
+CompareHLDE:
         LD      A,H
         SUB     D
         RET     NZ
@@ -48,15 +53,22 @@ L001F:  NOP
         SUB     E
         RET
 
-L0026:  LD      BC,3A22h
-        LD      D,B
-        LD      HL,0C2B7h
-        LD      L,(HL)
-        LD      DE,4EC9h
+L0026:  DB	01H
+	DB	22H
+
+FTestSign:
+	LD	A, (2150H)
+        OR	A
+	JP	NZ, FTestSign_tail
+	RET
+
+PushNextWord:
+	LD	C, (HL)
         INC     HL
         LD      B,(HL)
         INC     HL
         JP      L003B
+
 
 L0037:  NOP
         RET
@@ -90,7 +102,7 @@ L0049:  LD      A,(HL)
         EX      DE,HL
         JP      Z,L005D
         EX      DE,HL
-        RST     20H
+        RST     CompareHLDE
 L005D:  LD      BC,000Dh
         POP     HL
         RET     Z
@@ -103,7 +115,7 @@ L0066:  CALL    L0086
 L0069:  PUSH    BC
         EX      (SP),HL
         POP     BC
-L006C:  RST     20H
+L006C:  RST     CompareHLDE
         LD      A,(HL)
         LD      (BC),A
         RET     Z
@@ -111,8 +123,8 @@ L006C:  RST     20H
         DEC     HL
         JP      L006C
 
-        ; --- START PROC L0075 ---
-L0075:  EX      (SP),HL
+        ; --- START PROC CheckEnoughVarSpace2 ---
+CheckEnoughVarSpace2:  EX      (SP),HL
         LD      C,(HL)
         INC     HL
         EX      (SP),HL
@@ -132,23 +144,23 @@ L0086:  PUSH    DE
         EX      DE,HL
         LD      HL,0FFDBh
         ADD     HL,SP
-        RST     20H
+        RST     CompareHLDE
         EX      DE,HL
         POP     DE
         RET     NC
 L0090:  LD      E,0Ch
-        JP      L00A7
+        JP      Error
 
 L0095:  LD      HL,(2133h)
-        LD      (213Bh),HL
+        LD      (CURRENT_LINE),HL
         ; --- START PROC SyntaxError ---
 SyntaxError:  LD      E,02h
         XOR     A
         LD      (2078h),A
 L00A1:  LD      BC,141Eh
 L00A4:  LD      BC,001Eh
-        ; --- START PROC L00A7 ---
-L00A7:  CALL    L01D6
+        ; --- START PROC Error ---
+Error:  CALL    L01D6
         XOR     A
         LD      (2117h),A
         CALL    L06DF
@@ -169,7 +181,7 @@ L00C5:  CALL    0F818h
         LD      HL,1DC1h
         ; --- START PROC L00CB ---
 L00CB:  CALL    0F818h
-        LD      HL,(213Bh)
+        LD      HL,(CURRENT_LINE)
         LD      A,H
         AND     L
         INC     A
@@ -192,7 +204,7 @@ L00CB:  CALL    0F818h
 L00F1:  LD      HL,1DC9h
         CALL    0F818h
         LD      HL,0FFFFh
-        LD      (213Bh),HL
+        LD      (CURRENT_LINE),HL
         LD      (2078h),HL
         ; --- START PROC L0100 ---
 L0100:  XOR     A
@@ -208,7 +220,7 @@ L0110:  RST     NextChar
         DEC     A
         JP      Z,L0100
         PUSH    AF
-        CALL    L0519
+        CALL    LineNumberFromStr
         PUSH    DE
         CALL    Tokenize
         LD      B,A
@@ -219,7 +231,7 @@ L0110:  RST     NextChar
         PUSH    BC
         RST     NextChar
         PUSH    AF
-        CALL    L0197
+        CALL    FindProgramLine
         PUSH    BC
         JP      NC,L0141
         EX      DE,HL
@@ -228,7 +240,7 @@ L0133:  LD      A,(DE)
         LD      (BC),A
         INC     BC
         INC     DE
-        RST     20H
+        RST     CompareHLDE
         JP      NC,L0133
         LD      H,B
         LD      L,C
@@ -262,7 +274,7 @@ L0160:  LD      A,(DE)
         OR      A
         JP      NZ,L0160
         ; --- START PROC L0168 ---
-L0168:  CALL    L01BB
+L0168:  CALL    ResetAll
         INC     HL
 L016C:  LD      D,H
         LD      E,L
@@ -293,10 +305,10 @@ L0185:  LD      A,(2117h)
         LD      (2117h),A
         JP      L18E7
 
-        ; --- START PROC L0197 ---
-L0197:  LD      HL,(2143h)
-        ; --- START PROC L019A ---
-L019A:  LD      B,H
+        ; --- START PROC FindProgramLine ---
+FindProgramLine:  LD      HL,(2143h)
+        ; --- START PROC FindProgramLineInMem ---
+FindProgramLineInMem:  LD      B,H
         LD      C,L
         LD      A,(HL)
         INC     HL
@@ -304,17 +316,17 @@ L019A:  LD      B,H
         DEC     HL
         RET     Z
         PUSH    BC
-        RST     30H
-        RST     30H
+        RST     PushNextWord
+        RST     PushNextWord
         POP     HL
-        RST     20H
+        RST     CompareHLDE
         POP     HL
         POP     BC
         CCF
         RET     Z
         CCF
         RET     NC
-        JP      L019A
+        JP      FindProgramLineInMem
 
         ; --- START PROC New ---
 New:  RET     NZ
@@ -325,12 +337,12 @@ New:  RET     NZ
         LD      (HL),A
         INC     HL
         LD      (2145h),HL
-        ; --- START PROC L01BB ---
-L01BB:  LD      HL,(2143h)
+        ; --- START PROC ResetAll ---
+ResetAll:  LD      HL,(2143h)
         DEC     HL
         LD      (HL),00h
-        ; --- START PROC L01C1 ---
-L01C1:  LD      (2137h),HL
+        ; --- START PROC ClearAll ---
+ClearAll:  LD      (PROG_PTR_TEMP),HL
         LD      HL,(211Bh)
         LD      (212Fh),HL
         CALL    L04A5
@@ -347,7 +359,7 @@ L01D6:  POP     BC
         LD      HL,0000h
         PUSH    HL
         LD      (213Fh),HL
-        LD      HL,(2137h)
+        LD      HL,(PROG_PTR_TEMP)
         XOR     A
         LD      (2135h),A
         PUSH    BC
@@ -480,7 +492,7 @@ L02B8:  DEC     DE
         LD      (HL),A
         INC     B
         EX      (SP),HL
-        RST     20H
+        RST     CompareHLDE
         EX      (SP),HL
         DEC     HL
         JP      NZ,L02B8
@@ -507,13 +519,13 @@ L02D7:  LD      A,L
         JP      0F809h
 
         ; --- START PROC L02DF ---
-L02DF:  RST     20H
+L02DF:  RST     CompareHLDE
         RET     Z
         INC     HL
         JP      0F809h
 
         ; --- START PROC L02E5 ---
-L02E5:  RST     20H
+L02E5:  RST     CompareHLDE
         RET     Z
         LD      A,(2063h)
         DEC     A
@@ -626,10 +638,10 @@ L0395:  LD      A,(DE)
 List:	CALL    L03B6
         RET     NZ
         POP     BC
-        CALL    L0197
+        CALL    FindProgramLine
         LD      H,B
         LD      L,C
-L03A1:  RST     30H
+L03A1:  RST     PushNextWord
         POP     DE
         LD      A,D
         OR      E
@@ -641,12 +653,12 @@ L03AC:  CALL    L03D1
         JP      C,L00F1
         JP      Z,L03A1
         ; --- START PROC L03B6 ---
-L03B6:  CALL    L0519
+L03B6:  CALL    LineNumberFromStr
         RET     Z
         RST     SyntaxCheck
         INC     L
         PUSH    DE
-        CALL    L0519
+        CALL    LineNumberFromStr
         POP     HL
         RET     NZ
         EX      DE,HL
@@ -654,7 +666,7 @@ L03B6:  CALL    L0519
         OR      L
         SCF
         RET     Z
-        RST     20H
+        RST     CompareHLDE
         JP      C,SyntaxError
         XOR     A
         SCF
@@ -662,12 +674,12 @@ L03B6:  CALL    L0519
         RET
 
         ; --- START PROC L03D1 ---
-L03D1:  RST     30H
+L03D1:  RST     PushNextWord
         DEC     HL
         EX      (SP),HL
         EX      DE,HL
         LD      HL,(2078h)
-        RST     20H
+        RST     CompareHLDE
         POP     BC
         RET     C
         PUSH    BC
@@ -685,13 +697,13 @@ For:
         ADD     HL,BC
         LD      SP,HL
 L03F4:  EX      DE,HL
-        CALL    L0075
+        CALL    CheckEnoughVarSpace2
         DB	08h
         PUSH    HL
         CALL    Data
         EX      (SP),HL
         PUSH    HL
-        LD      HL,(213Bh)
+        LD      HL,(CURRENT_LINE)
         EX      (SP),HL
         CALL    L086C
         RST     SyntaxCheck
@@ -714,21 +726,21 @@ L03F4:  EX      DE,HL
         PUSH    HL
         CALL    L11B1
         POP     HL
-        RST     28H
+        RST     FTestSign
 L0429:  PUSH    BC
         PUSH    DE
         PUSH    AF
         INC     SP
         PUSH    HL
-        LD      HL,(2137h)
+        LD      HL,(PROG_PTR_TEMP)
         EX      (SP),HL
         ; --- START PROC L0432 ---
 L0432:  LD      B,81h
         PUSH    BC
         INC     SP
-        ; --- START PROC L0436 ---
-L0436:  CALL    L04AF
-        LD      (2137h),HL
+        ; --- START PROC ExecNext ---
+ExecNext:  CALL    L04AF
+        LD      (PROG_PTR_TEMP),HL
         LD      A,(HL)
         EX      DE,HL
         LD      HL,208Dh
@@ -752,11 +764,11 @@ L044F:  LD      (HL),A
         INC     HL
         LD      D,(HL)
         EX      DE,HL
-        LD      (213Bh),HL
+        LD      (CURRENT_LINE),HL
         EX      DE,HL
         ; --- START PROC L0461 ---
 L0461:  RST     NextChar
-        LD      DE,0436h
+        LD      DE,ExecNext
         PUSH    DE
 L0466:  RET     Z
 
@@ -796,7 +808,7 @@ L048B:  CP      20h             ; ' '
 
 Restore:
 	JP      Z,L04A5
-        CALL    L0519
+        CALL    LineNumberFromStr
         RET     NZ
         PUSH    HL
         CALL    L0582
@@ -817,20 +829,21 @@ L04AF:  CALL    0F812h
         RET     Z
         CALL    L0351
         CP      05h
-Stop:
-	RET     NZ
-        OR      0C0h
-        LD      (2137h),HL
+
+	INCLUDE "stStop.inc"
+	INCLUDE "stEnd.inc"
+
+InputBreak:
         POP     BC
         ; --- START PROC L04C0 ---
 L04C0:  PUSH    AF
-        LD      HL,(213Bh)
+        LD      HL,(CURRENT_LINE)
         LD      A,L
         AND     H
         INC     A
         JP      Z,L04D3
         LD      (213Dh),HL
-        LD      HL,(2137h)
+        LD      HL,(PROG_PTR_TEMP)
         LD      (213Fh),HL
 L04D3:  POP     AF
         LD      HL,1DD2h
@@ -843,10 +856,10 @@ Cont:
         LD      HL,(213Fh)
         LD      A,H
         OR      L
-        JP      Z,L00A7
+        JP      Z,Error
         EX      DE,HL
         LD      HL,(213Dh)
-        LD      (213Bh),HL
+        LD      (CURRENT_LINE),HL
         EX      DE,HL
         RET
 
@@ -863,10 +876,10 @@ L04F9:  RST     NextChar
         ; --- START PROC L04FA ---
 L04FA:  CALL    L0869
         ; --- START PROC L04FD ---
-L04FD:  RST     28H
-        JP      M,L0514
-        ; --- START PROC L0501 ---
-L0501:  LD      A,(2150h)
+L04FD:  RST     FTestSign
+        JP      M,FunctionCallError
+        ; --- START PROC FTestIntegerExpression ---
+FTestIntegerExpression:  LD      A,(2150h)
         CP      91h
         JP      C,L120B
         LD      BC,8001h
@@ -874,12 +887,12 @@ L0501:  LD      A,(2150h)
         CALL    L11E0
         LD      D,C
         RET     Z
-        ; --- START PROC L0514 ---
-L0514:  LD      E,08h
-        JP      L00A7
+        ; --- START PROC FunctionCallError ---
+FunctionCallError:  LD      E,08h
+        JP      Error
 
-        ; --- START PROC L0519 ---
-L0519:  DEC     HL
+        ; --- START PROC LineNumberFromStr ---
+LineNumberFromStr:  DEC     HL
         ; --- START PROC L051A ---
 L051A:  LD      DE,0000h
 L051D:  RST     NextChar
@@ -887,7 +900,7 @@ L051D:  RST     NextChar
         PUSH    HL
         PUSH    AF
         LD      HL,1998h
-        RST     20H
+        RST     CompareHLDE
         JP      C,SyntaxError
         LD      H,D
         LD      L,E
@@ -904,7 +917,7 @@ L051D:  RST     NextChar
         POP     HL
         JP      L051D
 
-Clear:	JP      Z,L01C1
+Clear:	JP      Z,ClearAll
         CALL    L04FA
         DEC     HL
         RST     NextChar
@@ -921,61 +934,48 @@ Clear:	JP      Z,L01C1
         LD      HL,(2145h)
         LD      BC,0028h
         ADD     HL,BC
-        RST     20H
+        RST     CompareHLDE
         JP      NC,L0090
         EX      DE,HL
         LD      (2141h),HL
         POP     HL
-        JP      L01C1
+        JP      ClearAll
 
-Run:
-	JP      Z,L01BB
-        CALL    L01C1
-        LD      BC,0436h
-        JP      L057E
 
-Gosub:
-	CALL    L0075
-        INC     BC
-        POP     BC
-        PUSH    HL
-        PUSH    HL
-        LD      HL,(213Bh)
-        EX      (SP),HL
-        LD      D,8Ch
-        PUSH    DE
-        INC     SP
-L057E:  PUSH    BC
+	INCLUDE	"stRun.inc"
+	INCLUDE	"stGosub.inc"
 
 Goto:
-	CALL    L0519
+	CALL    LineNumberFromStr
         ; --- START PROC L0582 ---
 L0582:  CALL    Rem
         PUSH    HL
-        LD      HL,(213Bh)
-        RST     20H
+        LD      HL,(CURRENT_LINE)
+        RST     CompareHLDE
         POP     HL
         INC     HL
-        CALL    C,L019A
-        CALL    NC,L0197
+        CALL    C,FindProgramLineInMem
+        CALL    NC,FindProgramLine
         LD      H,B
         LD      L,C
         DEC     HL
         RET     C
+
+UnknownStringError:
         LD      E,0Eh
-        JP      L00A7
+        JP      Error
 
 Return:
 	RET     NZ
         LD      D,0FFh
         CALL    GetFlowPtr
         LD      SP,HL
-        CP      8Ch
+        CP      TK_GOSUB
         LD      E,04h
-        JP      NZ,L00A7
+        JP      NZ,Error
         POP     HL
-        LD      (213Bh),HL
-        LD      HL,0436h
+        LD      (CURRENT_LINE),HL
+        LD      HL,ExecNext
         EX      (SP),HL
         ; --- START PROC Data ---
 Data:
@@ -999,12 +999,12 @@ L05BA:  LD      A,(HL)
 L05C8:  CALL    L0A48+1         ; reference not aligned to instruction
         RST     SyntaxCheck
         XOR     H
-        LD      A,(2119h)
+        LD      A,(VALTYP)
         PUSH    AF
         PUSH    DE
         CALL    L0878
         EX      (SP),HL
-        LD      (2137h),HL
+        LD      (PROG_PTR_TEMP),HL
         POP     DE
         POP     AF
         PUSH    DE
@@ -1016,14 +1016,14 @@ L05E3:  PUSH    HL
         PUSH    HL
         INC     HL
         INC     HL
-        RST     30H
+        RST     PushNextWord
         POP     DE
         LD      HL,(2141h)
-        RST     20H
+        RST     CompareHLDE
         POP     DE
         JP      NC,L05FD
         LD      HL,(2145h)
-        RST     20H
+        RST     CompareHLDE
         LD      L,E
         LD      H,D
         CALL    C,L0C5F
@@ -1071,7 +1071,7 @@ If:
         RST     SyntaxCheck
         AND     C
         DEC     HL
-L063C:  RST     28H
+L063C:  RST     FTestSign
         JP      Z,Rem
         RST     NextChar
         JP      C, Goto
@@ -1108,7 +1108,7 @@ L066B:  PUSH    HL
         CALL    L0878
         DEC     HL
         PUSH    HL
-        LD      A,(2119h)
+        LD      A,(VALTYP)
         OR      A
         JP      NZ,L06A1
         CALL    L1326
@@ -1130,7 +1130,7 @@ L06A8:  INC     HL
         CALL    L0869
         DEC     HL
         PUSH    HL
-        CALL    L0501
+        CALL    FTestIntegerExpression
         LD      A,20h           ; ' '
         RST     18H
         LD      A,D
@@ -1207,7 +1207,7 @@ L070C:  PUSH    AF
         LD      A,E
         JP      Z,L06FC
         CP      40h             ; '@'
-        JP      P,L0514
+        JP      P,FunctionCallError
         LD      HL,2063h
         SUB     (HL)
         LD      (HL),E
@@ -1253,7 +1253,7 @@ L0761:  PUSH    HL
         CALL    L0C31
         DEC     B
         CALL    L0777
-        LD      A,(2119h)
+        LD      A,(VALTYP)
         CALL    L01F2
         JP      L0798+1         ; reference not aligned to instruction
 
@@ -1298,7 +1298,7 @@ L079E:  LD      BC,2CCFh
         LD      A,2Ch           ; ','
         RST     18H
         CALL    L078C
-L07B9:  LD      A,(2119h)
+L07B9:  LD      A,(VALTYP)
         OR      A
         JP      Z,L07D9
         RST     NextChar
@@ -1341,11 +1341,11 @@ L07FE:  CALL    Data
         OR      A
         JP      NZ,L0817
         INC     HL
-        RST     30H
+        RST     PushNextWord
         LD      A,C
         OR      B
         LD      E,06h
-        JP      Z,L00A7
+        JP      Z,Error
         POP     BC
         LD      E,(HL)
         INC     HL
@@ -1362,7 +1362,7 @@ Next:
 	LD      DE,0000h
         ; --- START PROC L0823 ---
 L0823:  CALL    NZ,L0A48+1      ; reference not aligned to instruction
-        LD      (2137h),HL
+        LD      (PROG_PTR_TEMP),HL
         CALL    GetFlowPtr
         JP      NZ,L00A4+1      ; reference not aligned to instruction
         LD      SP,HL
@@ -1387,16 +1387,16 @@ L0823:  CALL    NZ,L0A48+1      ; reference not aligned to instruction
         CALL    L11B4
         JP      Z,L085B
         EX      DE,HL
-        LD      (213Bh),HL
+        LD      (CURRENT_LINE),HL
         LD      L,C
         LD      H,B
         JP      L0432
 
 L085B:  LD      SP,HL
-        LD      HL,(2137h)
+        LD      HL,(PROG_PTR_TEMP)
         LD      A,(HL)
         CP      2Ch             ; ','
-        JP      NZ,L0436
+        JP      NZ,ExecNext
         RST     NextChar
         CALL    L0823
         ; --- START PROC L0869 ---
@@ -1404,18 +1404,18 @@ L0869:  CALL    L0878
         ; --- START PROC L086C ---
 L086C:  OR      37h             ; '7'
         ; --- START PROC L086E ---
-L086E:  LD      A,(2119h)
+L086E:  LD      A,(VALTYP)
         ADC     A,A
         RET     PE
 L0873:  LD      E,18h
-        JP      L00A7
+        JP      Error
 
         ; --- START PROC L0878 ---
 L0878:  DEC     HL
         LD      D,00h
         ; --- START PROC L087B ---
 L087B:  PUSH    DE
-        CALL    L0075
+        CALL    CheckEnoughVarSpace2
         LD      BC,0E8CDh
         DB	08H
         LD      (2139h),HL
@@ -1451,7 +1451,7 @@ L08AD:  LD      A,D
         CP      07h
         RET     NC
         LD      E,A
-        LD      A,(2119h)
+        LD      A,(VALTYP)
         DEC     A
         OR      E
         LD      A,E
@@ -1476,13 +1476,13 @@ L08D5:  PUSH    BC
         CALL    L1196
         LD      E,B
         LD      D,C
-        RST     30H
+        RST     PushNextWord
         LD      HL,(2131h)
         JP      L087B
 
         ; --- START PROC L08E8 ---
 L08E8:  XOR     A
-        LD      (2119h),A
+        LD      (VALTYP),A
         RST     NextChar
         JP      C,L1272
         CALL    L04F1
@@ -1539,7 +1539,7 @@ L0950:  CALL    L0A48+1         ; reference not aligned to instruction
         PUSH    HL
         EX      DE,HL
         LD      (214Dh),HL
-        LD      A,(2119h)
+        LD      A,(VALTYP)
         OR      A
         CALL    Z,L11A3
         POP     HL
@@ -1596,7 +1596,7 @@ FAnd:
 	XOR	A	; AFh
         PUSH    AF
         CALL    L086C
-        CALL    L0501
+        CALL    FTestIntegerExpression
         POP     AF
         EX      DE,HL
         POP     BC
@@ -1604,7 +1604,7 @@ FAnd:
         EX      DE,HL
         CALL    L11A6
         PUSH    AF
-        CALL    L0501
+        CALL    FTestIntegerExpression
         POP     AF
         POP     BC
         LD      A,C
@@ -1624,7 +1624,7 @@ L09C8:  OR      E
 
         ; --- START PROC L09CD ---
 L09CD:  LD      HL,09DFh
-        LD      A,(2119h)
+        LD      A,(VALTYP)
         RRA
         LD      A,D
         RLA
@@ -1648,12 +1648,12 @@ L09DF:  POP     HL
         PUSH    HL
         JP      Z,L11E0
         XOR     A
-        LD      (2119h),A
+        LD      (VALTYP),A
         PUSH    DE
         CALL    L0DEC
         POP     DE
-        RST     30H
-        RST     30H
+        RST     PushNextWord
+        RST     PushNextWord
         CALL    L0DF0
         CALL    L11B4
         POP     HL
@@ -1693,7 +1693,7 @@ L0A1E:  INC     A
 L0A28:  LD      D,5Ah           ; 'Z'
         CALL    L087B
         CALL    L086C
-        CALL    L0501
+        CALL    FTestIntegerExpression
         LD      A,E
         CPL
         LD      C,A
@@ -1719,7 +1719,7 @@ L0A4E:  CALL    L04F1
         JP      C,SyntaxError
         XOR     A
         LD      C,A
-        LD      (2119h),A
+        LD      (VALTYP),A
         RST     NextChar
         JP      C,L0A63
         CALL    L04F1
@@ -1732,7 +1732,7 @@ L0A64:  RST     NextChar
 L0A6E:  SUB     24h             ; '$'
         JP      NZ,L0A7B
         INC     A
-        LD      (2119h),A
+        LD      (VALTYP),A
         RRCA
         ADD     A,C
         LD      C,A
@@ -1747,7 +1747,7 @@ L0A7B:  LD      A,(2135h)
         LD      HL,(2147h)
         EX      DE,HL
         LD      HL,(2145h)
-L0A90:  RST     20H
+L0A90:  RST     CompareHLDE
         JP      Z,L0AA7
         LD      A,C
         SUB     (HL)
@@ -1778,7 +1778,7 @@ L0AA7:  PUSH    BC
         LD      (2147h),HL
 L0ABE:  DEC     HL
         LD      (HL),00h
-        RST     20H
+        RST     CompareHLDE
         JP      NZ,L0ABE
         POP     DE
         LD      (HL),E
@@ -1818,7 +1818,7 @@ L0AF4:  LD      A,19h
         EX      DE,HL
         LD      HL,(2149h)
         EX      DE,HL
-        RST     20H
+        RST     CompareHLDE
         JP      Z,L0B22
         LD      A,(HL)
         CP      C
@@ -1835,13 +1835,13 @@ L0B07:  INC     HL
         LD      A,(2118h)
         OR      A
         LD      E,12h
-        JP      NZ,L00A7
+        JP      NZ,Error
         POP     AF
         CP      (HL)
         JP      Z,L0B81
         ; --- START PROC L0B1D ---
 L0B1D:  LD      E,10h
-        JP      L00A7
+        JP      Error
 
         ; --- START PROC L0B22 ---
 L0B22:  LD      DE,0004h
@@ -1887,7 +1887,7 @@ L0B46:  LD      (HL),C
         LD      (2149h),HL
 L0B63:  DEC     HL
         LD      (HL),00h
-        RST     20H
+        RST     CompareHLDE
         JP      NZ,L0B63
         INC     BC
         LD      H,A
@@ -1914,7 +1914,7 @@ L0B85:  LD      D,0E1h
         INC     HL
         EX      (SP),HL
         PUSH    AF
-        RST     20H
+        RST     CompareHLDE
         JP      NC,L0B1D
         PUSH    HL
         CALL    L124F
@@ -1940,7 +1940,7 @@ Fre:	LD      HL,(2149h)
         EX      DE,HL
         LD      HL,0000h
         ADD     HL,SP
-        LD      A,(2119h)
+        LD      A,(VALTYP)
         OR      A
         JP      Z,L0BC5
 L0BB8:  CALL    L0DEC
@@ -1957,13 +1957,14 @@ L0BC5:  LD      A,L
 L0BCA:  LD      B,C
 L0BCB:  LD      D,B
         LD      E,00h
-        LD      HL,2119h
+        LD      HL,VALTYP
         LD      (HL),E
         LD      B,90h
         JP      L117E
 
 Pos:	LD      A,(2063h)
-L0BDA:  LD      B,A
+ByteFromAToFACCUM:
+	LD      B,A
         XOR     A
         JP      L0BCB
 
@@ -1992,21 +1993,21 @@ L0BFC:  CALL    L0C3F
         CALL    L0937
         CALL    L086C
         EX      (SP),HL
-        RST     30H
+        RST     PushNextWord
         POP     DE
-        RST     30H
+        RST     PushNextWord
         POP     HL
-        RST     30H
-        RST     30H
+        RST     PushNextWord
+        RST     PushNextWord
         DEC     HL
         DEC     HL
         DEC     HL
         DEC     HL
         PUSH    HL
-        RST     20H
+        RST     CompareHLDE
         PUSH    DE
         LD      E,22h           ; '"'
-        JP      Z,L00A7
+        JP      Z,Error
         CALL    L11BD
         POP     HL
         CALL    L0869
@@ -2029,14 +2030,14 @@ L0C2B:  INC     HL
 
         ; --- START PROC L0C31 ---
 L0C31:  PUSH    HL
-        LD      HL,(213Bh)
+        LD      HL,(CURRENT_LINE)
         INC     HL
         LD      A,H
         OR      L
         POP     HL
         RET     NZ
         LD      E,16h
-        JP      L00A7
+        JP      Error
 
         ; --- START PROC L0C3F ---
 L0C3F:  RST     SyntaxCheck
@@ -2062,7 +2063,7 @@ L0C5F:  LD      A,(HL)
         PUSH    HL
         CALL    L0CD5
         POP     HL
-        RST     30H
+        RST     PushNextWord
         POP     BC
         CALL    L0C76
         PUSH    HL
@@ -2104,18 +2105,18 @@ L0C95:  CP      22h             ; '"'
         EX      DE,HL
         LD      A,C
         CALL    L0C76
-        RST     20H
+        RST     CompareHLDE
         CALL    NC,L0C5F
         ; --- START PROC L0CA5 ---
 L0CA5:  LD      DE,212Bh
         LD      HL,(211Dh)
         LD      (214Dh),HL
         LD      A,01h
-        LD      (2119h),A
+        LD      (VALTYP),A
         CALL    L11C0
-        RST     20H
+        RST     CompareHLDE
         LD      E,1Eh
-        JP      Z,L00A7
+        JP      Z,Error
         LD      (211Dh),HL
         POP     HL
         LD      A,(HL)
@@ -2146,7 +2147,7 @@ L0CD5:  OR      A
         LD      B,0FFh
         ADD     HL,BC
         INC     HL
-        RST     20H
+        RST     CompareHLDE
         JP      C,L0CF1
         LD      (212Fh),HL
         INC     HL
@@ -2156,7 +2157,7 @@ L0CD5:  OR      A
 
 L0CF1:  POP     AF
         LD      E,1Ah
-        JP      Z,L00A7
+        JP      Z,Error
         CP      A
         PUSH    AF
         LD      BC,0CD7h
@@ -2173,14 +2174,14 @@ L0D00:  LD      (212Fh),HL
         EX      DE,HL
         LD      HL,(211Dh)
         EX      DE,HL
-        RST     20H
+        RST     CompareHLDE
         LD      BC,0D0Eh
         JP      NZ,L0D5A
         LD      HL,(2145h)
 L0D1D:  EX      DE,HL
         LD      HL,(2147h)
         EX      DE,HL
-        RST     20H
+        RST     CompareHLDE
         JP      Z,L0D31
         LD      A,(HL)
         INC     HL
@@ -2193,7 +2194,7 @@ L0D30:  POP     BC
 L0D31:  EX      DE,HL
         LD      HL,(2149h)
         EX      DE,HL
-        RST     20H
+        RST     CompareHLDE
         JP      Z,L0D7D
         CALL    L11B4
         LD      A,E
@@ -2211,14 +2212,14 @@ L0D31:  EX      DE,HL
         EX      DE,HL
         LD      HL,(2131h)
         EX      DE,HL
-        RST     20H
+        RST     CompareHLDE
         JP      Z,L0D31
         LD      BC,0D4Eh
 L0D5A:  PUSH    BC
         OR      80h
         ; --- START PROC L0D5D ---
-L0D5D:  RST     30H
-        RST     30H
+L0D5D:  RST     PushNextWord
+        RST     PushNextWord
         POP     DE
         POP     BC
         RET     P
@@ -2228,13 +2229,13 @@ L0D5D:  RST     30H
         LD      B,H
         LD      C,L
         LD      HL,(212Fh)
-        RST     20H
+        RST     CompareHLDE
         LD      H,B
         LD      L,C
         RET     C
         POP     HL
         EX      (SP),HL
-        RST     20H
+        RST     CompareHLDE
         EX      (SP),HL
         PUSH    HL
         LD      H,B
@@ -2294,7 +2295,7 @@ L0DA2:  PUSH    BC
         PUSH    HL
         ADD     A,(HL)
         LD      E,1Ch
-        JP      C,L00A7
+        JP      C,Error
         CALL    L0C73
         POP     DE
         CALL    L0DF0
@@ -2313,8 +2314,8 @@ L0DA2:  PUSH    BC
         ; --- START PROC L0DD9 ---
 L0DD9:  POP     HL
         EX      (SP),HL
-        RST     30H
-        RST     30H
+        RST     PushNextWord
+        RST     PushNextWord
         POP     BC
         POP     HL
         ; --- START PROC L0DDF ---
@@ -2327,8 +2328,9 @@ L0DE0:  DEC     L
         INC     DE
         JP      L0DE0
 
-        ; --- START PROC L0DE9 ---
-L0DE9:  CALL    L086C+1         ; reference not aligned to instruction
+        ; --- START PROC EvalString ---
+EvalString:
+	CALL    L086C+1         ; reference not aligned to instruction
         ; --- START PROC L0DEC ---
 L0DEC:  LD      HL,(214Dh)
         ; --- START PROC L0DEF ---
@@ -2341,7 +2343,7 @@ L0DF0:  LD      HL,(211Dh)
         LD      C,(HL)
         DEC     HL
         DEC     HL
-        RST     20H
+        RST     CompareHLDE
         EX      DE,HL
         RET     NZ
         LD      (211Dh),HL
@@ -2351,7 +2353,7 @@ L0DF0:  LD      HL,(211Dh)
         DEC     DE
         LD      C,(HL)
         LD      HL,(212Fh)
-        RST     20H
+        RST     CompareHLDE
         JP      NZ,L0E10
         LD      B,A
         ADD     HL,BC
@@ -2359,25 +2361,8 @@ L0DF0:  LD      HL,(211Dh)
 L0E10:  POP     HL
         RET
 
-Len:	LD      BC,0BDAh
-        PUSH    BC
-        ; --- START PROC L0E16 ---
-L0E16:  CALL    L0DE9
-        XOR     A
-        LD      D,A
-        LD      (2119h),A
-        LD      A,(HL)
-        OR      A
-        RET
-
-Asc:	CALL    L0E16
-        JP      Z,L0514
-        INC     HL
-        INC     HL
-        RST     30H
-        POP     HL
-        LD      A,(HL)
-        JP      L0BDA
+	INCLUDE	"fnLen.inc"
+	INCLUDE	"fnAsc.inc"
 
 Chr:	CALL    L0EDF
         POP     BC
@@ -2490,7 +2475,7 @@ L0ECE:  POP     BC
         LD      B,E
         INC     B
         DEC     B
-        JP      Z,L0514
+        JP      Z,FunctionCallError
         RET
 
         ; --- START PROC L0ED8 ---
@@ -2503,18 +2488,18 @@ L0EDC:  CALL    L0869
 L0EDF:  CALL    L04FD
         LD      A,D
         OR      A
-        JP      NZ,L0514
+        JP      NZ,FunctionCallError
         DEC     HL
         RST     NextChar
         LD      A,E
         RET
 
-Val:	CALL    L0E16
+Val:	CALL    GetStringLength
         JP      Z,L0F7C
         LD      E,A
         INC     HL
         INC     HL
-        RST     30H
+        RST     PushNextWord
         LD      H,B
         LD      L,C
         ADD     HL,DE
@@ -2666,7 +2651,7 @@ L0FAE:  INC     E
         RET     NZ
         ; --- START PROC L0FB8 ---
 L0FB8:  LD      E,0Ah
-        JP      L00A7
+        JP      Error
 
         ; --- START PROC L0FBD ---
 L0FBD:  LD      A,(HL)
@@ -2748,8 +2733,8 @@ L1001:  NOP
         XOR     D
         DB 38h, 82h
         ; --- START PROC Log ---
-Log:	RST     28H
-        JP      PE,L0514
+Log:	RST     FTestSign
+        JP      PE,FunctionCallError
         LD      HL,2150h
         LD      A,(HL)
         LD      BC,8035h
@@ -2782,7 +2767,7 @@ FMul:
 	POP	BC			; Get lhs in BCDE
 	POP	DE
         ; --- START PROC L1050 ---
-L1050:  RST     28H
+L1050:  RST     FTestSign
         RET     Z
         LD      L,00h
         CALL    L112E
@@ -2852,7 +2837,7 @@ L10A4:  CALL    L1196
 FDiv:	POP     BC
         POP     DE
         ; --- START PROC L10B2 ---
-L10B2:  RST     28H
+L10B2:  RST     FTestSign
         JP      Z,L00A1+1       ; reference not aligned to instruction
         LD      L,0FFh
         CALL    L112E
@@ -2957,7 +2942,7 @@ L112E:  LD      A,B
         RET
 
         ; --- START PROC L114C ---
-L114C:  RST     28H
+L114C:  RST     FTestSign
         CPL
         POP     HL
 L114F:  OR      A
@@ -2979,7 +2964,8 @@ L1157:  CALL    L11B1
         RET     NZ
         JP      L0FB8
 
-L116E:  LD      A,(214Fh)
+FTestSign_tail:
+	LD      A,(214Fh)
         CP      2Fh             ; '/'
         RLA
 L1174:  SBC     A,A
@@ -2987,7 +2973,7 @@ L1174:  SBC     A,A
         INC     A
         RET
 
-Sgn:	RST     28H
+Sgn:	RST     FTestSign
         ; --- START PROC L1179 ---
 L1179:  LD      B,88h
         LD      DE,0000h
@@ -3001,7 +2987,7 @@ L117E:  LD      HL,2150h
         RLA
         JP      L0F64
 
-Abs:	RST     28H
+Abs:	RST     FTestSign
         RET     P
         ; --- START PROC L118E ---
 L118E:  LD      HL,214Fh
@@ -3085,7 +3071,7 @@ L11E0:  LD      A,B
         JP      Z,L0026+2       ; reference not aligned to instruction
         LD      HL,1172h
         PUSH    HL
-        RST     28H
+        RST     FTestSign
         LD      A,C
         RET     Z
         LD      HL,214Fh
@@ -3324,7 +3310,7 @@ L131C:  XOR     A
         ; --- START PROC L1326 ---
 L1326:  LD      HL,2152h
         PUSH    HL
-        RST     28H
+        RST     FTestSign
         LD      (HL),20h        ; ' '
         JP      P,L1332
         LD      (HL),2Dh        ; '-'
@@ -3473,7 +3459,7 @@ FPower:
         POP     BC
         POP     DE
         ; --- START PROC L1415 ---
-L1415:  RST     28H
+L1415:  RST     FTestSign
         JP      Z,Exp
         LD      A,B
         OR      A
@@ -3592,7 +3578,7 @@ L14C7:  LD      B,0F1h
         POP     HL
         JP      L14C7+1         ; reference not aligned to instruction
 
-Rnd:	RST     28H
+Rnd:	RST     FTestSign
         JP      M,L14FD
         LD      HL,206Dh
         CALL    L11A3
@@ -3633,11 +3619,11 @@ Sin:	CALL    L1196
         CALL    L0F13
         LD      HL,155Ch
         CALL    L0F0D
-        RST     28H
+        RST     FTestSign
         SCF
         JP      P,L1544
         CALL    L0F04
-        RST     28H
+        RST     FTestSign
         OR      A
 L1544:  PUSH    AF
         CALL    P,L118E
@@ -3691,7 +3677,7 @@ Tan:
         JP      FDiv
 
         ; --- START PROC Atn ---
-Atn:	RST     28H
+Atn:	RST     FTestSign
         CALL    M,L1405
         CALL    M,L118E
         LD      A,(2150h)
@@ -3743,26 +3729,23 @@ L15B7:  ADD     HL,BC
         NOP
         NOP
 
-Peek:	RST     28H
-        CALL    L0501
-        LD      A,(DE)
-        JP      L0BDA
+	INCLUDE	"fnPeek.inc"
 
 Poke:
 	CALL    L0869
-        RST     28H
-        CALL    L0501
+        RST     FTestSign
+        CALL    FTestIntegerExpression
         PUSH    DE
         CALL    L0ED8
         POP     DE
         LD      (DE),A
         RET
 
-Usr:	RST     28H
-        CALL    L0501
+Usr:	RST     FTestSign
+        CALL    FTestIntegerExpression
         EX      DE,HL
         CALL    L15FF
-        JP      L0BDA
+        JP      ByteFromAToFACCUM
 
         ; --- START PROC L15FF ---
 L15FF:  JP      (HL)
@@ -3906,7 +3889,7 @@ L16E0:  LD      B,98h
         RET
 
 Himem:	CALL    L0869
-        CALL    L0501
+        CALL    FTestIntegerExpression
         DEC     HL
         RST     NextChar
         RET     NZ
@@ -3915,12 +3898,12 @@ Himem:	CALL    L0869
         LD      BC,0400h
         ADD     HL,BC
         EX      DE,HL
-        RST     20H
+        RST     CompareHLDE
 L16FA:  LD      E,20h           ; ' '
-        JP      C,L00A7
+        JP      C,Error
         EX      DE,HL
         LD      HL,(Start+1)    ; reference not aligned to instruction
-        RST     20H
+        RST     CompareHLDE
         JP      C,L16FA
         EX      DE,HL
         LD      (211Bh),HL
@@ -3928,17 +3911,17 @@ L16FA:  LD      E,20h           ; ' '
         ADD     HL,BC
         LD      (2141h),HL
         POP     HL
-        JP      L01C1
+        JP      ClearAll
 
 Edit:
-	CALL    L0519
+	CALL    LineNumberFromStr
         RET     NZ
         POP     BC
         ; --- START PROC L171B ---
-L171B:  CALL    L0197
+L171B:  CALL    FindProgramLine
         LD      H,B
         LD      L,C
-        RST     30H
+        RST     PushNextWord
         POP     BC
         LD      A,B
         OR      C
@@ -3951,21 +3934,21 @@ Delete:
 	CALL    L03B6
         JP      NC,SyntaxError
         POP     BC
-        CALL    L0197
+        CALL    FindProgramLine
         PUSH    BC
         PUSH    BC
 L173C:  POP     HL
-        RST     30H
+        RST     PushNextWord
         POP     DE
         LD      A,D
         OR      E
         JP      Z,L1752
         PUSH    DE
-        RST     30H
+        RST     PushNextWord
         POP     DE
         PUSH    HL
         LD      HL,(2078h)
-        RST     20H
+        RST     CompareHLDE
         POP     HL
         JP      NC,L173C
         POP     DE
@@ -3999,7 +3982,7 @@ Renum:
         EX      DE,HL
         LD      HL,(2143h)
 L177E:  PUSH    BC
-        CALL    L0075
+        CALL    CheckEnoughVarSpace2
         INC     B
         POP     BC
         LD      A,(HL)
@@ -4076,14 +4059,14 @@ L17E6:  PUSH    HL
         JP      NC,L17C3
         INC     HL
         PUSH    HL
-        CALL    L0519
+        CALL    LineNumberFromStr
         PUSH    HL
         PUSH    DE
         LD      HL,(2145h)
         EX      DE,HL
 L17F7:  LD      HL,(2149h)
         EX      DE,HL
-        RST     20H
+        RST     CompareHLDE
         POP     DE
         JP      Z,L1813
         LD      A,(HL)
@@ -4093,7 +4076,7 @@ L17F7:  LD      HL,(2149h)
         PUSH    HL
         LD      L,A
         LD      H,B
-        RST     20H
+        RST     CompareHLDE
         POP     HL
         JP      Z,L181F
         INC     HL
@@ -4142,7 +4125,7 @@ L183B:  POP     HL
         CPL
         LD      B,A
         CALL    L1870
-L1851:  RST     20H
+L1851:  RST     CompareHLDE
         LD      A,(HL)
         LD      (BC),A
         INC     HL
@@ -4183,7 +4166,7 @@ L1886:  CALL    L1870
         LD      C,E
         EX      DE,HL
         LD      HL,(2149h)
-L188F:  RST     20H
+L188F:  RST     CompareHLDE
         JP      C,L1859
         LD      A,(HL)
         LD      (BC),A
@@ -4201,7 +4184,7 @@ L189A:  LD      DE,000Ah
         RET     Z
         CP      2Ch             ; ','
         JP      Z,L18B3
-        CALL    L0519
+        CALL    LineNumberFromStr
         CALL    L18C2
         RET     Z
 L18B3:  CALL    L0ED8
@@ -4248,14 +4231,14 @@ L18E7:  LD      D,00h
         ; --- START PROC L18F7 ---
 L18F7:  CALL    L0EDC
         CP      40h             ; '@'
-        JP      NC,L0514
+        JP      NC,FunctionCallError
         LD      C,A
         PUSH    BC
         CALL    L0ED8
         POP     BC
         LD      B,A
         CP      19h
-L1908:  JP      NC,L0514
+L1908:  JP      NC,FunctionCallError
         PUSH    HL
         LD      HL,7F12h
         LD      DE,0FFB2h
@@ -4296,10 +4279,10 @@ Plot:
         ; --- START PROC L1948 ---
 L1948:  LD      A,(2054h)
         OR      A
-        JP      M,L0514
+        JP      M,FunctionCallError
         LD      A,(2055h)
         CP      32h             ; '2'
-        JP      NC,L0514
+        JP      NC,FunctionCallError
         XOR     A
         LD      A,(2054h)
         RRA
@@ -4451,7 +4434,7 @@ L1A46:  RST     NextChar
         RST     SyntaxCheck
         ADD     HL,HL
         XOR     A
-        LD      (2119h),A
+        LD      (VALTYP),A
         JP      L16D7
 
         ; --- START PROC L1A55 ---
@@ -4462,7 +4445,7 @@ L1A55:  RST     NextChar
 
         ; --- START PROC L1A5F ---
 L1A5F:  CALL    L0869
-        RST     28H
+        RST     FTestSign
         POP     BC
         JP      Z,0F803h
         PUSH    BC
@@ -4658,12 +4641,12 @@ L1B9A:  OR      A
         CALL    L1AD0
         EX      DE,HL
         LD      HL,(2115h)
-        RST     20H
+        RST     CompareHLDE
 L1BB8:  PUSH    AF
 L1BB9:  CALL    0F82Dh
         POP     AF
         LD      E,18h
-        JP      NZ,L00A7
+        JP      NZ,Error
         POP     HL
 L1BC3:  LD      (2145h),HL
         DEC     C
@@ -4763,7 +4746,7 @@ L1C57:  RST     NextChar
         CALL    Sqr
         POP     BC
         POP     DE
-        RST     28H
+        RST     FTestSign
         JP      Z,L1C7E
         CALL    L10B2
         CALL    Atn
@@ -5103,102 +5086,209 @@ L1E02:  LD      L,L
         LD      L,L
         LD      H,C
 	db	3ah, 00h
+
+TOKEN	MACRO	name
+name	EQU	Q
+Q	SET	Q+1
+name_ADDR equ $
+	ENDM
+
+FIRST_TK	EQU	80H
+
 KEYWORDS:
+Q	SET	FIRST_TK
+	TOKEN	TK_CLS
 	DB	"CL", 'S'+80H
+	TOKEN	TK_FOR
 	DB	"FO", 'R'+80h
+	TOKEN	TK_NEXT
 	DB	"NEX", 'T'+80h
+	TOKEN	TK_DATA
 	DB	"DAT", 'A'+80h
+	TOKEN	TK_INPUT
 	DB	"INPU", 'T'+80h
+	TOKEN	TK_DIM
 	DB	"DI", 'M'+80h
+	TOKEN	TK_READ
 	DB	"REA", 'D'+80h
+	TOKEN	TK_CUR
 	DB	"CU", 'R'+80h
+	TOKEN	TK_GOTO
 	DB	"GOT", 'O'+80h
+	TOKEN	TK_RUN
 	DB	"RU", 'N'+80h
+	TOKEN	TK_IF
 	DB	"I", 'F'+80h
+	TOKEN	TK_RESTORE
 	DB	"RESTOR", 'E'+80h
+	TOKEN	TK_GOSUB
 	DB	"GOSU", 'B'+80h
+	TOKEN	TK_RETURN
 	DB	"RETUR", 'N'+80h
+	TOKEN	TK_REM
 	DB	"RE", 'M'+80h
+	TOKEN	TK_STOP
 	DB	"STO", 'P'+80h
+	TOKEN	TK_OUT
 	DB	"OU", 'T'+80h
+	TOKEN	TK_ON
 	DB	"O", 'N'+80h
+	TOKEN	TK_PLOT
 	DB	"PLO", 'T'+80h
+	TOKEN	TK_LINE
 	DB	"LIN", 'E'+80h
+	TOKEN	TK_POKE
 	DB	"POK", 'E'+80h
+	TOKEN	TK_PRINT
 	DB	"PRIN", 'T'+80h
+	TOKEN	TK_DEF
 	DB	"DE", 'F'+80h
+	TOKEN	TK_CONT
 	DB	"CON", 'T'+80h
+	TOKEN	TK_LIST
 	DB	"LIS", 'T'+80h
+	TOKEN	TK_CLEAR
 	DB	"CLEA", 'R'+80h
+	TOKEN	TK_CLOAD
 	DB	"CLOA", 'D'+80h
+	TOKEN	TK_CSAVE
 	DB	"CSAV", 'E'+80h
+	TOKEN	TK_NEW
 	DB	"NE", 'W'+80h
 
+TKCOUNT	EQU	Q-FIRST_TK
+
+	TOKEN	TK_TAB
 	DB	"TAB", '('+80h
+	TOKEN	TK_TO
 	DB	"T", 'O'+80h
+	TOKEN	TK_SPC
 	DB	"SPC", '('+80h
+	TOKEN	TK_FN
 	DB	"F", 'N'+80h
+	TOKEN	TK_THEN
 	DB	"THE",'N'+80h
+	TOKEN	TK_NOT
 	DB	"NO", 'T'+80h
+	TOKEN	TK_STEP
 	DB	"STE", 'P'+80h
 
+	TOKEN	TK_PLUS
 	DB 	"+"+80h
+	TOKEN	TK_MINUS
 	DB 	"-"+80h
+	TOKEN	TK_MUL
 	DB	"*"+80h
+	TOKEN	TK_DIV
 	DB 	"/"+80h
+	TOKEN	TK_POWER
 	DB	'^'+80h
+	TOKEN	TK_AND
 	DB	"AN", 'D'+80h
+	TOKEN	TK_OR
 	DB	"O", 'R'+80h
+	TOKEN	TK_GT
 	DB 	">"+80h
+	TOKEN	TK_EQ
 	DB	"="+80h
+	TOKEN	TK_LT
 	DB 	"<"+80h
 
+	TOKEN	TK_SGN
 	DB	"SG", 'N'+80h
+	TOKEN	TK_INT
 	DB	"IN", 'T'+80h
+	TOKEN	TK_ABS
 	DB	"AB", 'S'+80h
+	TOKEN	TK_USR
 	DB	"US", 'R'+80h
+	TOKEN	TK_FRE
 	DB	"FR", 'E'+80h
+	TOKEN	TK_INP
 	DB	"IN", 'P'+80h
+	TOKEN	TK_POS
 	DB	"PO", 'S'+80h
+	TOKEN	TK_SQR
 	DB	"SQ", 'R'+80h
+	TOKEN	TK_RND
 	DB	"RN", 'D'+80h
+	TOKEN	TK_LOG
 	DB	"LO", 'G'+80h
+	TOKEN	TK_EXP
 	DB	"EX", 'P'+80h
+	TOKEN	TK_COS
 	DB	"CO", 'S'+80h
+	TOKEN	TK_SIN
 	DB	"SI", 'N'+80h
+	TOKEN	TK_TAN
 	DB	"TA", 'N'+80h
+	TOKEN	TK_ATN
 	DB	"AT", 'N'+80h
+	TOKEN	TK_PEEK
 	DB	"PEE", 'K'+80h
+	TOKEN	TK_LEN
 	DB	"LE", 'N'+80h
+	TOKEN	TK_STRS
 	DB	"STR", '$'+80h
+	TOKEN	TK_VAL
 	DB	"VA", 'L'+80h
+	TOKEN	TK_ASC
 	DB	"AS", 'C'+80h
+	TOKEN	TK_CHRS
 	DB	"CHR", '$'+80h
+	TOKEN	TK_LEFTS
 	DB	"LEFT", '$'+80h
+	TOKEN	TK_RIGHTS
 	DB	"RIGHT", '$'+80h
+	TOKEN	TK_MIDS
 	DB	"MID", '$'+80h
+
+TK_INLINE_COUNT EQU Q-TK_SGN
+
+	TOKEN	TK_SCREENS
 	DB	"SCREEN$", '('+80h
+	TOKEN	TK_INKEYS
 	DB	"INKEY", '$'+80h
+	TOKEN	TK_AT
 	DB	"A", 'T'+80h
+	TOKEN	TK_AMP
 	DB	'&'+80h
 
+	TOKEN	TK_BEEP
 	DB	"BEE", 'P'+80h
+	TOKEN	TK_PAUSE
 	DB	"PAUS", 'E'+80h
+	TOKEN	TK_VERIFY
 	DB	"VERIF", 'Y'+80h
+	TOKEN	TK_HOME
 	DB	"HOM", 'E'+80h
+	TOKEN	TK_EDIT
 	DB	"EDI", 'T'+80h
+	TOKEN	TK_DELETE
 	DB	"DELET", 'E'+80h
+	TOKEN	TK_MERGE
 	DB	"MERG", 'E'+80h
+	TOKEN	TK_AUTO
 	DB	"AUT", 'O'+80h
+	TOKEN	TK_HIMEM
 	DB	"HIME", 'M'+80h
+	TOKEN	TK_ATSGN
 	DB	'@'+80h
+	TOKEN	TK_ASN
 	DB	"AS", 'N'+80h
+	TOKEN	TK_ADDR
 	DB	"ADD", 'R'+80h
+	TOKEN	TK_PI
 	DB	"P", 'I'+80h
+	TOKEN	TK_RENUM
 	DB	"RENU", 'M'+80h
+	TOKEN	TK_ACS
 	DB	"AC", 'S'+80h
+	TOKEN	TK_LG
 	DB	"L", 'G'+80h
+	TOKEN	TK_LPRINT
 	DB	"LPRIN", 'T'+80h
+	TOKEN	TK_LLIST
 	DB	"LLIS", 'T'+80h
 	DB	0
 
