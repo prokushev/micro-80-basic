@@ -2576,7 +2576,7 @@ Str:
         CALL    FOut
         CALL    L0D4F
         CALL    EvalCurrentString
-        LD      BC,L0F10
+        LD      BC,ToPool
         PUSH    BC
 L0D2F:  LD      A,(HL)
         INC     HL
@@ -2593,12 +2593,14 @@ L0D2F:  LD      A,(HL)
         POP     DE
         RET     
 
-L0D43:  CALL    L0DAA
-L0D46:  LD      HL,L022B
+MakeTempString:
+	CALL    L0DAA
+L0D46:  LD      HL,TMPSTR
         PUSH    HL
         LD      (HL),A
         INC     HL
         JP      L0CFC
+
 L0D4F:  DEC     HL
 GetStringConstant:
 	LD      B,'"'
@@ -2614,7 +2616,7 @@ L0D56:  INC     HL
         JP      Z,L0D65
         CP      B
         JP      NZ,L0D56
-L0D65:  CP      22H
+L0D65:  CP      '"'			;22H
         CALL    Z,NextChar2
         EX      (SP),HL
         INC     HL
@@ -2623,7 +2625,8 @@ L0D65:  CP      22H
         CALL    L0D46
         RST     CompareHLDE
         CALL    NC,L0D2F
-L0D75:  LD      DE,L022B
+TempStringToPool:
+	LD      DE,TMPSTR
         LD      HL,(TEMPPT)		;021DH
         LD      (FACCUM),HL
         LD      A,01H
@@ -2822,20 +2825,20 @@ L0E77:  PUSH    BC
         ADD     A,(HL)
         LD      E,ERR_LS
         JP      C,Error
-        CALL    L0D43
+        CALL    MakeTempString
         POP     DE
         CALL    L0EC5
         EX      (SP),HL
         CALL    L0EC4
         PUSH    HL
-        LD      HL,(L022D)
+        LD      HL,(TMPSTR+2)
         EX      DE,HL
         CALL    L0EAE
         CALL    L0EAE
         LD      HL,L0986
         EX      (SP),HL
         PUSH    HL
-        JP      L0D75
+        JP      TempStringToPool
 
 L0EAE:  POP     HL
         EX      (SP),HL
@@ -2896,12 +2899,12 @@ POPHLRET2:
 	CHK	0f04h, "Сдвижка кода"
 Chr:
         LD      A,01H
-        CALL    L0D43
-        CALL    L0FBC
-        LD      HL,(L022D)
+        CALL    MakeTempString
+        CALL    EvalIntegerExpression
+        LD      HL,(TMPSTR+2)
         LD      (HL),E
-L0F10:	POP     BC
-        JP      L0D75
+ToPool:	POP     BC
+        JP      TempStringToPool
 
 	CHK	0f14h, "Сдвижка кода"
 Left:
@@ -2938,7 +2941,7 @@ L0F22:	LD	C, 0
         CALL    L0EB4
         POP     DE
         CALL    L0EC5
-        JP      L0D75
+        JP      TempStringToPool
 
 	CHK	0f44h, "Сдвижка кода"
 Right:
@@ -2984,7 +2987,7 @@ L0F60:  RST     SyntaxCheck
 
 	CHK	0f75h, "Сдвижка кода"
 Inp:
-        CALL    L0FBC
+        CALL    EvalIntegerExpression
         LD      (InpD),A		;0F7CH
 InpD:	EQU	$+1
         IN      A,(00H)			; Self-modified code
@@ -3037,7 +3040,8 @@ L0FAC:  CALL    EvalByteExpression
 L0FB8:	RST	NextChar
 EvalByteExpression:
 	CALL    EvalNumericExpression
-L0FBC:  CALL    FTestPositiveIntegerExpression
+EvalIntegerExpression:
+	CALL    FTestPositiveIntegerExpression
         LD      A,D
         OR      A
         JP      NZ,FunctionCallError

@@ -550,7 +550,7 @@ L0229:	DW	0
 	DB	0
 	DB	0
 	ENDIF
-L022B:        LD      B,00H
+TMPSTR:        LD      B,00H
 L022D:        LD      L,E
         LD      (BC),A
 STR_TOP:

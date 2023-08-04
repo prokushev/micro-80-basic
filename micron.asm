@@ -20,6 +20,7 @@ VAR_TOP		EQU	2149h
 TERMINAL_X	EQU	2063h
 STACK_TOP	EQU	2141H
 STR_TOP		EQU	212FH
+TMPSTR		EQU	212Bh
 
 Start:  LD      SP,75FFh
         JP      Init
@@ -2283,7 +2284,7 @@ L0DA2:  PUSH    BC
         EX      (SP),HL
         CALL    L0DEF
         PUSH    HL
-        LD      HL,(212Dh)
+        LD      HL,(TMPSTR+2)
         EX      DE,HL
         CALL    L0DD9
         CALL    L0DD9
@@ -2351,7 +2352,7 @@ L0E33:  LD      A,01h
         PUSH    DE
         CALL    L0C73
         POP     DE
-        LD      HL,(212Dh)
+        LD      HL,(TMPSTR+2)
         LD      (HL),E
         JP      L0CA5
 
