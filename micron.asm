@@ -10,17 +10,22 @@
 
         ORG     0000h
 
-DATA_STM	EQU	211Ah
-LINE_BUFFER	EQU	2090h
-CURRENT_LINE	EQU	213Bh
-PROG_PTR_TEMP	EQU	2137h
-VALTYP		EQU	2119h
-PROGRAM_BASE	EQU	2143h
-VAR_TOP		EQU	2149h
 TERMINAL_X	EQU	2063h
-STACK_TOP	EQU	2141H
+LINE_BUFFER	EQU	2090h
+VALTYP		EQU	2119h
+DATA_STM	EQU	211Ah
+MEMSIZ		EQU	211Bh
 STR_TOP		EQU	212FH
 TMPSTR		EQU	212Bh
+PROG_PTR_TEMP	EQU	2137h
+CURRENT_LINE	EQU	213Bh
+PROGRAM_BASE	EQU	2143h
+VAR_TOP		EQU	2149h
+STACK_TOP	EQU	2141H
+VAR_BASE	EQU	2145h
+
+ERR_RG		EQU 04H
+ERR_US		EQU 0EH
 
 Start:  LD      SP,75FFh
         JP      Init
@@ -155,7 +160,9 @@ L0086:  PUSH    DE
         EX      DE,HL
         POP     DE
         RET     NC
-L0090:  LD      E,0Ch
+
+OutOfMemory:
+	LD      E,0Ch
         JP      Error
 
 L0095:  LD      HL,(2133h)
@@ -243,7 +250,7 @@ L0110:  RST     NextChar
         PUSH    BC
         JP      NC,L0141
         EX      DE,HL
-        LD      HL,(2145h)
+        LD      HL,(VAR_BASE)
 L0133:  LD      A,(DE)
         LD      (BC),A
         INC     BC
@@ -253,18 +260,18 @@ L0133:  LD      A,(DE)
         LD      H,B
         LD      L,C
         INC     HL
-        LD      (2145h),HL
+        LD      (VAR_BASE),HL
 L0141:  POP     DE
         POP     AF
         JP      Z,L0168
-        LD      HL,(2145h)
+        LD      HL,(VAR_BASE)
         EX      (SP),HL
         POP     BC
         ADD     HL,BC
         PUSH    HL
         CALL    L0066
         POP     HL
-        LD      (2145h),HL
+        LD      (VAR_BASE),HL
         EX      DE,HL
         LD      (HL),H
         INC     HL
@@ -346,18 +353,18 @@ New:  RET     NZ
         INC     HL
         LD      (HL),A
         INC     HL
-        LD      (2145h),HL
+        LD      (VAR_BASE),HL
         ; --- START PROC ResetAll ---
 ResetAll:  LD      HL,(PROGRAM_BASE)
         DEC     HL
         LD      (HL),00h
         ; --- START PROC ClearAll ---
 ClearAll:  LD      (PROG_PTR_TEMP),HL
-        LD      HL,(211Bh)
+        LD      HL,(MEMSIZ)
         LD      (STR_TOP),HL
         CALL    L04A5
         ; --- START PROC L01CD ---
-L01CD:  LD      HL,(2145h)
+L01CD:  LD      HL,(VAR_BASE)
         LD      (2147h),HL
         LD      (VAR_TOP),HL
         ; --- START PROC L01D6 ---
@@ -780,7 +787,8 @@ L044F:  LD      (HL),A
 L0461:  RST     NextChar
         LD      DE,ExecNext
         PUSH    DE
-L0466:  RET     Z
+ExecANotZero:
+	RET     Z
 
 ExecA:
 L0467:  SUB     80h
@@ -821,7 +829,7 @@ Restore:
         CALL    LineNumberFromStr
         RET     NZ
         PUSH    HL
-        CALL    L0582
+        CALL    Goto2
         POP     DE
         JP      L04AA
 
@@ -883,8 +891,9 @@ L04F1:  LD      A,(HL)
 
         ; --- START PROC L04F9 ---
 L04F9:  RST     NextChar
-        ; --- START PROC L04FA ---
-L04FA:  CALL    EvalNumericExpression
+        ; --- START PROC EvalPositiveNumericExpression ---
+EvalPositiveNumericExpression:
+	CALL    EvalNumericExpression
         ; --- START PROC L04FD ---
 L04FD:  RST     FTestSign
         JP      M,FunctionCallError
@@ -927,67 +936,12 @@ L051D:  RST     NextChar
         POP     HL
         JP      L051D
 
-Clear:	JP      Z,ClearAll
-        CALL    L04FA
-        DEC     HL
-        RST     NextChar
-        RET     NZ
-        PUSH    HL
-        LD      HL,(211Bh)
-        LD      A,L
-        SUB     E
-        LD      E,A
-        LD      A,H
-        SBC     A,D
-        LD      D,A
-        JP      C,SyntaxError
-        LD      HL,(2145h)
-        LD      BC,0028h
-        ADD     HL,BC
-        RST     CompareHLDE
-        JP      NC,L0090
-        EX      DE,HL
-        LD      (STACK_TOP),HL
-        POP     HL
-        JP      ClearAll
-
-
+	INCLUDE	"stClear.inc"
 	INCLUDE	"stRun.inc"
 	INCLUDE	"stGosub.inc"
+	INCLUDE	"stGoto.inc"
+	INCLUDE	"stReturn.inc"
 
-Goto:
-	CALL    LineNumberFromStr
-        ; --- START PROC L0582 ---
-L0582:  CALL    Rem
-        PUSH    HL
-        LD      HL,(CURRENT_LINE)
-        RST     CompareHLDE
-        POP     HL
-        INC     HL
-        CALL    C,FindProgramLineInMem
-        CALL    NC,FindProgramLine
-        LD      H,B
-        LD      L,C
-        DEC     HL
-        RET     C
-
-UnknownStringError:
-        LD      E,0Eh
-        JP      Error
-
-Return:
-	RET     NZ
-        LD      D,0FFh
-        CALL    GetFlowPtr
-        LD      SP,HL
-        CP      TK_GOSUB
-        LD      E,04h
-        JP      NZ,Error
-        POP     HL
-        LD      (CURRENT_LINE),HL
-        LD      HL,ExecNext
-        EX      (SP),HL
-        ; --- START PROC Data ---
 Data:
 	DB	01H, ":"	;LD BC,..3AH эмулирует LD C, ":"
 Rem:	LD	C, 0
@@ -1012,7 +966,7 @@ L05C8:  CALL    L0A48+1         ; reference not aligned to instruction
         LD      A,(VALTYP)
         PUSH    AF
         PUSH    DE
-        CALL    L0878
+        CALL    EvalExpression
         EX      (SP),HL
         LD      (PROG_PTR_TEMP),HL
         POP     DE
@@ -1032,7 +986,7 @@ L05E3:  PUSH    HL
         RST     CompareHLDE
         POP     DE
         JP      NC,L05FD
-        LD      HL,(2145h)
+        LD      HL,(VAR_BASE)
         RST     CompareHLDE
         LD      L,E
         LD      H,D
@@ -1073,19 +1027,7 @@ L0622:  DEC     C
         RET     NZ
         JP      L0622
 
-If:
-	CALL    L0878
-        LD      A,(HL)
-        CP      88h
-        JP      Z,L063C
-        RST     SyntaxCheck
-        AND     C
-        DEC     HL
-L063C:  RST     FTestSign
-        JP      Z,Rem
-        RST     NextChar
-        JP      C, Goto
-        JP      L0466
+	INCLUDE	"stIf.inc"
 
         ; --- START PROC L0647 ---
 L0647:  RST     NextChar
@@ -1115,7 +1057,7 @@ L066B:  PUSH    HL
         POP     BC
         CP      0D3h
         JP      Z,L06A8
-        CALL    L0878
+        CALL    EvalExpression
         DEC     HL
         PUSH    HL
         LD      A,(VALTYP)
@@ -1410,7 +1352,8 @@ L085B:  LD      SP,HL
         RST     NextChar
         CALL    L0823
         ; --- START PROC EvalNumericExpression ---
-EvalNumericExpression:  CALL    L0878
+EvalNumericExpression:
+	CALL    EvalExpression
         ; --- START PROC L086C ---
 L086C:  OR      37h             ; '7'
         ; --- START PROC L086E ---
@@ -1420,8 +1363,9 @@ L086E:  LD      A,(VALTYP)
 L0873:  LD      E,18h
         JP      Error
 
-        ; --- START PROC L0878 ---
-L0878:  DEC     HL
+        ; --- START PROC EvalExpression ---
+EvalExpression:
+	DEC     HL
         LD      D,00h
         ; --- START PROC L087B ---
 L087B:  PUSH    DE
@@ -1756,7 +1700,7 @@ L0A7B:  LD      A,(2135h)
         PUSH    HL
         LD      HL,(2147h)
         EX      DE,HL
-        LD      HL,(2145h)
+        LD      HL,(VAR_BASE)
 L0A90:  RST     CompareHLDE
         JP      Z,L0AA7
         LD      A,C
@@ -2145,7 +2089,7 @@ L0CF1:  POP     AF
         LD      BC,0CD7h
         PUSH    BC
         ; --- START PROC GarbageCollection ---
-GarbageCollection:  LD      HL,(211Bh)
+GarbageCollection:  LD      HL,(MEMSIZ)
         ; --- START PROC L0D00 ---
 L0D00:  LD      (STR_TOP),HL
         LD      HL,0000h
@@ -2159,7 +2103,7 @@ L0D00:  LD      (STR_TOP),HL
         RST     CompareHLDE
         LD      BC,0D0Eh
         JP      NZ,L0D5A
-        LD      HL,(2145h)
+        LD      HL,(VAR_BASE)
 L0D1D:  EX      DE,HL
         LD      HL,(2147h)
         EX      DE,HL
@@ -3715,7 +3659,7 @@ Init:   LD      HL,(L0026)
         LD      (PROGRAM_BASE),HL
         LD      HL,(Start+1)    ; reference not aligned to instruction
         DEC     HL
-        LD      (211Bh),HL
+        LD      (MEMSIZ),HL
         LD      DE,0FFCEh
         ADD     HL,DE
         LD      (STACK_TOP),HL
@@ -3867,7 +3811,7 @@ L16FA:  LD      E,20h           ; ' '
         RST     CompareHLDE
         JP      C,L16FA
         EX      DE,HL
-        LD      (211Bh),HL
+        LD      (MEMSIZ),HL
         LD      BC,0FFCEh
         ADD     HL,BC
         LD      (STACK_TOP),HL
@@ -4023,7 +3967,7 @@ L17E6:  PUSH    HL
         CALL    LineNumberFromStr
         PUSH    HL
         PUSH    DE
-        LD      HL,(2145h)
+        LD      HL,(VAR_BASE)
         EX      DE,HL
 L17F7:  LD      HL,(VAR_TOP)
         EX      DE,HL
@@ -4109,9 +4053,9 @@ L1865:  INC     HL
 L1870:  PUSH    HL
         ADD     HL,BC
         EX      DE,HL
-        LD      HL,(2145h)
+        LD      HL,(VAR_BASE)
         ADD     HL,BC
-        LD      (2145h),HL
+        LD      (VAR_BASE),HL
         LD      HL,(VAR_TOP)
         ADD     HL,BC
         LD      (2147h),HL
@@ -4609,7 +4553,7 @@ L1BB9:  CALL    0F82Dh
         LD      E,18h
         JP      NZ,Error
         POP     HL
-L1BC3:  LD      (2145h),HL
+L1BC3:  LD      (VAR_BASE),HL
         DEC     C
         RET     Z
 L1BC8:  LD      A,01h
@@ -4683,7 +4627,7 @@ Merge:
 	LD      BC,0001h
         CALL    NZ,L1ABC
         PUSH    HL
-        LD      HL,(2145h)
+        LD      HL,(VAR_BASE)
         DEC     HL
         DEC     HL
         LD      (PROGRAM_BASE),HL
@@ -4770,6 +4714,8 @@ ClsLoop:
 L1CCF:  LD      C,A
         JP      0F80Ch
 
+
+; Сообщения об ошибках
 L1CD3:  LD      C,(HL)
         LD      B,L
         LD      E,B
@@ -4842,7 +4788,7 @@ L1CD3:  LD      C,(HL)
         LD      H,A
         LD      (HL),L
         LD      L,L
-L1D23:  LD      H,L
+        LD      H,L
         LD      L,(HL)
         LD      (HL),H
         NOP
@@ -4865,13 +4811,13 @@ L1D23:  LD      H,L
         LD      L,A
         DB	20H,6fh
         LD      A,D
-L1D3B:  LD      (HL),L
+        LD      (HL),L
         NOP
         LD      L,(HL)
         LD      H,L
         LD      (HL),H
         DB 20h, 73h
-L1D42:  LD      (HL),H
+        LD      (HL),H
         LD      (HL),D
         LD      L,A
         LD      L,E
@@ -4889,11 +4835,11 @@ L1D42:  LD      (HL),H
         LD      L,(HL)
         LD      H,H
         LD      H,L
-L1D55:  LD      L,E
+        LD      L,E
         LD      (HL),E
         NOP
         LD      (HL),B
-L1D59:  LD      L,A
+        LD      L,A
         LD      (HL),A
         LD      (HL),H
         LD      L,A
@@ -4909,7 +4855,7 @@ L1D59:  LD      L,A
         LD      L,(HL)
         LD      L,C
         LD      H,L
-L1D6A:  NOP
+        NOP
         LD      H,H
         LD      H,L
         LD      L,H
@@ -4926,9 +4872,9 @@ L1D6A:  NOP
         LD      L,H
         LD      A,B
         LD      L,E
-L1D7D:  LD      L,A
+        LD      L,A
         db 20h,77h
-L1D80:  db 20h,70h
+        db 20h,70h
         LD      (HL),D
         LD      L,A
         LD      H,A
@@ -4963,9 +4909,9 @@ L1D80:  db 20h,70h
         NOP
         LD      E,B
         INC     H
-L1DA6:  LD      A,32h           ; '2'
+        LD      A,32h           ; '2'
         DEC     (HL)
-L1DA9:  DEC     (HL)
+        DEC     (HL)
         NOP
         LD      (HL),E
         LD      L,H
@@ -4977,13 +4923,13 @@ L1DA9:  DEC     (HL)
         LD      L,(HL)
         LD      H,L
         LD      L,H
-L1DB5:  LD      A,B
+        LD      A,B
         LD      A,D
         LD      (HL),C
         NOP
         LD      L,(HL)
         LD      H,L
-L1DBB:  LD      (HL),H
+        LD      (HL),H
         db 20h, 44h
         LD      B,L
         LD      B,(HL)
@@ -5002,7 +4948,7 @@ L1DBB:  LD      (HL),H
         LD      (HL),L
         LD      A,(L0A0D)
         NOP
-L1DD2:  DEC     C
+        DEC     C
         LD      A,(BC)
         LD      (HL),E
         LD      (HL),H
@@ -5015,7 +4961,9 @@ L1DD2:  DEC     C
         LD      L,A
         LD      L,E
         LD      H,L
-L1DE2:  db 20h, 00h
+        db 20h, 00h
+; Конец сообщений
+
 L1DE4:  RRA
         LD      B,D
         LD      B,C

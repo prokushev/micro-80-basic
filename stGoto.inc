@@ -5,6 +5,7 @@
 
 Goto:
 	CALL    LineNumberFromStr
+Goto2:
         CALL    Rem
         PUSH    HL
         LD      HL,(CURRENT_LINE)
@@ -21,3 +22,4 @@ Goto:
 UnknownStringError:
         LD      E,ERR_US
         JP      Error
+
