@@ -10,3 +10,4 @@ Cont:
 	LD      (CURRENT_LINE),HL
 	EX      DE,HL			; HL=Адрес, DE=Строка
 	RET				; Продолжаем выполнение со места останова
+
