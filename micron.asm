@@ -19,6 +19,7 @@ MEMSIZ		EQU	211Bh
 TMPSTR		EQU	212Bh
 STR_TOP		EQU	212FH
 DATA_LINE	EQU	2133h
+NO_ARRAY	EQU	2135h
 INPUT_OR_READ	EQU	2136h
 PROG_PTR_TEMP	EQU	2137h
 CURRENT_LINE	EQU	213Bh
@@ -396,7 +397,7 @@ L01D6:  POP     BC
         LD      (OLD_TEXT),HL
         LD      HL,(PROG_PTR_TEMP)
         XOR     A
-        LD      (2135h),A
+        LD      (NO_ARRAY),A
         PUSH    BC
         RET
 
@@ -723,8 +724,8 @@ L03D1:  RST     PushNextWord
 
 For:
 	LD      A,64h           ; 'd'
-        LD      (2135h),A
-        CALL    L05C8
+        LD      (NO_ARRAY),A
+        CALL    Let
         EX      (SP),HL
         CALL    GetFlowPtr
         POP     DE
@@ -735,12 +736,12 @@ L03F4:  EX      DE,HL
         CALL    CheckEnoughVarSpace2
         DB	08h
         PUSH    HL
-        CALL    Data
+        CALL    FindNextStatement
         EX      (SP),HL
         PUSH    HL
         LD      HL,(CURRENT_LINE)
         EX      (SP),HL
-        CALL    L086C
+        CALL    IsNumeric
         RST     SyntaxCheck
         SBC     A,(HL)
         CALL    EvalNumericExpression
@@ -773,6 +774,8 @@ L0429:  PUSH    BC
 L0432:  LD      B,81h
         PUSH    BC
         INC     SP
+
+
         ; --- START PROC ExecNext ---
 ExecNext:  CALL    L04AF
         LD      (PROG_PTR_TEMP),HL
@@ -810,7 +813,7 @@ ExecANotZero:
 
 ExecA:
 L0467:  SUB     80h
-        JP      C,L05C8
+        JP      C,Let
         CP      1Dh
         JP      C,L0478
 
@@ -952,6 +955,7 @@ L051D:  RST     NextChar
 	INCLUDE	"stReturn.inc"
 
 Data:
+FindNextStatement:
 	DB	01H, ":"	;LD BC,..3AH эмулирует LD C, ":"
 Rem:	LD	C, 0
         LD      B,00h
@@ -968,8 +972,8 @@ L05BA:  LD      A,(HL)
         JP      Z,L05B7
         JP      L05BA
 
-        ; --- START PROC L05C8 ---
-L05C8:  CALL    L0A48+1         ; reference not aligned to instruction
+        ; --- START PROC Let ---
+Let:  CALL    L0A48+1         ; reference not aligned to instruction
         RST     SyntaxCheck
         XOR     H
         LD      A,(VALTYP)
@@ -985,7 +989,7 @@ L05C8:  CALL    L0A48+1         ; reference not aligned to instruction
         CALL    L086E
         JP      Z,L060D
 L05E3:  PUSH    HL
-        LD      HL,(214Dh)
+        LD      HL,(FACCUM)
         PUSH    HL
         INC     HL
         INC     HL
@@ -1074,7 +1078,7 @@ L066B:  PUSH    HL
         JP      NZ,L06A1
         CALL    L1326
         CALL    L0C7F
-        LD      HL,(214Dh)
+        LD      HL,(FACCUM)
         LD      A,(TERMINAL_X)
         ADD     A,(HL)
         CP      40h             ; '@'
@@ -1363,8 +1367,11 @@ L085B:  LD      SP,HL
         ; --- START PROC EvalNumericExpression ---
 EvalNumericExpression:
 	CALL    EvalExpression
-        ; --- START PROC L086C ---
-L086C:  OR      37h             ; '7'
+        ; --- START PROC IsNumeric ---
+IsNumeric:
+	DB	0F6H			;OR 37H - это сброс флага CY
+IsString:
+	SCF				;37H
         ; --- START PROC L086E ---
 L086E:  LD      A,(VALTYP)
         ADC     A,A
@@ -1387,7 +1394,7 @@ L0886:  LD      HL,(2139h)
         POP     BC
         LD      A,B
         CP      78h             ; 'x'
-        CALL    NC,L086C
+        CALL    NC,IsNumeric
         LD      A,(HL)
         LD      D,00h
 L0893:  SUB     0ABh
@@ -1429,7 +1436,7 @@ L08AD:  LD      A,D
         CP      D
         RET     NC
         INC     HL
-        CALL    L086C
+        CALL    IsNumeric
         ; --- START PROC L08D5 ---
 L08D5:  PUSH    BC
         LD      BC,0886h
@@ -1493,7 +1500,7 @@ L093F:  LD      D,7Dh           ; '}'
         PUSH    HL
         CALL    L118E
         ; --- START PROC L094B ---
-L094B:  CALL    L086C
+L094B:  CALL    IsNumeric
         POP     HL
         RET
 
@@ -1501,7 +1508,7 @@ L094B:  CALL    L086C
 L0950:  CALL    L0A48+1         ; reference not aligned to instruction
         PUSH    HL
         EX      DE,HL
-        LD      (214Dh),HL
+        LD      (FACCUM),HL
         LD      A,(VALTYP)
         OR      A
         CALL    Z,FLoadFromMem
@@ -1530,9 +1537,9 @@ L097B:  RST     SyntaxCheck
         db	08h
         RST     SyntaxCheck
         INC     L
-        CALL    L086C+1         ; reference not aligned to instruction
+        CALL    IsString
         EX      DE,HL
-        LD      HL,(214Dh)
+        LD      HL,(FACCUM)
         EX      (SP),HL
         PUSH    HL
         EX      DE,HL
@@ -1558,7 +1565,7 @@ FOr:
 FAnd:
 	XOR	A	; AFh
         PUSH    AF
-        CALL    L086C
+        CALL    IsNumeric
         CALL    FTestIntegerExpression
         POP     AF
         EX      DE,HL
@@ -1655,7 +1662,7 @@ L0A1E:  INC     A
         ; --- START PROC L0A28 ---
 L0A28:  LD      D,5Ah           ; 'Z'
         CALL    L087B
-        CALL    L086C
+        CALL    IsNumeric
         CALL    FTestIntegerExpression
         LD      A,E
         CPL
@@ -1700,12 +1707,12 @@ L0A6E:  SUB     24h             ; '$'
         ADD     A,C
         LD      C,A
         RST     NextChar
-L0A7B:  LD      A,(2135h)
+L0A7B:  LD      A,(NO_ARRAY)
         ADD     A,(HL)
         CP      28h             ; '('
         JP      Z,L0ACD
         XOR     A
-        LD      (2135h),A
+        LD      (NO_ARRAY),A
         PUSH    HL
         LD      HL,(2147h)
         EX      DE,HL
@@ -1912,7 +1919,7 @@ Def:	CALL    L0C3F
         DB	28H, 0CDH
         LD      C,C
         LD      A,(BC)
-        CALL    L086C
+        CALL    IsNumeric
         RST     SyntaxCheck
         ADD     HL,HL
         RST     SyntaxCheck
@@ -1926,7 +1933,7 @@ Def:	CALL    L0C3F
 L0BFC:  CALL    L0C3F
         PUSH    DE
         CALL    L0937
-        CALL    L086C
+        CALL    IsNumeric
         EX      (SP),HL
         RST     PushNextWord
         POP     DE
@@ -1978,13 +1985,13 @@ L0C31:  PUSH    HL
 L0C3F:  RST     SyntaxCheck
         AND     B
         LD      A,80h
-        LD      (2135h),A
+        LD      (NO_ARRAY),A
         OR      (HL)
         LD      B,A
         CALL    L0A4E
-        JP      L086C
+        JP      IsNumeric
 
-Str:	CALL    L086C
+Str:	CALL    IsNumeric
         CALL    L1326
         CALL    L0C7F
         CALL    EvalCurrentString
@@ -2045,7 +2052,7 @@ L0C95:  CP      22h             ; '"'
         ; --- START PROC L0CA5 ---
 L0CA5:  LD      DE,212Bh
         LD      HL,(211Dh)
-        LD      (214Dh),HL
+        LD      (FACCUM),HL
         LD      A,01h
         LD      (VALTYP),A
         CALL    L11C0
@@ -2220,14 +2227,14 @@ L0D7D:  POP     DE
         ; --- START PROC L0DA2 ---
 L0DA2:  PUSH    BC
         PUSH    HL
-        LD      HL,(214Dh)
+        LD      HL,(FACCUM)
         EX      (SP),HL
         CALL    L08E8
         EX      (SP),HL
-        CALL    L086C+1         ; reference not aligned to instruction
+        CALL    IsString
         LD      A,(HL)
         PUSH    HL
-        LD      HL,(214Dh)
+        LD      HL,(FACCUM)
         PUSH    HL
         ADD     A,(HL)
         LD      E,1Ch
@@ -2266,9 +2273,9 @@ L0DE0:  DEC     L
 
         ; --- START PROC EvalString ---
 EvalString:
-	CALL    L086C+1         ; reference not aligned to instruction
+	CALL    IsString
         ; --- START PROC EvalCurrentString ---
-EvalCurrentString:  LD      HL,(214Dh)
+EvalCurrentString:  LD      HL,(FACCUM)
         ; --- START PROC L0DEF ---
 L0DEF:  EX      DE,HL
         ; --- START PROC L0DF0 ---
@@ -2474,7 +2481,7 @@ L0F30:  CP      19h
         POP     AF
         CALL    L0FDD
         OR      H
-        LD      HL,214Dh
+        LD      HL,FACCUM
         JP      P,L0F56
         CALL    L0FBD
         JP      NC,L0F9C
@@ -2702,7 +2709,7 @@ L1050:  RST     FTestSign
         LD      HL,1070h
         PUSH    HL
         PUSH    HL
-        LD      HL,214Dh
+        LD      HL,FACCUM
         LD      A,(HL)
         INC     HL
         OR      A
@@ -2917,7 +2924,7 @@ L118E:  LD      HL,214Fh
 
         ; --- START PROC FPush ---
 FPush:  EX      DE,HL
-        LD      HL,(214Dh)
+        LD      HL,(FACCUM)
         EX      (SP),HL
         PUSH    HL
         LD      HL,(214Fh)
@@ -2930,7 +2937,7 @@ FPush:  EX      DE,HL
 FLoadFromMem:  CALL    L11B4
         ; --- START PROC L11A6 ---
 L11A6:  EX      DE,HL
-        LD      (214Dh),HL
+        LD      (FACCUM),HL
         LD      H,B
         LD      L,C
         LD      (214Fh),HL
@@ -2938,7 +2945,7 @@ L11A6:  EX      DE,HL
         RET
 
         ; --- START PROC L11B1 ---
-L11B1:  LD      HL,214Dh
+L11B1:  LD      HL,FACCUM
         ; --- START PROC L11B4 ---
 L11B4:  LD      E,(HL)
         INC     HL
@@ -2952,7 +2959,7 @@ L11BB:  INC     HL
         RET
 
         ; --- START PROC L11BD ---
-L11BD:  LD      DE,214Dh
+L11BD:  LD      DE,FACCUM
         ; --- START PROC L11C0 ---
 L11C0:  LD      B,04h
 L11C2:  LD      A,(DE)
@@ -3060,7 +3067,7 @@ L122F:  DEC     DE
 Int:	LD      HL,FACCUM+3
         LD      A,(HL)
         CP      98h
-        LD      A,(214Dh)
+        LD      A,(FACCUM)
         RET     NC
         LD      A,(HL)
         CALL    L120B
@@ -3401,7 +3408,7 @@ L1415:  RST     FTestSign
 L1437:  POP     HL
         LD      (214Fh),HL
         POP     HL
-        LD      (214Dh),HL
+        LD      (FACCUM),HL
         CALL    C,L1405
         CALL    Z,L118E
         PUSH    DE
