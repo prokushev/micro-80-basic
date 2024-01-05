@@ -29,6 +29,7 @@ STACK_TOP	EQU	2141H
 PROGRAM_BASE	EQU	2143h
 VAR_BASE	EQU	2145h
 VAR_TOP		EQU	2149h
+DATA_PROG_PTR	EQU	214Bh
 
 FACCUM		EQU	214Dh
 
@@ -722,61 +723,7 @@ L03D1:  RST     PushNextWord
         CALL    L06DF
         JP      L163B
 
-For:
-	LD      A,64h           ; 'd'
-        LD      (NO_ARRAY),A
-        CALL    Let
-        EX      (SP),HL
-        CALL    GetFlowPtr
-        POP     DE
-        JP      NZ,L03F4
-        ADD     HL,BC
-        LD      SP,HL
-L03F4:  EX      DE,HL
-        CALL    CheckEnoughVarSpace2
-        DB	08h
-        PUSH    HL
-        CALL    FindNextStatement
-        EX      (SP),HL
-        PUSH    HL
-        LD      HL,(CURRENT_LINE)
-        EX      (SP),HL
-        CALL    IsNumeric
-        RST     SyntaxCheck
-        DB	TK_TO
-        CALL    EvalNumericExpression
-        PUSH    HL
-        CALL    FCopyToBCDE
-        POP     HL
-        PUSH    BC
-        PUSH    DE
-        LD      BC,8100h
-        LD      D,C
-        LD      E,D
-        LD      A,(HL)
-        CP      TK_STEP
-        LD      A,01h
-        JP      NZ,PushStepValue
-        RST     NextChar
-        CALL    EvalNumericExpression
-        PUSH    HL
-        CALL    FCopyToBCDE
-        POP     HL
-        RST     FTestSign
-PushStepValue:
-	PUSH    BC
-        PUSH    DE
-        PUSH    AF
-        INC     SP
-        PUSH    HL
-        LD      HL,(PROG_PTR_TEMP)
-        EX      (SP),HL
-
-        ; --- START PROC EndOfForHandler ---
-EndOfForHandler:
-	LD      B, TK_FOR
-        PUSH    BC
-        INC     SP
+	include "stFor.inc"
 
 
         ; --- START PROC ExecNext ---
@@ -861,7 +808,7 @@ Restore:
 L04A5:  EX      DE,HL
         LD      HL,(PROGRAM_BASE)
         DEC     HL
-L04AA:  LD      (214Bh),HL
+L04AA:  LD      (DATA_PROG_PTR),HL
         EX      DE,HL
         RET
 
@@ -1249,7 +1196,7 @@ L078C:  LD      A,3Fh           ; '?'
 
 Read:
 	PUSH    HL
-        LD      HL,(214Bh)
+        LD      HL,(DATA_PROG_PTR)
 L0798:  OR      0AFh
         LD      (INPUT_OR_READ),A
         EX      (SP),HL
