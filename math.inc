@@ -1392,7 +1392,7 @@ FPower:
         POP     BC
         POP     DE
         RST     FTestSign
-        JP      Z,L1599
+        JP      Z,Exp
         LD      A,B
         OR      A
         JP      Z,L10E9
@@ -1427,7 +1427,7 @@ L1581:  POP     HL
 	
 	CHK	1599h, "Сдвижка кода"
 Exp:
-L1599:  CALL    FPush
+	CALL    FPush
         LD      BC,8138H
         LD      DE,0AA3BH
         CALL    FMul2

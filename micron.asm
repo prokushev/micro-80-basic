@@ -743,10 +743,10 @@ L03F4:  EX      DE,HL
         EX      (SP),HL
         CALL    IsNumeric
         RST     SyntaxCheck
-        SBC     A,(HL)
+        DB	TK_TO
         CALL    EvalNumericExpression
         PUSH    HL
-        CALL    L11B1
+        CALL    FCopyToBCDE
         POP     HL
         PUSH    BC
         PUSH    DE
@@ -754,24 +754,27 @@ L03F4:  EX      DE,HL
         LD      D,C
         LD      E,D
         LD      A,(HL)
-        CP      0A3h
+        CP      TK_STEP
         LD      A,01h
-        JP      NZ,L0429
+        JP      NZ,PushStepValue
         RST     NextChar
         CALL    EvalNumericExpression
         PUSH    HL
-        CALL    L11B1
+        CALL    FCopyToBCDE
         POP     HL
         RST     FTestSign
-L0429:  PUSH    BC
+PushStepValue:
+	PUSH    BC
         PUSH    DE
         PUSH    AF
         INC     SP
         PUSH    HL
         LD      HL,(PROG_PTR_TEMP)
         EX      (SP),HL
-        ; --- START PROC L0432 ---
-L0432:  LD      B,81h
+
+        ; --- START PROC EndOfForHandler ---
+EndOfForHandler:
+	LD      B, TK_FOR
         PUSH    BC
         INC     SP
 
@@ -1355,7 +1358,7 @@ L0823:  CALL    NZ,L0A48+1      ; reference not aligned to instruction
         LD      (CURRENT_LINE),HL
         LD      L,C
         LD      H,B
-        JP      L0432
+        JP      EndOfForHandler
 
 L085B:  LD      SP,HL
         LD      HL,(PROG_PTR_TEMP)
@@ -2877,7 +2880,7 @@ L1150:  POP     HL
         JP      L0FB8
 
         ; --- START PROC L1157 ---
-L1157:  CALL    L11B1
+L1157:  CALL    FCopyToBCDE
         LD      A,B
         OR      A
         RET     Z
@@ -2944,8 +2947,8 @@ L11A6:  EX      DE,HL
         EX      DE,HL
         RET
 
-        ; --- START PROC L11B1 ---
-L11B1:  LD      HL,FACCUM
+        ; --- START PROC FCopyToBCDE ---
+FCopyToBCDE:  LD      HL,FACCUM
         ; --- START PROC L11B4 ---
 L11B4:  LD      E,(HL)
         INC     HL
@@ -3038,7 +3041,7 @@ L120B:  LD      B,A
         OR      A
         RET     Z
         PUSH    HL
-        CALL    L11B1
+        CALL    FCopyToBCDE
         CALL    L11CB
         XOR     (HL)
         LD      H,A
@@ -3286,7 +3289,7 @@ L137F:  DEC     B
         PUSH    BC
         PUSH    HL
         PUSH    DE
-        CALL    L11B1
+        CALL    FCopyToBCDE
         POP     HL
         LD      B,2Fh           ; '/'
 L138E:  INC     B
@@ -3393,7 +3396,7 @@ L1415:  RST     FTestSign
         PUSH    BC
         LD      A,C
         OR      7Fh             ; ''
-        CALL    L11B1
+        CALL    FCopyToBCDE
         JP      P,L1437
         PUSH    DE
         PUSH    BC
@@ -3478,7 +3481,7 @@ L14B0:  CALL    FPush
         LD      DE,104Eh
         PUSH    DE
         PUSH    HL
-        CALL    L11B1
+        CALL    FCopyToBCDE
         CALL    L1050
         POP     HL
         ; --- START PROC L14BF ---
@@ -3514,7 +3517,7 @@ Rnd:	RST     FTestSign
         LD      BC,6828h
         LD      DE,0B146h
         CALL    L0F16
-L14FD:  CALL    L11B1
+L14FD:  CALL    FCopyToBCDE
         LD      A,E
         LD      E,C
         LD      C,A
@@ -4658,7 +4661,7 @@ L1C57:  RST     NextChar
         CALL    L0937
         PUSH    HL
         CALL    FPush
-        CALL    L11B1
+        CALL    FCopyToBCDE
         CALL    L1050
         LD      BC,8100h
         LD      D,C
