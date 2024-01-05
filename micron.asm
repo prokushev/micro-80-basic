@@ -31,8 +31,12 @@ VAR_TOP		EQU	2149h
 
 FACCUM		EQU	214Dh
 
+ERR_NF		EQU 00H
+ERR_SN		EQU 02H		
 ERR_RG		EQU 04H
+ERR_OM		EQU 0CH
 ERR_US		EQU 0EH
+ERR_DZ		EQU 14H
 ERR_CN		EQU 20h
 
 Start:  LD      SP,75FFh
@@ -170,7 +174,7 @@ L0086:  PUSH    DE
         RET     NC
 
 OutOfMemory:
-	LD      E,0Ch
+	LD      E,ERR_OM
         JP      Error
 
 DATASyntaxError:
@@ -178,11 +182,16 @@ DATASyntaxError:
         LD      (CURRENT_LINE),HL
         ; --- START PROC SyntaxError ---
 SyntaxError:
-	LD      E,02h
+	LD      E,ERR_SN
         XOR     A
         LD      (2078h),A
-L00A1:  LD      BC,141Eh
-L00A4:  LD      BC,001Eh
+	DB	01		;LD      BC,...
+DivideByZero:
+	LD      E, ERR_DZ
+	DB	01		;LD      BC,...
+WithoutFOR:
+	LD      E, ERR_NF
+
         ; --- START PROC Error ---
 Error:  CALL    L01D6
         XOR     A
@@ -1316,14 +1325,14 @@ Next:
 L0823:  CALL    NZ,L0A48+1      ; reference not aligned to instruction
         LD      (PROG_PTR_TEMP),HL
         CALL    GetFlowPtr
-        JP      NZ,L00A4+1      ; reference not aligned to instruction
+        JP      NZ,WithoutFOR
         LD      SP,HL
         PUSH    DE
         LD      A,(HL)
         INC     HL
         PUSH    AF
         PUSH    DE
-        CALL    L11A3
+        CALL    FLoadFromMem
         EX      (SP),HL
         PUSH    HL
         CALL    L0F07
@@ -1427,7 +1436,7 @@ L08D5:  PUSH    BC
         PUSH    BC
         LD      B,E
         LD      C,D
-        CALL    L1196
+        CALL    FPush
         LD      E,B
         LD      D,C
         RST     PushNextWord
@@ -1495,7 +1504,7 @@ L0950:  CALL    L0A48+1         ; reference not aligned to instruction
         LD      (214Dh),HL
         LD      A,(VALTYP)
         OR      A
-        CALL    Z,L11A3
+        CALL    Z,FLoadFromMem
         POP     HL
         RET
 
@@ -2452,7 +2461,7 @@ L0F16:  LD      A,B
         CPL
         INC     A
         EX      DE,HL
-        CALL    L1196
+        CALL    FPush
         EX      DE,HL
         CALL    L11A6
         POP     BC
@@ -2740,7 +2749,7 @@ L109F:  LD      B,E
         RET
 
         ; --- START PROC L10A4 ---
-L10A4:  CALL    L1196
+L10A4:  CALL    FPush
         LD      BC,8420h
         LD      DE,0000h
         CALL    L11A6
@@ -2748,7 +2757,7 @@ FDiv:	POP     BC
         POP     DE
         ; --- START PROC L10B2 ---
 L10B2:  RST     FTestSign
-        JP      Z,L00A1+1       ; reference not aligned to instruction
+        JP      Z,DivideByZero
         LD      L,0FFh
         CALL    L112E
         INC     (HL)
@@ -2906,8 +2915,8 @@ L118E:  LD      HL,214Fh
         LD      (HL),A
         RET
 
-        ; --- START PROC L1196 ---
-L1196:  EX      DE,HL
+        ; --- START PROC FPush ---
+FPush:  EX      DE,HL
         LD      HL,(214Dh)
         EX      (SP),HL
         PUSH    HL
@@ -2917,8 +2926,8 @@ L1196:  EX      DE,HL
         EX      DE,HL
         RET
 
-        ; --- START PROC L11A3 ---
-L11A3:  CALL    L11B4
+        ; --- START PROC FLoadFromMem ---
+FLoadFromMem:  CALL    L11B4
         ; --- START PROC L11A6 ---
 L11A6:  EX      DE,HL
         LD      (214Dh),HL
@@ -3186,7 +3195,7 @@ L12E5:  PUSH    DE
         JP      L1286
 
         ; --- START PROC L12FC ---
-L12FC:  CALL    L1196
+L12FC:  CALL    FPush
         CALL    L1179
 FAdd:
         POP     BC
@@ -3337,10 +3346,9 @@ L13E1:  LD      BC,9474h
         JP      PO,L1355
         JP      (HL)
 
-L13EF:  NOP
-        NOP
-        NOP
-        ADD     A,B
+ONE_HALF:
+        DB 0,0,0,80h		;Constant value 0.5, used by FRoundUp
+
         AND     B
         ADD     A,(HL)
         LD      BC,2710h
@@ -3361,9 +3369,9 @@ L1405:  LD      HL,118Eh
         JP      (HL)
 
         ; --- START PROC Sqr ---
-Sqr:	CALL    L1196
-        LD      HL,13EFh
-        CALL    L11A3
+Sqr:	CALL    FPush
+        LD      HL,ONE_HALF
+        CALL    FLoadFromMem
 
 FPower:
         POP     BC
@@ -3402,7 +3410,7 @@ L1437:  POP     HL
         POP     BC
         POP     DE
         CALL    L1050
-Exp:	CALL    L1196
+Exp:	CALL    FPush
         LD      BC,8138h
         LD      DE,0AA38h
         CALL    L1050
@@ -3459,7 +3467,7 @@ L148F:  db 08h
         NOP
         ADD     A,C
         ; --- START PROC L14B0 ---
-L14B0:  CALL    L1196
+L14B0:  CALL    FPush
         LD      DE,104Eh
         PUSH    DE
         PUSH    HL
@@ -3467,10 +3475,10 @@ L14B0:  CALL    L1196
         CALL    L1050
         POP     HL
         ; --- START PROC L14BF ---
-L14BF:  CALL    L1196
+L14BF:  CALL    FPush
         LD      A,(HL)
         INC     HL
-        CALL    L11A3
+        CALL    FLoadFromMem
 L14C7:  LD      B,0F1h
         POP     BC
         POP     DE
@@ -3491,7 +3499,7 @@ L14C7:  LD      B,0F1h
 Rnd:	RST     FTestSign
         JP      M,L14FD
         LD      HL,206Dh
-        CALL    L11A3
+        CALL    FLoadFromMem
         RET     Z
         LD      BC,9835h
         LD      DE,447Ah
@@ -3515,14 +3523,14 @@ L14FD:  CALL    L11B1
 Cos:	LD      HL,1558h
         CALL    L0F07
         ; --- START PROC Sin ---
-Sin:	CALL    L1196
+Sin:	CALL    FPush
         LD      BC,8349h
         LD      DE,0FDBh
         CALL    L11A6
         POP     BC
         POP     DE
         CALL    L10B2
-        CALL    L1196
+        CALL    FPush
         CALL    Int
         POP     BC
         POP     DE
@@ -3576,11 +3584,11 @@ L1558:  IN      A,(0Fh)
         XOR     D
 
 Tan:
-	CALL    L1196
+	CALL    FPush
         CALL    Sin
         POP     BC
         POP     HL
-        CALL    L1196
+        CALL    FPush
         EX      DE,HL
         CALL    L11A6
         CALL    Cos
@@ -4642,7 +4650,7 @@ Merge:
 L1C57:  RST     NextChar
         CALL    L0937
         PUSH    HL
-        CALL    L1196
+        CALL    FPush
         CALL    L11B1
         CALL    L1050
         LD      BC,8100h
@@ -4676,7 +4684,7 @@ L1C90:  RST     NextChar
         CALL    L0937
         PUSH    HL
         CALL    Log
-        CALL    L1196
+        CALL    FPush
         LD      BC,8213h
         LD      DE,5D8Eh
         CALL    L11A6
