@@ -13,6 +13,7 @@
 TERMINAL_X	EQU	2063h
 LINE_BUFFER	EQU	2090h
 ControlChar	EQU	2117h
+DIM_OR_EVAL	EQU	2118h
 VALTYP		EQU	2119h
 DATA_STM	EQU	211Ah
 MEMSIZ		EQU	211Bh
@@ -923,7 +924,7 @@ L05BA:  LD      A,(HL)
         JP      L05BA
 
         ; --- START PROC Let ---
-Let:  CALL    L0A48+1         ; reference not aligned to instruction
+Let:  CALL    GetVar
         RST     SyntaxCheck
         XOR     H
         LD      A,(VALTYP)
@@ -1163,7 +1164,7 @@ L0759:  RST     NextChar
         POP     HL
 L0761:  PUSH    HL
         PUSH    BC
-        CALL    L0A48+1         ; reference not aligned to instruction
+        CALL    GetVar
         POP     BC
         CALL    L0C31
         DEC     B
@@ -1201,7 +1202,7 @@ L0798:  OR      0AFh
         LD      (INPUT_OR_READ),A
         EX      (SP),HL
 L079E:  LD      BC,2CCFh
-        CALL    L0A48+1         ; reference not aligned to instruction
+        CALL    GetVar
         EX      (SP),HL
         PUSH    DE
         LD      A,(HL)
@@ -1276,7 +1277,7 @@ L0817:  RST     NextChar
 Next:
 	LD      DE,0000h
         ; --- START PROC L0823 ---
-L0823:  CALL    NZ,L0A48+1      ; reference not aligned to instruction
+L0823:  CALL    NZ,GetVar
         LD      (PROG_PTR_TEMP),HL
         CALL    GetFlowPtr
         JP      NZ,WithoutFOR
@@ -1455,7 +1456,7 @@ L094B:  CALL    IsNumeric
         RET
 
         ; --- START PROC L0950 ---
-L0950:  CALL    L0A48+1         ; reference not aligned to instruction
+L0950:  CALL    GetVar
         PUSH    HL
         EX      DE,HL
         LD      (FACCUM),HL
@@ -1629,10 +1630,11 @@ L0A3F:  DEC     HL
         RST     SyntaxCheck
         INC     L
 Dim:
-        LD      BC,0A3Fh
+        LD      BC,L0A3F
         PUSH    BC
-L0A48:  OR      0AFh
-        LD      (2118h),A
+        DB	0f6h	; OR      0AFH
+GetVar:	XOR	A          ; AFH
+        LD      (DIM_OR_EVAL),A
         LD      B,(HL)
         ; --- START PROC L0A4E ---
 L0A4E:  CALL    L04F1
@@ -1710,7 +1712,7 @@ L0ACA:  EX      DE,HL
         RET
 
 L0ACD:  PUSH    HL
-        LD      HL,(2118h)
+        LD      HL,(DIM_OR_EVAL)
         EX      (SP),HL
         LD      D,00h
 L0AD4:  PUSH    DE
@@ -1731,7 +1733,7 @@ L0AD4:  PUSH    DE
         ADD     HL,HL
         LD      (2139h),HL
         POP     HL
-        LD      (2118h),HL
+        LD      (DIM_OR_EVAL),HL
         PUSH    DE
         LD      HL,(2147h)
 L0AF4:  LD      A,19h
@@ -1752,7 +1754,7 @@ L0B07:  INC     HL
         LD      D,(HL)
         INC     HL
         JP      NZ,L0AF4+1      ; reference not aligned to instruction
-        LD      A,(2118h)
+        LD      A,(DIM_OR_EVAL)
         OR      A
         LD      E,12h
         JP      NZ,Error
@@ -1779,7 +1781,7 @@ L0B22:  LD      DE,0004h
         LD      B,C
         LD      (HL),B
         INC     HL
-L0B39:  LD      A,(2118h)
+L0B39:  LD      A,(DIM_OR_EVAL)
         OR      A
         LD      A,B
         LD      BC,000Bh
@@ -1811,7 +1813,7 @@ L0B63:  DEC     HL
         JP      NZ,L0B63
         INC     BC
         LD      H,A
-        LD      A,(2118h)
+        LD      A,(DIM_OR_EVAL)
         OR      A
         LD      A,(2049h)
         LD      L,A
