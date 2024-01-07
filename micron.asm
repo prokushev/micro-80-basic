@@ -101,6 +101,7 @@ L0037:  NOP
 
 L0039:  NOP
         NOP
+
 L003B:  LD      (2064h),HL
         POP     HL
         PUSH    BC
@@ -114,7 +115,7 @@ GetFlowPtr:
         ADD     HL,SP
 L0049:  LD      A,(HL)
         INC     HL
-        CP      81h
+        CP      TK_FOR
         RET     NZ
         LD      C,(HL)
         INC     HL
@@ -135,19 +136,19 @@ L005D:  LD      BC,000Dh
         ADD     HL,BC
         JP      L0049
 
-        ; --- START PROC L0066 ---
-L0066:  CALL    L0086
-        ; --- START PROC L0069 ---
-L0069:  PUSH    BC
+        ; --- START PROC CopyMemoryUp ---
+CopyMemoryUp:  CALL    CheckEnoughMem
+        ; --- START PROC CopyMemoryUpNoCheck ---
+CopyMemoryUpNoCheck:  PUSH    BC
         EX      (SP),HL
         POP     BC
-L006C:  RST     CompareHLDE
+CopyMemLoop:  RST     CompareHLDE
         LD      A,(HL)
         LD      (BC),A
         RET     Z
         DEC     BC
         DEC     HL
-        JP      L006C
+        JP      CopyMemLoop
 
         ; --- START PROC CheckEnoughVarSpace2 ---
 CheckEnoughVarSpace2:
@@ -161,13 +162,13 @@ L0079:  PUSH    HL
         LD      B,00h
         ADD     HL,BC
         ADD     HL,BC
-        CALL    L0086
+        CALL    CheckEnoughMem
         ; --- START PROC L0084 ---
 L0084:  POP     HL
         RET
 
-        ; --- START PROC L0086 ---
-L0086:  PUSH    DE
+        ; --- START PROC CheckEnoughMem ---
+CheckEnoughMem:  PUSH    DE
         EX      DE,HL
         LD      HL,0FFDBh
         ADD     HL,SP
@@ -290,7 +291,7 @@ L0141:  POP     DE
         POP     BC
         ADD     HL,BC
         PUSH    HL
-        CALL    L0066
+        CALL    CopyMemoryUp
         POP     HL
         LD      (VAR_BASE),HL
         EX      DE,HL
@@ -843,11 +844,11 @@ L04D3:  POP     AF
 
 	INCLUDE	"stCont.inc"
 
-        ; --- START PROC L04F1 ---
-L04F1:  LD      A,(HL)
-        CP      41h             ; 'A'
+        ; --- START PROC CharIsAlpha ---
+CharIsAlpha:  LD      A,(HL)
+        CP      'A'             ; 'A'
         RET     C
-        CP      5Bh             ; '['
+        CP      'Z'+1             ; '['
         CCF
         RET
 
@@ -938,7 +939,7 @@ Let:  CALL    GetVar
         PUSH    DE
         RRA
         CALL    L086E
-        JP      Z,L060D
+        JP      Z,CopyNumeric
 L05E3:  PUSH    HL
         LD      HL,(FACCUM)
         PUSH    HL
@@ -968,28 +969,31 @@ L05FD:  LD      A,(DE)
         POP     HL
         RET
 
-L060D:  PUSH    HL
-        CALL    L11BD
+CopyNumeric:
+	PUSH    HL
+        CALL    FCopyToMem
         POP     DE
         POP     HL
         RET
 
-On:	CALL    L0EDC
+On:	CALL    EvalByteExpression
         LD      A,(HL)
         LD      B,A
         CP      8Ch
-        JP      Z,L0621
+        JP      Z,OkToken
         RST     SyntaxCheck
         ADC     A,B
         DEC     HL
-L0621:  LD      C,E
-L0622:  DEC     C
+OkToken:
+	LD      C,E
+OnLoop:
+	DEC     C
         LD      A,B
         JP      Z,L0467
         CALL    L051A
         CP      2Ch             ; ','
         RET     NZ
-        JP      L0622
+        JP      OnLoop
 
 	INCLUDE	"stIf.inc"
 
@@ -1235,7 +1239,7 @@ L07CD:  CALL    L0C83
 L07D9:  RST     NextChar
         CALL    L126A
         EX      (SP),HL
-        CALL    L11BD
+        CALL    FCopyToMem
         POP     HL
         DEC     HL
         RST     NextChar
@@ -1292,7 +1296,7 @@ L0823:  CALL    NZ,GetVar
         PUSH    HL
         CALL    L0F07
         POP     HL
-        CALL    L11BD
+        CALL    FCopyToMem
         POP     HL
         CALL    L11B4
         PUSH    HL
@@ -1406,7 +1410,7 @@ L08E8:  XOR     A
         LD      (VALTYP),A
         RST     NextChar
         JP      C,FIn
-        CALL    L04F1
+        CALL    CharIsAlpha
         JP      NC,L0950
         CP      0A4h
         JP      Z,L08E8
@@ -1494,7 +1498,7 @@ L097B:  RST     SyntaxCheck
         EX      (SP),HL
         PUSH    HL
         EX      DE,HL
-        CALL    L0EDC
+        CALL    EvalByteExpression
         EX      DE,HL
         EX      (SP),HL
         JP      L099C
@@ -1637,19 +1641,19 @@ GetVar:	XOR	A          ; AFH
         LD      (DIM_OR_EVAL),A
         LD      B,(HL)
         ; --- START PROC L0A4E ---
-L0A4E:  CALL    L04F1
+L0A4E:  CALL    CharIsAlpha
         JP      C,SyntaxError
         XOR     A
         LD      C,A
         LD      (VALTYP),A
         RST     NextChar
         JP      C,L0A63
-        CALL    L04F1
+        CALL    CharIsAlpha
         JP      C,L0A6E
 L0A63:  LD      C,A
 L0A64:  RST     NextChar
         JP      C,L0A64
-        CALL    L04F1
+        CALL    CharIsAlpha
         JP      NC,L0A64
 L0A6E:  SUB     24h             ; '$'
         JP      NZ,L0A7B
@@ -1692,7 +1696,7 @@ L0AA7:  PUSH    BC
         ADD     HL,BC
         POP     BC
         PUSH    HL
-        CALL    L0066
+        CALL    CopyMemoryUp
         POP     HL
         LD      (VAR_TOP),HL
         LD      H,B
@@ -1805,7 +1809,7 @@ L0B46:  LD      (HL),C
         EX      DE,HL
         ADD     HL,DE
         JP      C,L0B1D
-        CALL    L0086
+        CALL    CheckEnoughMem
         LD      (VAR_TOP),HL
 L0B63:  DEC     HL
         LD      (HL),00h
@@ -1902,7 +1906,7 @@ L0BFC:  CALL    L0C3F
         PUSH    DE
         LD      E,22h           ; '"'
         JP      Z,Error
-        CALL    L11BD
+        CALL    FCopyToMem
         POP     HL
         CALL    EvalNumericExpression
         DEC     HL
@@ -2166,7 +2170,7 @@ L0D7D:  POP     DE
         LD      B,H
         LD      C,L
         LD      HL,(STR_TOP)
-        CALL    L0069
+        CALL    CopyMemoryUpNoCheck
         POP     HL
         LD      (HL),C
         INC     HL
@@ -2317,7 +2321,7 @@ Mid:	EX      DE,HL
         JP      Z,L0E8D
         RST     SyntaxCheck
         INC     L
-        CALL    L0EDC
+        CALL    EvalByteExpression
 L0E8D:  RST     SyntaxCheck
         ADD     HL,HL
         POP     AF
@@ -2378,8 +2382,8 @@ L0ED8:  RST     SyntaxCheck
         DB	','
 	DB	06h		; ld b,..
 L0EDB:	RST	NextChar
-        ; --- START PROC L0EDC ---
-L0EDC:  CALL    EvalNumericExpression
+        ; --- START PROC EvalByteExpression ---
+EvalByteExpression:  CALL    EvalNumericExpression
         ; --- START PROC L0EDF ---
 L0EDF:  CALL    L04FD
         LD      A,D
@@ -2910,8 +2914,8 @@ L11B4:  LD      E,(HL)
 L11BB:  INC     HL
         RET
 
-        ; --- START PROC L11BD ---
-L11BD:  LD      DE,FACCUM
+        ; --- START PROC FCopyToMem ---
+FCopyToMem:  LD      DE,FACCUM
         ; --- START PROC L11C0 ---
 L11C0:  LD      B,04h
 L11C2:  LD      A,(DE)
@@ -3476,7 +3480,7 @@ L14FD:  CALL    FCopyToBCDE
         LD      (HL),80h
         CALL    L0F67
         LD      HL,206Dh
-        JP      L11BD
+        JP      FCopyToMem
 
         ; --- START PROC Cos ---
 Cos:	LD      HL,1558h
@@ -4102,7 +4106,7 @@ L18E7:  LD      D,00h
         JP      L18D0
 
         ; --- START PROC L18F7 ---
-L18F7:  CALL    L0EDC
+L18F7:  CALL    EvalByteExpression
         CP      40h             ; '@'
         JP      NC,FunctionCallError
         LD      C,A
@@ -4143,7 +4147,7 @@ Cur:
         RET
 
 Plot:
-	CALL    L0EDC
+	CALL    EvalByteExpression
         LD      (2054h),A
         CALL    L0ED8
         LD      (2055h),A
@@ -4205,7 +4209,7 @@ L199A:  OR      (HL)
         EX      DE,HL
         RET
 
-Line:	CALL    L0EDC
+Line:	CALL    EvalByteExpression
         LD      (2052h),A
         CALL    L0ED8
         LD      (2053h),A
@@ -4493,7 +4497,7 @@ L1B86:  CALL    L1BD0
         DEC     B
         JP      NZ,L1B96
         LD      (HL),A
-        CALL    L0086
+        CALL    CheckEnoughMem
         LD      A,(HL)
         JP      L1B9A
 
