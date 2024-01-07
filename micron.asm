@@ -17,6 +17,7 @@ DIM_OR_EVAL	EQU	2118h
 VALTYP		EQU	2119h
 DATA_STM	EQU	211Ah
 MEMSIZ		EQU	211Bh
+TMPST		EQU	211Fh
 TMPSTR		EQU	212Bh
 STR_TOP		EQU	212FH
 DATA_LINE	EQU	2133h
@@ -222,7 +223,7 @@ L00CB:  CALL    0F818h
         LD      A,H
         AND     L
         INC     A
-        JP      Z,L00F1
+        JP      Z,Main
         PUSH    HL
         CALL    L1313
         LD      A,3Ah           ; ':'
@@ -237,8 +238,9 @@ L00CB:  CALL    0F818h
         LD      A,(2078h)
         OR      A
         JP      Z,L171B
-        ; --- START PROC L00F1 ---
-L00F1:  LD      HL,1DC9h
+
+        ; --- START PROC Main ---
+Main:  LD      HL,1DC9h
         CALL    0F818h
         LD      HL,0FFFFh
         LD      (CURRENT_LINE),HL
@@ -337,7 +339,7 @@ L0185:  LD      A,(ControlChar)
         OR      A
         JP      Z,L0100
         DEC     A
-        JP      Z,L00F1
+        JP      Z,Main
         XOR     A
         LD      (ControlChar),A
         JP      L18E7
@@ -368,7 +370,8 @@ FindProgramLineInMem:
         JP      FindProgramLineInMem
 
         ; --- START PROC New ---
-New:  RET     NZ
+New:
+	RET     NZ
         LD      HL,(PROGRAM_BASE)
         XOR     A
         LD      (HL),A
@@ -393,7 +396,7 @@ L01CD:  LD      HL,(VAR_BASE)
 L01D6:  POP     BC
         LD      HL,(STACK_TOP)
         LD      SP,HL
-        LD      HL,211Fh
+        LD      HL,TMPST
         LD      (211Dh),HL
         LD      HL,0000h
         PUSH    HL
@@ -684,12 +687,12 @@ L03A1:  RST     PushNextWord
         POP     DE
         LD      A,D
         OR      E
-        JP      Z,L00F1
-        CALL    L04AF
+        JP      Z,Main
+        CALL    TestBreakKey
         PUSH    DE
 L03AC:  CALL    L03D1
         POP     HL
-        JP      C,L00F1
+        JP      C,Main
         JP      Z,L03A1
         ; --- START PROC L03B6 ---
 L03B6:  CALL    LineNumberFromStr
@@ -729,7 +732,8 @@ L03D1:  RST     PushNextWord
 
 
         ; --- START PROC ExecNext ---
-ExecNext:  CALL    L04AF
+ExecNext:
+	CALL    TestBreakKey
         LD      (PROG_PTR_TEMP),HL
         LD      A,(HL)
         EX      DE,HL
@@ -763,8 +767,7 @@ L0461:  RST     NextChar
 ExecANotZero:
 	RET     Z
 
-ExecA:
-L0467:  SUB     80h
+ExecA:  SUB     80h
         JP      C,Let
         CP      1Dh
         JP      C,L0478
@@ -814,8 +817,9 @@ L04AA:  LD      (DATA_PROG_PTR),HL
         EX      DE,HL
         RET
 
-        ; --- START PROC L04AF ---
-L04AF:  CALL    0F812h
+        ; --- START PROC TestBreakKey ---
+TestBreakKey:
+	CALL    0F812h
         OR      A
         RET     Z
         CALL    L0351
@@ -840,7 +844,7 @@ EndOfProgram:
 L04D3:  POP     AF
         LD      HL,1DD2h
         JP      NZ,L00CB
-        JP      L00F1
+        JP      Main
 
 	INCLUDE	"stCont.inc"
 
@@ -989,7 +993,7 @@ OkToken:
 OnLoop:
 	DEC     C
         LD      A,B
-        JP      Z,L0467
+        JP      Z,ExecA
         CALL    L051A
         CP      2Ch             ; ','
         RET     NZ
@@ -2069,7 +2073,7 @@ L0D00:  LD      (STR_TOP),HL
         PUSH    HL
         LD      HL,(STACK_TOP)
         PUSH    HL
-        LD      HL,211Fh
+        LD      HL,TMPST
         EX      DE,HL
         LD      HL,(211Dh)
         EX      DE,HL
@@ -3650,7 +3654,7 @@ Init:   LD      HL,(L0026)
         CALL    New
         ; --- START PROC L1635 ---
 L1635:  CALL    L01D6
-        JP      L00F1
+        JP      Main
 
         ; --- START PROC L163B ---
 L163B:  EX      DE,HL
@@ -3802,7 +3806,7 @@ L171B:  CALL    FindProgramLine
         POP     BC
         LD      A,B
         OR      C
-        JP      Z,L00F1
+        JP      Z,Main
         CALL    L03D1
         CALL    L027C
         JP      L010D
