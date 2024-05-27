@@ -486,7 +486,7 @@ RST6RET:	EQU	$+1
 
 GetFlowPtr:		
 	LD      HL,0004H
-        ADD     HL,SP
+    ADD     HL,SP
 
 ; Get the keyword ID, the byte that precedes the flow struct. Then we increment HL
 ; so it points to (what should be) the flow struct, and return if the keyword ID is not 'FOR'.
