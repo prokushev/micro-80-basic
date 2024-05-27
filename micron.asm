@@ -4,11 +4,14 @@
 ;
 ; Это дизассемблер Бейсика-Микрон для "Радио-86РК".
 ; Имена меток взяты с дизассемблера Altair BASIC 3.2 (4K)
+;
+; TAB: 4
+;
 
-	CPU	8080
-	Z80SYNTAX	EXCLUSIVE
+		CPU	8080
+		Z80SYNTAX	EXCLUSIVE
 
-        ORG     0000h
+		ORG     0000h
 
 TERMINAL_X	EQU	2063h
 TMP_HL		EQU	2064h
@@ -31,6 +34,7 @@ OLD_TEXT	EQU	213Fh
 STACK_TOP	EQU	2141H
 PROGRAM_BASE	EQU	2143h
 VAR_BASE	EQU	2145h
+VAR_ARRAY_BASE	EQU	2147h
 VAR_TOP		EQU	2149h
 DATA_PROG_PTR	EQU	214Bh
 
@@ -47,7 +51,7 @@ ERR_CN		EQU 20h
 Start:  LD      SP,75FFh
         JP      Init
 
-	NOP
+		NOP
         NOP
 
 SyntaxCheck:
@@ -86,10 +90,10 @@ INIT_PROGAM_BASE:
 		DW	2201H
 	
 FTestSign:
-	LD	A, (FACCUM+3)
+		LD	A, (FACCUM+3)
         OR	A
-	JP	NZ, FTestSign_tail
-	RET
+		JP	NZ, FTestSign_tail
+		RET
 
 PushNextWord:
 		LD		C, (HL)
@@ -142,12 +146,15 @@ NoVar:  LD      BC,000Dh
         JP      GetFlowLoop
 
         ; --- START PROC CopyMemoryUp ---
-CopyMemoryUp:  CALL    CheckEnoughMem
+CopyMemoryUp:
+		CALL    CheckEnoughMem
         ; --- START PROC CopyMemoryUpNoCheck ---
-CopyMemoryUpNoCheck:  PUSH    BC
+CopyMemoryUpNoCheck:
+		PUSH    BC
         EX      (SP),HL
         POP     BC
-CopyMemLoop:  RST     CompareHLDE
+CopyMemLoop:
+		RST     CompareHLDE
         LD      A,(HL)
         LD      (BC),A
         RET     Z
@@ -157,7 +164,7 @@ CopyMemLoop:  RST     CompareHLDE
 
         ; --- START PROC CheckEnoughVarSpace2 ---
 CheckEnoughVarSpace2:
-	EX      (SP),HL
+		EX      (SP),HL
         LD      C,(HL)
         INC     HL
         EX      (SP),HL
@@ -169,7 +176,8 @@ CheckEnoughVarSpace:  PUSH    HL
         ADD     HL,BC
         CALL    CheckEnoughMem
         ; --- START PROC POPHL_RET ---
-POPHL_RET:  POP     HL
+POPHL_RET:
+		POP     HL
         RET
 
         ; --- START PROC CheckEnoughMem ---
@@ -183,23 +191,24 @@ CheckEnoughMem:  PUSH    DE
         RET     NC
 
 OutOfMemory:
-	LD      E,ERR_OM
+		LD      E,ERR_OM
         JP      Error
 
 DATASyntaxError:
-	LD      HL,(DATA_LINE)
+		LD      HL,(DATA_LINE)
         LD      (CURRENT_LINE),HL
+
         ; --- START PROC SyntaxError ---
 SyntaxError:
-	LD      E,ERR_SN
+		LD      E,ERR_SN
         XOR     A
         LD      (2078h),A
-	DB	01		;LD      BC,...
+		DB		01		;LD      BC,...
 DivideByZero:
-	LD      E, ERR_DZ
-	DB	01		;LD      BC,...
+		LD      E, ERR_DZ
+		DB		01		;LD      BC,...
 WithoutFOR:
-	LD      E, ERR_NF
+		LD      E, ERR_NF
 
         ; --- START PROC Error ---
 Error:  CALL    ResetStack
@@ -212,15 +221,16 @@ Error:  CALL    ResetStack
         INC     E
         LD      HL,ErrorMessages
 L00B8:  DEC     E
-        JP      Z,L00C5
+        JP      Z,MessageFound
 L00BC:  LD      A,(HL)
         INC     HL
         OR      A
         JP      Z,L00B8
         JP      L00BC
 
-L00C5:  CALL    0F818h
-        LD      HL,1DC1h		; szError
+MessageFound:
+		CALL    0F818h
+        LD      HL, szError
 
         ; --- START PROC PrintInLine ---
 PrintInLine:
@@ -246,19 +256,23 @@ PrintInLine:
         JP      Z,L171B
 
         ; --- START PROC Main ---
-Main:  LD      HL,1DC9h			; szOK
+Main:	LD      HL, szOK			; szOK
         CALL    0F818h
         LD      HL,0FFFFh
         LD      (CURRENT_LINE),HL
         LD      (2078h),HL
+		
         ; --- START PROC GetNonBlankLine ---
-GetNonBlankLine:  XOR     A
+GetNonBlankLine:
+		XOR     A
         LD      (ControlChar),A
         LD      (LINE_BUFFER),A
         LD      (TERMINAL_X),A
         CALL    L0279
+		
         ; --- START PROC L010D ---
 L010D:  CALL    L06DA
+
         ; --- START PROC L0110 ---
 L0110:  RST     NextChar
         INC     A
@@ -278,22 +292,27 @@ L0110:  RST     NextChar
         PUSH    AF
         CALL    FindProgramLine
         PUSH    BC
-        JP      NC,L0141
+        JP      NC,InsertProgramLine
+		
+RemoveProgramLine:		
         EX      DE,HL
         LD      HL,(VAR_BASE)
-L0133:  LD      A,(DE)
+RemoveProgramLineLoop:
+		LD      A,(DE)
         LD      (BC),A
         INC     BC
         INC     DE
         RST     CompareHLDE
-        JP      NC,L0133
+        JP      NC,RemoveProgramLineLoop
         LD      H,B
         LD      L,C
         INC     HL
         LD      (VAR_BASE),HL
-L0141:  POP     DE
+		
+InsertProgramLine:
+		POP     DE
         POP     AF
-        JP      Z,L0168
+        JP      Z,UpdateLinkedList
         LD      HL,(VAR_BASE)
         EX      (SP),HL
         POP     BC
@@ -311,37 +330,46 @@ L0141:  POP     DE
         INC     HL
         LD      (HL),D
         INC     HL
+		
+CopyFromBuffer:
+		
         LD      DE,LINE_BUFFER
-L0160:  LD      A,(DE)
+CopyFromBufferLoop:
+		LD      A,(DE)
         LD      (HL),A
         INC     HL
         INC     DE
         OR      A
-        JP      NZ,L0160
-        ; --- START PROC L0168 ---
-L0168:  CALL    ResetAll
+        JP      NZ,CopyFromBufferLoop
+		
+        ; --- START PROC UpdateLinkedList ---
+UpdateLinkedList:
+		CALL    ResetAll
         INC     HL
-L016C:  LD      D,H
+UpdateLinkedListLoop:
+		LD      D,H
         LD      E,L
         LD      A,(HL)
         INC     HL
         OR      (HL)
-        JP      Z,L0185
+        JP      Z,GetNonBlankLine2
         INC     HL
         INC     HL
         INC     HL
         XOR     A
-L0178:  CP      (HL)
+FindEndOfLine:
+		CP      (HL)
         INC     HL
-        JP      NZ,L0178
+        JP      NZ,FindEndOfLine
         EX      DE,HL
         LD      (HL),E
         INC     HL
         LD      (HL),D
         EX      DE,HL
-        JP      L016C
+        JP      UpdateLinkedListLoop
 
-L0185:  LD      A,(ControlChar)
+GetNonBlankLine2:
+		LD      A,(ControlChar)
         OR      A
         JP      Z,GetNonBlankLine
         DEC     A
@@ -352,10 +380,11 @@ L0185:  LD      A,(ControlChar)
 
         ; --- START PROC FindProgramLine ---
 FindProgramLine:
-	LD      HL,(PROGRAM_BASE)
+		LD      HL,(PROGRAM_BASE)
+	
         ; --- START PROC FindProgramLineInMem ---
 FindProgramLineInMem:
-	LD      B,H
+		LD      B,H
         LD      C,L
         LD      A,(HL)
         INC     HL
@@ -377,7 +406,7 @@ FindProgramLineInMem:
 
         ; --- START PROC New ---
 New:
-	RET     NZ
+		RET     NZ
         LD      HL,(PROGRAM_BASE)
         XOR     A
         LD      (HL),A
@@ -385,21 +414,25 @@ New:
         LD      (HL),A
         INC     HL
         LD      (VAR_BASE),HL
+		
         ; --- START PROC ResetAll ---
 ResetAll:  LD      HL,(PROGRAM_BASE)
         DEC     HL
         LD      (HL),00h
+		
         ; --- START PROC ClearAll ---
-ClearAll:  LD      (PROG_PTR_TEMP),HL
+ClearAll:
+		LD      (PROG_PTR_TEMP),HL
         LD      HL,(MEMSIZ)
         LD      (STR_TOP),HL
         CALL    L04A5
         ; --- START PROC L01CD ---
 L01CD:  LD      HL,(VAR_BASE)
-        LD      (2147h),HL
+        LD      (VAR_ARRAY_BASE),HL
         LD      (VAR_TOP),HL
         ; --- START PROC ResetStack ---
-ResetStack:  POP     BC
+ResetStack:
+		POP     BC
         LD      HL,(STACK_TOP)
         LD      SP,HL
         LD      HL,TMPST
@@ -415,47 +448,53 @@ ResetStack:  POP     BC
 
         ; --- START PROC Tokenize ---
 Tokenize:
-	XOR     A
+		XOR     A
         ; --- START PROC L01F2 ---
 L01F2:  LD      (DATA_STM),A
         LD      C,05h
         LD      DE,LINE_BUFFER
 L01FA:  LD      A,(HL)
-        CP      20h             ; ' '
-        JP      Z,L023C
+        CP      ' '             ; ' '
+        JP      Z,WriteChar
         LD      B,A
-        CP      22h             ; '"'
-        JP      Z,L025C
+        CP      '"'             ; '"'
+        JP      Z,FreeCopy
         OR      A
-        JP      Z,L0270
+        JP      Z,Exit
         LD      A,(DATA_STM)
         OR      A
         LD      B,A
         LD      A,(HL)
-        JP      NZ,L023C
+        JP      NZ,WriteChar
         CP      30h             ; '0'
         JP      C,L021D
         CP      3Ch             ; '<'
-        JP      C,L023C
+        JP      C,WriteChar
 L021D:  PUSH    DE
         LD      DE,KEYWORDS-1
         PUSH    HL
-L0222:  LD      A,23h           ; '#'
+		DB	3Eh			; LD      A, ...
+L0223: 	INC		HL			; !! Отличается от Микро-80 !!
+
         INC     DE
 L0225:  LD      A,(DE)
         AND     7Fh             ; ''
-        JP      Z,L0238+1       ; reference not aligned to instruction
+        JP      Z,L0239
         CP      (HL)
         JP      NZ,L0263
         LD      A,(DE)
         OR      A
-        JP      P,L0222+1       ; reference not aligned to instruction
+        JP      P,L0223
         POP     AF
         LD      A,B
         OR      80h
-L0238:  JP      P,7EE1h
+        DB		0F2H			; JP      P,...
+L0239:
+		POP 	HL			; Restore input ptr
+		LD		A, (HL)			; and get input char
         POP     DE
-L023C:  INC     HL
+WriteChar:
+		INC     HL
         LD      (DE),A
         INC     DE
         INC     C
@@ -469,10 +508,11 @@ L024D:  SUB     54h             ; 'T'
         LD      B,A
 L0253:  LD      A,(HL)
         OR      A
-        JP      Z,L0270
+        JP      Z,Exit
         CP      B
-        JP      Z,L023C
-L025C:  INC     HL
+        JP      Z,WriteChar
+FreeCopy:
+		INC     HL
         LD      (DE),A
         INC     C
         INC     DE
@@ -488,7 +528,7 @@ L0267:  OR      (HL)
         EX      DE,HL
         JP      L0225
 
-L0270:  LD      HL,208Fh
+Exit:	LD      HL,LINE_BUFFER-1
         LD      (DE),A
         INC     DE
         LD      (DE),A
@@ -497,7 +537,9 @@ L0270:  LD      HL,208Fh
         RET
 
         ; --- START PROC L0279 ---
+
 L0279:  LD      DE,LINE_BUFFER
+
         ; --- START PROC L027C ---
 L027C:  LD      H,D
         LD      L,E
@@ -734,12 +776,11 @@ L03D1:  RST     PushNextWord
         CALL    NewLine
         JP      L163B
 
-	include "stFor.inc"
-
+		include "stFor.inc"
 
         ; --- START PROC ExecNext ---
 ExecNext:
-	CALL    TestBreakKey
+		CALL    TestBreakKey
         LD      (PROG_PTR_TEMP),HL
         LD      A,(HL)
         EX      DE,HL
@@ -767,11 +808,11 @@ L044F:  LD      (HL),A
         LD      (CURRENT_LINE),HL
         EX      DE,HL
         ; --- START PROC Exec ---
-Exec:  RST     NextChar
+Exec:  	RST     NextChar
         LD      DE,ExecNext
         PUSH    DE
 ExecANotZero:
-	RET     Z
+		RET     Z
 
 ExecA:  SUB     80h
         JP      C,Let
@@ -911,15 +952,15 @@ L051D:  RST     NextChar
         POP     HL
         JP      L051D
 
-	INCLUDE	"stClear.inc"
-	INCLUDE	"stRun.inc"
-	INCLUDE	"stGosub.inc"
-	INCLUDE	"stGoto.inc"
-	INCLUDE	"stReturn.inc"
+		INCLUDE	"stClear.inc"
+		INCLUDE	"stRun.inc"
+		INCLUDE	"stGosub.inc"
+		INCLUDE	"stGoto.inc"
+		INCLUDE	"stReturn.inc"
 
 Data:
 FindNextStatement:
-	DB	01H, ":"	;LD BC,..3AH эмулирует LD C, ":"
+		DB	01H, ":"	;LD BC,..3AH эмулирует LD C, ":"
 Rem:	LD	C, 0
         LD      B,00h
 L05B7:  LD      A,C
@@ -1681,7 +1722,7 @@ L0A7B:  LD      A,(NO_ARRAY)
         XOR     A
         LD      (NO_ARRAY),A
         PUSH    HL
-        LD      HL,(2147h)
+        LD      HL,(VAR_ARRAY_BASE)
         EX      DE,HL
         LD      HL,(VAR_BASE)
 L0A90:  RST     CompareHLDE
@@ -1712,7 +1753,7 @@ L0AA7:  PUSH    BC
         LD      (VAR_TOP),HL
         LD      H,B
         LD      L,C
-        LD      (2147h),HL
+        LD      (VAR_ARRAY_BASE),HL
 L0ABE:  DEC     HL
         LD      (HL),00h
         RST     CompareHLDE
@@ -1750,7 +1791,7 @@ L0AD4:  PUSH    DE
         POP     HL
         LD      (DIM_OR_EVAL),HL
         PUSH    DE
-        LD      HL,(2147h)
+        LD      HL,(VAR_ARRAY_BASE)
 L0AF4:  LD      A,19h
         EX      DE,HL
         LD      HL,(VAR_TOP)
@@ -2089,7 +2130,7 @@ L0D00:  LD      (STR_TOP),HL
         JP      NZ,L0D5A
         LD      HL,(VAR_BASE)
 L0D1D:  EX      DE,HL
-        LD      HL,(2147h)
+        LD      HL,(VAR_ARRAY_BASE)
         EX      DE,HL
         RST     CompareHLDE
         JP      Z,L0D31
@@ -3653,7 +3694,7 @@ Init:   LD      HL,(INIT_PROGAM_BASE)
         LD      (206Fh),HL
         LD      A,2Ch           ; ','
         LD      (208Fh),A
-        LD      HL,1DE4h
+        LD      HL,szHello
         CALL    0F818h
         CALL    L0351
         RST     18H
@@ -3904,7 +3945,7 @@ L177E:  PUSH    BC
         EX      (SP),HL
         EX      DE,HL
         INC     HL
-        LD      (2147h),HL
+        LD      (VAR_ARRAY_BASE),HL
         LD      (VAR_TOP),HL
         PUSH    HL
         EX      DE,HL
@@ -4019,7 +4060,7 @@ L1851:  RST     CompareHLDE
         INC     HL
         INC     BC
         JP      NZ,L1851
-L1859:  LD      HL,(2147h)
+L1859:  LD      HL,(VAR_ARRAY_BASE)
         LD      (VAR_TOP),HL
         POP     HL
         LD      (HL),20h        ; ' '
@@ -4041,7 +4082,7 @@ L1870:  PUSH    HL
         LD      (VAR_BASE),HL
         LD      HL,(VAR_TOP)
         ADD     HL,BC
-        LD      (2147h),HL
+        LD      (VAR_ARRAY_BASE),HL
         EX      DE,HL
         LD      B,H
         LD      C,L
@@ -4541,7 +4582,7 @@ L1BC3:  LD      (VAR_BASE),HL
         RET     Z
 L1BC8:  LD      A,01h
         LD      (ControlChar),A
-        JP      L0168
+        JP      UpdateLinkedList
 
         ; --- START PROC L1BD0 ---
 L1BD0:  LD      A,08h
@@ -4718,12 +4759,15 @@ ErrorMessages:
         DB		"slovno",0
         DB		"nelxzq",0
         DB		"net DEF", 0
+szError:
         DB		" o{ibka", 0
+szOK:
         DB		13,10, "vdu:",13,10, 0
         DB		13,10, "stop", 0
         DB		" w stroke ", 0
-L1DE4:  DB	1Fh, "BASIC *mikron*", 13,10, "NEW?",0
-        DB	13,10,"programma:", 0
+szHello:
+		DB		1Fh, "BASIC *mikron*", 13,10, "NEW?",0
+        DB		13,10,"programma:", 0
 ; Конец сообщений
 
 TOKEN	MACRO	name
@@ -4735,298 +4779,298 @@ name_ADDR equ $
 FIRST_TK	EQU	80H
 
 KEYWORDS:
-Q	SET	FIRST_TK
-	TOKEN	TK_CLS
-	DB	"CL", 'S'+80H
-	TOKEN	TK_FOR
-	DB	"FO", 'R'+80h
-	TOKEN	TK_NEXT
-	DB	"NEX", 'T'+80h
-	TOKEN	TK_DATA
-	DB	"DAT", 'A'+80h
-	TOKEN	TK_INPUT
-	DB	"INPU", 'T'+80h
-	TOKEN	TK_DIM
-	DB	"DI", 'M'+80h
-	TOKEN	TK_READ
-	DB	"REA", 'D'+80h
-	TOKEN	TK_CUR
-	DB	"CU", 'R'+80h
-	TOKEN	TK_GOTO
-	DB	"GOT", 'O'+80h
-	TOKEN	TK_RUN
-	DB	"RU", 'N'+80h
-	TOKEN	TK_IF
-	DB	"I", 'F'+80h
-	TOKEN	TK_RESTORE
-	DB	"RESTOR", 'E'+80h
-	TOKEN	TK_GOSUB
-	DB	"GOSU", 'B'+80h
-	TOKEN	TK_RETURN
-	DB	"RETUR", 'N'+80h
-	TOKEN	TK_REM
-	DB	"RE", 'M'+80h
-	TOKEN	TK_STOP
-	DB	"STO", 'P'+80h
-	TOKEN	TK_OUT
-	DB	"OU", 'T'+80h
-	TOKEN	TK_ON
-	DB	"O", 'N'+80h
-	TOKEN	TK_PLOT
-	DB	"PLO", 'T'+80h
-	TOKEN	TK_LINE
-	DB	"LIN", 'E'+80h
-	TOKEN	TK_POKE
-	DB	"POK", 'E'+80h
-	TOKEN	TK_PRINT
-	DB	"PRIN", 'T'+80h
-	TOKEN	TK_DEF
-	DB	"DE", 'F'+80h
-	TOKEN	TK_CONT
-	DB	"CON", 'T'+80h
-	TOKEN	TK_LIST
-	DB	"LIS", 'T'+80h
-	TOKEN	TK_CLEAR
-	DB	"CLEA", 'R'+80h
-	TOKEN	TK_CLOAD
-	DB	"CLOA", 'D'+80h
-	TOKEN	TK_CSAVE
-	DB	"CSAV", 'E'+80h
-	TOKEN	TK_NEW
-	DB	"NE", 'W'+80h
-
+Q		SET	FIRST_TK
+		TOKEN	TK_CLS
+		DB	"CL", 'S'+80H
+		TOKEN	TK_FOR
+		DB	"FO", 'R'+80h
+		TOKEN	TK_NEXT
+		DB	"NEX", 'T'+80h
+		TOKEN	TK_DATA
+		DB	"DAT", 'A'+80h
+		TOKEN	TK_INPUT
+		DB	"INPU", 'T'+80h
+		TOKEN	TK_DIM
+		DB	"DI", 'M'+80h
+		TOKEN	TK_READ
+		DB	"REA", 'D'+80h
+		TOKEN	TK_CUR
+		DB	"CU", 'R'+80h
+		TOKEN	TK_GOTO
+		DB	"GOT", 'O'+80h
+		TOKEN	TK_RUN
+		DB	"RU", 'N'+80h
+		TOKEN	TK_IF
+		DB	"I", 'F'+80h
+		TOKEN	TK_RESTORE
+		DB	"RESTOR", 'E'+80h
+		TOKEN	TK_GOSUB
+		DB	"GOSU", 'B'+80h
+		TOKEN	TK_RETURN
+		DB	"RETUR", 'N'+80h
+		TOKEN	TK_REM
+		DB	"RE", 'M'+80h
+		TOKEN	TK_STOP
+		DB	"STO", 'P'+80h
+		TOKEN	TK_OUT
+		DB	"OU", 'T'+80h
+		TOKEN	TK_ON
+		DB	"O", 'N'+80h
+		TOKEN	TK_PLOT
+		DB	"PLO", 'T'+80h
+		TOKEN	TK_LINE
+		DB	"LIN", 'E'+80h
+		TOKEN	TK_POKE
+		DB	"POK", 'E'+80h
+		TOKEN	TK_PRINT
+		DB	"PRIN", 'T'+80h
+		TOKEN	TK_DEF
+		DB	"DE", 'F'+80h
+		TOKEN	TK_CONT
+		DB	"CON", 'T'+80h
+		TOKEN	TK_LIST
+		DB	"LIS", 'T'+80h
+		TOKEN	TK_CLEAR
+		DB	"CLEA", 'R'+80h
+		TOKEN	TK_CLOAD
+		DB	"CLOA", 'D'+80h
+		TOKEN	TK_CSAVE
+		DB	"CSAV", 'E'+80h
+		TOKEN	TK_NEW
+		DB	"NE", 'W'+80h
+	
 TKCOUNT	EQU	Q-FIRST_TK
+	
+		TOKEN	TK_TAB
+		DB	"TAB", '('+80h
+		TOKEN	TK_TO
+		DB	"T", 'O'+80h
+		TOKEN	TK_SPC
+		DB	"SPC", '('+80h
+		TOKEN	TK_FN
+		DB	"F", 'N'+80h
+		TOKEN	TK_THEN
+		DB	"THE",'N'+80h
+		TOKEN	TK_NOT
+		DB	"NO", 'T'+80h
+		TOKEN	TK_STEP
+		DB	"STE", 'P'+80h
 
-	TOKEN	TK_TAB
-	DB	"TAB", '('+80h
-	TOKEN	TK_TO
-	DB	"T", 'O'+80h
-	TOKEN	TK_SPC
-	DB	"SPC", '('+80h
-	TOKEN	TK_FN
-	DB	"F", 'N'+80h
-	TOKEN	TK_THEN
-	DB	"THE",'N'+80h
-	TOKEN	TK_NOT
-	DB	"NO", 'T'+80h
-	TOKEN	TK_STEP
-	DB	"STE", 'P'+80h
+		TOKEN	TK_PLUS
+		DB 	"+"+80h
+		TOKEN	TK_MINUS
+		DB 	"-"+80h
+		TOKEN	TK_MUL
+		DB	"*"+80h
+		TOKEN	TK_DIV
+		DB 	"/"+80h
+		TOKEN	TK_POWER
+		DB	'^'+80h
+		TOKEN	TK_AND
+		DB	"AN", 'D'+80h
+		TOKEN	TK_OR
+		DB	"O", 'R'+80h
+		TOKEN	TK_GT
+		DB 	">"+80h
+		TOKEN	TK_EQ
+		DB	"="+80h
+		TOKEN	TK_LT
+		DB 	"<"+80h
 
-	TOKEN	TK_PLUS
-	DB 	"+"+80h
-	TOKEN	TK_MINUS
-	DB 	"-"+80h
-	TOKEN	TK_MUL
-	DB	"*"+80h
-	TOKEN	TK_DIV
-	DB 	"/"+80h
-	TOKEN	TK_POWER
-	DB	'^'+80h
-	TOKEN	TK_AND
-	DB	"AN", 'D'+80h
-	TOKEN	TK_OR
-	DB	"O", 'R'+80h
-	TOKEN	TK_GT
-	DB 	">"+80h
-	TOKEN	TK_EQ
-	DB	"="+80h
-	TOKEN	TK_LT
-	DB 	"<"+80h
-
-	TOKEN	TK_SGN
-	DB	"SG", 'N'+80h
-	TOKEN	TK_INT
-	DB	"IN", 'T'+80h
-	TOKEN	TK_ABS
-	DB	"AB", 'S'+80h
-	TOKEN	TK_USR
-	DB	"US", 'R'+80h
-	TOKEN	TK_FRE
-	DB	"FR", 'E'+80h
-	TOKEN	TK_INP
-	DB	"IN", 'P'+80h
-	TOKEN	TK_POS
-	DB	"PO", 'S'+80h
-	TOKEN	TK_SQR
-	DB	"SQ", 'R'+80h
-	TOKEN	TK_RND
-	DB	"RN", 'D'+80h
-	TOKEN	TK_LOG
-	DB	"LO", 'G'+80h
-	TOKEN	TK_EXP
-	DB	"EX", 'P'+80h
-	TOKEN	TK_COS
-	DB	"CO", 'S'+80h
-	TOKEN	TK_SIN
-	DB	"SI", 'N'+80h
-	TOKEN	TK_TAN
-	DB	"TA", 'N'+80h
-	TOKEN	TK_ATN
-	DB	"AT", 'N'+80h
-	TOKEN	TK_PEEK
-	DB	"PEE", 'K'+80h
-	TOKEN	TK_LEN
-	DB	"LE", 'N'+80h
-	TOKEN	TK_STRS
-	DB	"STR", '$'+80h
-	TOKEN	TK_VAL
-	DB	"VA", 'L'+80h
-	TOKEN	TK_ASC
-	DB	"AS", 'C'+80h
-	TOKEN	TK_CHRS
-	DB	"CHR", '$'+80h
-	TOKEN	TK_LEFTS
-	DB	"LEFT", '$'+80h
-	TOKEN	TK_RIGHTS
-	DB	"RIGHT", '$'+80h
-	TOKEN	TK_MIDS
-	DB	"MID", '$'+80h
+		TOKEN	TK_SGN
+		DB	"SG", 'N'+80h
+		TOKEN	TK_INT
+		DB	"IN", 'T'+80h
+		TOKEN	TK_ABS
+		DB	"AB", 'S'+80h
+		TOKEN	TK_USR
+		DB	"US", 'R'+80h
+		TOKEN	TK_FRE
+		DB	"FR", 'E'+80h
+		TOKEN	TK_INP
+		DB	"IN", 'P'+80h
+		TOKEN	TK_POS
+		DB	"PO", 'S'+80h
+		TOKEN	TK_SQR
+		DB	"SQ", 'R'+80h
+		TOKEN	TK_RND
+		DB	"RN", 'D'+80h
+		TOKEN	TK_LOG
+		DB	"LO", 'G'+80h
+		TOKEN	TK_EXP
+		DB	"EX", 'P'+80h
+		TOKEN	TK_COS
+		DB	"CO", 'S'+80h
+		TOKEN	TK_SIN
+		DB	"SI", 'N'+80h
+		TOKEN	TK_TAN
+		DB	"TA", 'N'+80h
+		TOKEN	TK_ATN
+		DB	"AT", 'N'+80h
+		TOKEN	TK_PEEK
+		DB	"PEE", 'K'+80h
+		TOKEN	TK_LEN
+		DB	"LE", 'N'+80h
+		TOKEN	TK_STRS
+		DB	"STR", '$'+80h
+		TOKEN	TK_VAL
+		DB	"VA", 'L'+80h
+		TOKEN	TK_ASC
+		DB	"AS", 'C'+80h
+		TOKEN	TK_CHRS
+		DB	"CHR", '$'+80h
+		TOKEN	TK_LEFTS
+		DB	"LEFT", '$'+80h
+		TOKEN	TK_RIGHTS
+		DB	"RIGHT", '$'+80h
+		TOKEN	TK_MIDS
+		DB	"MID", '$'+80h
 
 TK_INLINE_COUNT EQU Q-TK_SGN
 
-	TOKEN	TK_SCREENS
-	DB	"SCREEN$", '('+80h
-	TOKEN	TK_INKEYS
-	DB	"INKEY", '$'+80h
-	TOKEN	TK_AT
-	DB	"A", 'T'+80h
-	TOKEN	TK_AMP
-	DB	'&'+80h
+		TOKEN	TK_SCREENS
+		DB	"SCREEN$", '('+80h
+		TOKEN	TK_INKEYS
+		DB	"INKEY", '$'+80h
+		TOKEN	TK_AT
+		DB	"A", 'T'+80h
+		TOKEN	TK_AMP
+		DB	'&'+80h
 
-	TOKEN	TK_BEEP
-	DB	"BEE", 'P'+80h
-	TOKEN	TK_PAUSE
-	DB	"PAUS", 'E'+80h
-	TOKEN	TK_VERIFY
-	DB	"VERIF", 'Y'+80h
-	TOKEN	TK_HOME
-	DB	"HOM", 'E'+80h
-	TOKEN	TK_EDIT
-	DB	"EDI", 'T'+80h
-	TOKEN	TK_DELETE
-	DB	"DELET", 'E'+80h
-	TOKEN	TK_MERGE
-	DB	"MERG", 'E'+80h
-	TOKEN	TK_AUTO
-	DB	"AUT", 'O'+80h
-	TOKEN	TK_HIMEM
-	DB	"HIME", 'M'+80h
-	TOKEN	TK_ATSGN
-	DB	'@'+80h
-	TOKEN	TK_ASN
-	DB	"AS", 'N'+80h
-	TOKEN	TK_ADDR
-	DB	"ADD", 'R'+80h
-	TOKEN	TK_PI
-	DB	"P", 'I'+80h
-	TOKEN	TK_RENUM
-	DB	"RENU", 'M'+80h
-	TOKEN	TK_ACS
-	DB	"AC", 'S'+80h
-	TOKEN	TK_LG
-	DB	"L", 'G'+80h
-	TOKEN	TK_LPRINT
-	DB	"LPRIN", 'T'+80h
-	TOKEN	TK_LLIST
-	DB	"LLIS", 'T'+80h
-	DB	0
+		TOKEN	TK_BEEP
+		DB	"BEE", 'P'+80h
+		TOKEN	TK_PAUSE
+		DB	"PAUS", 'E'+80h
+		TOKEN	TK_VERIFY
+		DB	"VERIF", 'Y'+80h
+		TOKEN	TK_HOME
+		DB	"HOM", 'E'+80h
+		TOKEN	TK_EDIT
+		DB	"EDI", 'T'+80h
+		TOKEN	TK_DELETE
+		DB	"DELET", 'E'+80h
+		TOKEN	TK_MERGE
+		DB	"MERG", 'E'+80h
+		TOKEN	TK_AUTO
+		DB	"AUT", 'O'+80h
+		TOKEN	TK_HIMEM
+		DB	"HIME", 'M'+80h
+		TOKEN	TK_ATSGN
+		DB	'@'+80h
+		TOKEN	TK_ASN
+		DB	"AS", 'N'+80h
+		TOKEN	TK_ADDR
+		DB	"ADD", 'R'+80h
+		TOKEN	TK_PI
+		DB	"P", 'I'+80h
+		TOKEN	TK_RENUM
+		DB	"RENU", 'M'+80h
+		TOKEN	TK_ACS
+		DB	"AC", 'S'+80h
+		TOKEN	TK_LG
+		DB	"L", 'G'+80h
+		TOKEN	TK_LPRINT
+		DB	"LPRIN", 'T'+80h
+		TOKEN	TK_LLIST
+		DB	"LLIS", 'T'+80h
+		DB	0
 
 KW_GENERAL_FNS:
-	DW	Cls 		; Cls
-	DW	For 		; For         03e2
-	DW	Next 		; Next        0820
-	DW	Data 		; Data        05b1
-	DW	Input 		; Input       0740
-	DW	Dim 		; Dim         0a44
-	DW	Read 		; Read        0794
-	DW	Cur 		; Cur	      1920
-	DW	Goto 		; Goto        057f
-	DW	Run 		; Run         0563
-	DW	If 		; If          0630
-	DW	Restore		; Restore     0496
-	DW	Gosub 		; Gosub       056f
-	DW	Return 		; Return      059b
-	DW	Rem 		; Rem         05b3
-	DW	Stop 		; Stop        04b9
-	DW	SyntaxError	; Out
-	DW	On 		; On          0614
-	DW	Plot 		; Plot        1936
-	DW	Line 		; Line        199e
-	DW	Poke 		; Poke        15e6
-	DW	Print 		; Print       0648
-	DW	Def 		; Def         0bdf
-	DW	Cont 		; Cont        04dd
-	DW	List 		; List        0397
-	DW	Clear 		; Clear       053a
-	DW	Cload 		; Cload       1b6f
-	DW	Csave 		; Csave       1b06
-	DW	New 		; New
+		DW	Cls 		; Cls
+		DW	For 		; For         03e2
+		DW	Next 		; Next        0820
+		DW	Data 		; Data        05b1
+		DW	Input 		; Input       0740
+		DW	Dim 		; Dim         0a44
+		DW	Read 		; Read        0794
+		DW	Cur 		; Cur	      1920
+		DW	Goto 		; Goto        057f
+		DW	Run 		; Run         0563
+		DW	If 		; If          0630
+		DW	Restore		; Restore     0496
+		DW	Gosub 		; Gosub       056f
+		DW	Return 		; Return      059b
+		DW	Rem 		; Rem         05b3
+		DW	Stop 		; Stop        04b9
+		DW	SyntaxError	; Out
+		DW	On 		; On          0614
+		DW	Plot 		; Plot        1936
+		DW	Line 		; Line        199e
+		DW	Poke 		; Poke        15e6
+		DW	Print 		; Print       0648
+		DW	Def 		; Def         0bdf
+		DW	Cont 		; Cont        04dd
+		DW	List 		; List        0397
+		DW	Clear 		; Clear       053a
+		DW	Cload 		; Cload       1b6f
+		DW	Csave 		; Csave       1b06
+		DW	New 		; New
 
         DW	Beep		; Beep        1a77
         DW	Pause		; Pause       1699
         DW	Verify          ; Verify      1c35
-	DW	Home		; Home        1694
-	DW	Edit		; Edit        1716
+		DW	Home		; Home        1694
+		DW	Edit		; Edit        1716
         DW      Delete		; Delete      1730
-	DW	Merge		; Merge       1c3b
+		DW	Merge		; Merge       1c3b
         DW	Auto		; Auto        18c8
         DW	Himem		; Himem       16e7
 
 L1F95:  DW	SyntaxError	; @
-	DW	SyntaxError	; Asn
-	DW	SyntaxError	; Addr
-	DW	SyntaxError	; Pi
-	DW	Renum		; Renum       1768
-	DW	SyntaxError	; Acs
-	DW	SyntaxError	; Lg
-	DW	Lprint		; Lprint      1cab
-	DW	Llist		; Llist       1cba
+		DW	SyntaxError	; Asn
+		DW	SyntaxError	; Addr
+		DW	SyntaxError	; Pi
+		DW	Renum		; Renum       1768
+		DW	SyntaxError	; Acs
+		DW	SyntaxError	; Lg
+		DW	Lprint		; Lprint      1cab
+		DW	Llist		; Llist       1cba
 
 KW_INLINE_FNS:
-	DW	Sgn		; 1178
-	DW	Int		; 1236
-	DW	Abs		; 118c
-	DW	Usr		; 15f4
-	DW	Fre		; 0ba9
-	DW	SyntaxError	; Inp
-	DW	Pos		; 0bd7
-	DW	Sqr		; 140a
-	DW	Rnd		; 14e0
-	DW	Log		; 1012
-	DW	Exp		; 144f
-	DW	Cos		; 1512
-	DW	Sin		; 1518
-	DW	Tan		; 157d
-	DW	Atn		; 1592
-	DW	Peek		; 15de
-	DW	Len		; 0e12
-	DW	Str		; 0c4e
-	DW	Val		; 0eeb
-	DW	Asc		; 0e21
-	DW	Chr		; 0e2f
-	DW	Left		; 0e41
-	DW	Right		; 0e71
-	DW	Mid		; 0e7b
+		DW	Sgn		; 1178
+		DW	Int		; 1236
+		DW	Abs		; 118c
+		DW	Usr		; 15f4
+		DW	Fre		; 0ba9
+		DW	SyntaxError	; Inp
+		DW	Pos		; 0bd7
+		DW	Sqr		; 140a
+		DW	Rnd		; 14e0
+		DW	Log		; 1012
+		DW	Exp		; 144f
+		DW	Cos		; 1512
+		DW	Sin		; 1518
+		DW	Tan		; 157d
+		DW	Atn		; 1592
+		DW	Peek		; 15de
+		DW	Len		; 0e12
+		DW	Str		; 0c4e
+		DW	Val		; 0eeb
+		DW	Asc		; 0e21
+		DW	Chr		; 0e2f
+		DW	Left		; 0e41
+		DW	Right		; 0e71
+		DW	Mid		; 0e7b
 
-	DW	Screen		; Screen   1a39
-	DW	Inkey		; Inkey    1685
-	DW	SyntaxError	; At 009b
-	DW	Amp		; &  16a9
+		DW	Screen		; Screen   1a39
+		DW	Inkey		; Inkey    1685
+		DW	SyntaxError	; At 009b
+		DW	Amp		; &  16a9
 
 KW_ARITH_OP_FNS:
-	DB	079h
-	DW	FAdd	; + 1302
-	DB	079h
-	DW	FSub	; - 0f11
-	DB	07Bh
-	DW	FMul	; * 104e
-	DB	07Bh
-	DW	FDiv	; / 10b0
-	DB	07Fh
-	DW	FPower	; ^ 1413
-	DB	50H
-	DW	FAnd	; AND 09a6
-	DB	46H
-	DW	FOr	; OR 09a5
+		DB	079h
+		DW	FAdd	; + 1302
+		DB	079h
+		DW	FSub	; - 0f11
+		DB	07Bh
+		DW	FMul	; * 104e
+		DB	07Bh
+		DW	FDiv	; / 10b0
+		DB	07Fh
+		DW	FPower	; ^ 1413
+		DB	50H
+		DW	FAnd	; AND 09a6
+		DB	46H
+		DW	FOr	; OR 09a5
 
-	DB	"MI(C)RON/88"
+		DB	"MI(C)RON/88"

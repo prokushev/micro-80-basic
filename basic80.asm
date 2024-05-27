@@ -706,7 +706,7 @@ RemoveProgramLine:
         EX      DE,HL
         LD      HL,(VAR_BASE)
 RemoveProgramLineLoop:
-	LD      A,(DE)
+		LD      A,(DE)
         LD      (BC),A
         INC     BC
         INC     DE
@@ -721,7 +721,7 @@ RemoveProgramLineLoop:
 ; after the one to be inserted) must be moved up in memory to make room.
 
 InsertProgramLine:
-	POP     DE
+		POP     DE
         POP     AF
         JP      Z,UpdateLinkedList
         LD      HL,(VAR_BASE)
@@ -744,7 +744,7 @@ InsertProgramLine:
 CopyFromBuffer:
         LD      DE,LINE_BUFFER		;Copy the line into the program
 CopyFromBufferLoop:
-	LD      A,(DE)
+		LD      A,(DE)
         LD      (HL),A
         INC     HL
         INC     DE
@@ -754,10 +754,10 @@ CopyFromBufferLoop:
 ;Now the program line has been inserted/removed, all the pointers from each line to the next need to be updated.
 
 UpdateLinkedList:
-	CALL    ResetAll
+		CALL    ResetAll
         INC     HL
 UpdateLinkedListLoop:
-	LD      D,H
+		LD      D,H
         LD      E,L
         LD      A,(HL)
         INC     HL
@@ -768,7 +768,7 @@ UpdateLinkedListLoop:
         INC     HL
         XOR     A
 FindEndOfLine:
-	CP      (HL)
+		CP      (HL)
         INC     HL
         JP      NZ,FindEndOfLine
         EX      DE,HL
@@ -831,12 +831,12 @@ InputLineWithQ:
 ; для завершения строки программы.
 
 Tokenize:
-	XOR     A
-	LD      (DATA_STM),A
-	LD      C,05H			; Initialise line length to 5
-	LD      DE,LINE_BUFFER		; ie, output ptr is same as input ptr at start.
+		XOR     A
+		LD      (DATA_STM),A
+		LD      C,05H			; Initialise line length to 5
+		LD      DE,LINE_BUFFER		; ie, output ptr is same as input ptr at start.
 TokenizeNext:
-	LD      A,(HL)			; Получение введенного символа
+		LD      A,(HL)			; Получение введенного символа
 ;If char is a space, jump ahead to write it out.
         CP      ' '
         JP      Z,WriteChar
@@ -881,10 +881,10 @@ L041A:  PUSH    DE			; Preserve output ptr.
         PUSH    HL			; Preserve input ptr.
         DB	3Eh			; LD      A, ...
 KwCompare:
-	RST	NextChar		; Get next input char
+		RST	NextChar		; Get next input char
         INC     DE
 KwCompareDE:
-	LD      A,(DE)			; Get keyword char to compare with.
+		LD      A,(DE)			; Get keyword char to compare with.
         AND     7FH			; Ignore bit 7 of keyword char.
         JP      Z, NotAKeyword		; If keyword char==0, then end of keywords reached.
         CP      (HL)			; Keyword char matches input char?
