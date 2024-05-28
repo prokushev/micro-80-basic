@@ -1,5 +1,5 @@
 @echo off
-remfpc ctrlbas.pas
+rem fpc ctrlbas.pas
 
 rem Стандартные бейсики
 

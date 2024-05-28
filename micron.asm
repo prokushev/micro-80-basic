@@ -43,6 +43,7 @@ FACCUM		EQU	214Dh
 ERR_NF		EQU 00H
 ERR_SN		EQU 02H		
 ERR_RG		EQU 04H
+ERR_OD		EQU	06H
 ERR_FC		EQU	08H
 ERR_OM		EQU 0CH
 ERR_US		EQU 0EH
@@ -1177,7 +1178,7 @@ L0736:  LD      A,(INPUT_OR_READ)
         JP      L0873+1         ; reference not aligned to instruction
 
 Input:
-	CP      22h             ; '"'
+		CP      '"'
         LD      BC,0120h
         JP      NZ,L0761
         PUSH    BC
@@ -1204,7 +1205,7 @@ L0761:  PUSH    HL
         CALL    L0777
         LD      A,(VALTYP)
         CALL    L01F2
-        JP      L0798+1         ; reference not aligned to instruction
+        JP      ReadParse         ; reference not aligned to instruction
 
         ; --- START PROC L0777 ---
 L0777:  LD      A,3Fh           ; '?'
@@ -1222,45 +1223,51 @@ L077D:  RST     OutChar
         POP     HL
         OR      (HL)
         RET     NZ
-        ; --- START PROC L078C ---
-L078C:  LD      A,'?'           ; '?'
+        ; --- START PROC InputLineWithQ ---
+InputLineWithQ:  LD      A,'?'           ; '?'
         RST     OutChar
         LD      A,08h
         JP      L077D
 
 Read:
-	PUSH    HL
+		PUSH    HL
         LD      HL,(DATA_PROG_PTR)
-L0798:  OR      0AFh
+        DB		0F6h		; OR 0AFH
+ReadParse:
+		XOR		A			; 0AFh
         LD      (INPUT_OR_READ),A
         EX      (SP),HL
-L079E:  LD      BC,2CCFh
+        DB		01h		; LD      BC,...
+ReadNext:
+		RST		SyntaxCheck
+		DB		','
         CALL    GetVar
         EX      (SP),HL
         PUSH    DE
         LD      A,(HL)
-        CP      2Ch             ; ','
-        JP      Z,L07B9
+        CP      ','
+        JP      Z,GotDataItem
         LD      A,(INPUT_OR_READ)
         OR      A
-        JP      NZ,L07FE
-        LD      A,','           ; ','
+        JP      NZ,ReadError
+        LD      A,','           ; В микро-80 тут '?'
         RST     OutChar
-        CALL    L078C
-L07B9:  LD      A,(VALTYP)
+        CALL    InputLineWithQ
+GotDataItem: 
+		LD      A,(VALTYP)
         OR      A
         JP      Z,L07D9
         RST     NextChar
         LD      D,A
         LD      B,A
-        CP      22h             ; '"'
+        CP      '"'
         JP      Z,L07CD
-        LD      D,3Ah           ; ':'
-        LD      B,2Ch           ; ','
+        LD      D,':'
+        LD      B,','
         DEC     HL
 L07CD:  CALL    L0C83
         EX      DE,HL
-        LD      HL,07E2h
+        LD      HL,L07E2
         EX      (SP),HL
         PUSH    DE
         JP      L05E3
@@ -1270,15 +1277,15 @@ L07D9:  RST     NextChar
         EX      (SP),HL
         CALL    FCopyToMem
         POP     HL
-        DEC     HL
+L07E2:  DEC     HL
         RST     NextChar
         JP      Z,L07EC
-        CP      2Ch             ; ','
+        CP      ','
         JP      NZ,L0736
 L07EC:  EX      (SP),HL
         DEC     HL
         RST     NextChar
-        JP      NZ,L079E+1      ; reference not aligned to instruction
+        JP      NZ,ReadNext
         POP     DE
         LD      A,(INPUT_OR_READ)
         OR      A
@@ -1286,14 +1293,15 @@ L07EC:  EX      (SP),HL
         EX      DE,HL
         JP      L04AA
 
-L07FE:  CALL    Data
+ReadError:
+		CALL    Data
         OR      A
         JP      NZ,L0817
         INC     HL
         RST     PushNextWord
         LD      A,C
         OR      B
-        LD      E,06h
+        LD      E,ERR_OD
         JP      Z,Error
         POP     BC
         LD      E,(HL)
@@ -1303,51 +1311,12 @@ L07FE:  CALL    Data
         LD      (DATA_LINE),HL
         EX      DE,HL
 L0817:  RST     NextChar
-        CP      83h
-        JP      NZ,L07FE
-        JP      L07B9
+        CP      TK_DATA			;83h
+        JP      NZ,ReadError
+        JP      GotDataItem
 
-Next:
-	LD      DE,0000h
-        ; --- START PROC L0823 ---
-L0823:  CALL    NZ,GetVar
-        LD      (PROG_PTR_TEMP),HL
-        CALL    GetFlowPtr
-        JP      NZ,WithoutFOR
-        LD      SP,HL
-        PUSH    DE
-        LD      A,(HL)
-        INC     HL
-        PUSH    AF
-        PUSH    DE
-        CALL    FLoadFromMem
-        EX      (SP),HL
-        PUSH    HL
-        CALL    L0F07
-        POP     HL
-        CALL    FCopyToMem
-        POP     HL
-        CALL    FLoadBCDEfromMem
-        PUSH    HL
-        CALL    FCompare
-        POP     HL
-        POP     BC
-        SUB     B
-        CALL    FLoadBCDEfromMem
-        JP      Z,L085B
-        EX      DE,HL
-        LD      (CURRENT_LINE),HL
-        LD      L,C
-        LD      H,B
-        JP      EndOfForHandler
+		INCLUDE	"stNext.inc"
 
-L085B:  LD      SP,HL
-        LD      HL,(PROG_PTR_TEMP)
-        LD      A,(HL)
-        CP      2Ch             ; ','
-        JP      NZ,ExecNext
-        RST     NextChar
-        CALL    L0823
         ; --- START PROC EvalNumericExpression ---
 EvalNumericExpression:
 	CALL    EvalExpression
@@ -1482,7 +1451,7 @@ L093F:  LD      D,7Dh           ; '}'
         CALL    L087B
         LD      HL,(2139h)
         PUSH    HL
-        CALL    L118E
+        CALL    FNegate
         ; --- START PROC L094B ---
 L094B:  CALL    IsNumeric
         POP     HL
@@ -1556,7 +1525,7 @@ FAnd:
         POP     BC
         EX      (SP),HL
         EX      DE,HL
-        CALL    L11A6
+        CALL    FLoadFromBCDE
         PUSH    AF
         CALL    FTestIntegerExpression
         POP     AF
@@ -1641,7 +1610,7 @@ L0A1E:  INC     A
         AND     B
         ADD     A,0FFh
         SBC     A,A
-        JP      L1179
+        JP      FCharToFloat
 
         ; --- START PROC L0A28 ---
 L0A28:  LD      D,5Ah           ; 'Z'
@@ -2428,9 +2397,9 @@ L0EDF:  CALL    FTestPositiveIntegerExpression
 
         ; --- START PROC L0F04 ---
 L0F04:  LD      HL,13EFh
-        ; --- START PROC L0F07 ---
-L0F07:  CALL    FLoadBCDEfromMem
-        JP      L0F16
+        ; --- START PROC FAddFromMem ---
+FAddFromMem:  CALL    FLoadBCDEfromMem
+        JP      FAddBCDE
 
         ; --- START PROC L0F0D ---
 L0F0D:  CALL    FLoadBCDEfromMem
@@ -2441,14 +2410,14 @@ FSub:
 	POP	DE
 
         ; --- START PROC L0F13 ---
-L0F13:  CALL    L118E
-        ; --- START PROC L0F16 ---
-L0F16:  LD      A,B
+L0F13:  CALL    FNegate
+        ; --- START PROC FAddBCDE ---
+FAddBCDE:  LD      A,B
         OR      A
         RET     Z
         LD      A,(FACCUM+3)
         OR      A
-        JP      Z,L11A6
+        JP      Z,FLoadFromBCDE
         SUB     B
         JP      NC,L0F30
         CPL
@@ -2456,7 +2425,7 @@ L0F16:  LD      A,B
         EX      DE,HL
         CALL    FPush
         EX      DE,HL
-        CALL    L11A6
+        CALL    FLoadFromBCDE
         POP     BC
         POP     DE
 L0F30:  CP      19h
@@ -2492,8 +2461,10 @@ L0F56:  XOR     A
         LD      A,(HL)
         SBC     A,C
         LD      C,A
-        ; --- START PROC L0F64 ---
-L0F64:  CALL    C,L0FC9
+		
+        ; --- START PROC FNormalise ---
+FNormalise:
+		CALL    C,L0FC9
         ; --- START PROC L0F67 ---
 L0F67:  LD      L,B
         LD      H,E
@@ -2549,7 +2520,7 @@ L0F9D:  LD      HL,FACCUM+3
         AND     80h
         XOR     C
         LD      C,A
-        JP      L11A6
+        JP      FLoadFromBCDE
 
         ; --- START PROC L0FAE ---
 L0FAE:  INC     E
@@ -2656,7 +2627,7 @@ Log:	RST     FTestSign
         LD      (HL),B
         PUSH    DE
         PUSH    BC
-        CALL    L0F16
+        CALL    FAddBCDE
         POP     BC
         POP     DE
         INC     B
@@ -2667,7 +2638,7 @@ Log:	RST     FTestSign
         CALL    L14B0
         LD      BC,8080h
         LD      DE,0000h
-        CALL    L0F16
+        CALL    FAddBCDE
         POP     AF
         CALL    L12FC
         ; --- START PROC L1047 ---
@@ -2676,8 +2647,8 @@ L1047:  LD      BC,8031h
         DB	21h		;LD      HL,...
 
 FMul:					
-	POP	BC			; Get lhs in BCDE
-	POP	DE
+		POP	BC			; Get lhs in BCDE
+		POP	DE
         ; --- START PROC L1050 ---
 L1050:  RST     FTestSign
         RET     Z
@@ -2745,7 +2716,7 @@ L109F:  LD      B,E
 L10A4:  CALL    FPush
         LD      BC,8420h
         LD      DE,0000h
-        CALL    L11A6
+        CALL    FLoadFromBCDE
 FDiv:	POP     BC
         POP     DE
         ; --- START PROC L10B2 ---
@@ -2870,7 +2841,7 @@ L1157:  CALL    FCopyToBCDE
         ADD     A,02h
         JP      C,L0FB8
         LD      B,A
-        CALL    L0F16
+        CALL    FAddBCDE
         LD      HL,FACCUM+3
         INC     (HL)
         RET     NZ
@@ -2885,28 +2856,8 @@ L1174:  SBC     A,A
         INC     A
         RET
 
-Sgn:	RST     FTestSign
-        ; --- START PROC L1179 ---
-L1179:  LD      B,88h
-        LD      DE,0000h
-        ; --- START PROC ReturnInteger ---
-ReturnInteger:  LD      HL,FACCUM+3
-        LD      C,A
-        LD      (HL),B
-        LD      B,00h
-        INC     HL
-        LD      (HL),80h
-        RLA
-        JP      L0F64
-
-Abs:	RST     FTestSign
-        RET     P
-        ; --- START PROC L118E ---
-L118E:  LD      HL,214Fh
-        LD      A,(HL)
-        XOR     80h
-        LD      (HL),A
-        RET
+		INCLUDE	"fnSgn.inc"
+		INCLUDE	"fnAbs.inc"
 
         ; --- START PROC FPush ---
 FPush:  EX      DE,HL
@@ -2921,8 +2872,8 @@ FPush:  EX      DE,HL
 
         ; --- START PROC FLoadFromMem ---
 FLoadFromMem:  CALL    FLoadBCDEfromMem
-        ; --- START PROC L11A6 ---
-L11A6:  EX      DE,HL
+        ; --- START PROC FLoadFromBCDE ---
+FLoadFromBCDE:  EX      DE,HL
         LD      (FACCUM),HL
         LD      H,B
         LD      L,C
@@ -3062,7 +3013,7 @@ Int:	LD      HL,FACCUM+3
         PUSH    AF
         LD      A,C
         RLA
-        CALL    L0F64
+        CALL    FNormalise
         POP     AF
         RET
 
@@ -3156,7 +3107,7 @@ L12C7:  CALL    P,L12DD
 L12D3:  JP      NZ,L12C7
         POP     DE
         POP     AF
-        CALL    Z,L118E
+        CALL    Z,FNegate
         EX      DE,HL
         RET
 
@@ -3189,11 +3140,11 @@ L12E5:  PUSH    DE
 
         ; --- START PROC L12FC ---
 L12FC:  CALL    FPush
-        CALL    L1179
+        CALL    FCharToFloat
 FAdd:
         POP     BC
         POP     DE
-        JP      L0F16
+        JP      FAddBCDE
 
         ; --- START PROC L1307 ---
 L1307:  LD      A,E
@@ -3230,7 +3181,7 @@ L1332:  INC     HL
         LD      (HL),30h        ; '0'
         JP      Z,L13DB
         PUSH    HL
-        CALL    M,L118E
+        CALL    M,FNegate
         XOR     A
         PUSH    AF
         CALL    L13E1
@@ -3252,7 +3203,7 @@ L1355:  CALL    L10A4
 L135E:  CALL    L0F04
         INC     A
         CALL    FAsInteger
-        CALL    L11A6
+        CALL    FLoadFromBCDE
         LD      BC,0206h
         POP     AF
         ADD     A,C
@@ -3292,7 +3243,7 @@ L138E:  INC     B
         JP      NC,L138E
         CALL    L0FBD
         INC     HL
-        CALL    L11A6
+        CALL    FLoadFromBCDE
         EX      DE,HL
         POP     HL
         LD      (HL),B
@@ -3362,9 +3313,8 @@ L1405:  LD      HL,118Eh
         JP      (HL)
 
         ; --- START PROC Sqr ---
-Sqr:	CALL    FPush
-        LD      HL,ONE_HALF
-        CALL    FLoadFromMem
+
+		INCLUDE	"fnSqr.inc"
 
 FPower:
         POP     BC
@@ -3396,7 +3346,7 @@ L1437:  POP     HL
         POP     HL
         LD      (FACCUM),HL
         CALL    C,L1405
-        CALL    Z,L118E
+        CALL    Z,FNegate
         PUSH    DE
         PUSH    BC
         CALL    Log
@@ -3416,14 +3366,14 @@ Exp:	CALL    FPush
         JP      C,L114C
         PUSH    AF
         LD      HL,1001h
-        CALL    L0F07
+        CALL    FAddFromMem
         CALL    L1047
         POP     AF
         POP     BC
         POP     DE
         PUSH    AF
         CALL    L0F13
-        CALL    L118E
+        CALL    FNegate
         LD      HL,148Fh
         CALL    L14BF
         LD      DE,0000h
@@ -3485,7 +3435,7 @@ L14C7:  LD      B,0F1h
         POP     HL
         CALL    FLoadBCDEfromMem
         PUSH    HL
-        CALL    L0F16
+        CALL    FAddBCDE
         POP     HL
         JP      L14C7+1         ; reference not aligned to instruction
 
@@ -3499,7 +3449,7 @@ Rnd:	RST     FTestSign
         CALL    L1050
         LD      BC,6828h
         LD      DE,0B146h
-        CALL    L0F16
+        CALL    FAddBCDE
 L14FD:  CALL    FCopyToBCDE
         LD      A,E
         LD      E,C
@@ -3514,12 +3464,12 @@ L14FD:  CALL    FCopyToBCDE
 
         ; --- START PROC Cos ---
 Cos:	LD      HL,1558h
-        CALL    L0F07
+        CALL    FAddFromMem
         ; --- START PROC Sin ---
 Sin:	CALL    FPush
         LD      BC,8349h
         LD      DE,0FDBh
-        CALL    L11A6
+        CALL    FLoadFromBCDE
         POP     BC
         POP     DE
         CALL    L10B2
@@ -3537,11 +3487,11 @@ Sin:	CALL    FPush
         RST     FTestSign
         OR      A
 L1544:  PUSH    AF
-        CALL    P,L118E
+        CALL    P,FNegate
         LD      HL,155Ch
-        CALL    L0F07
+        CALL    FAddFromMem
         POP     AF
-        CALL    NC,L118E
+        CALL    NC,FNegate
         LD      HL,1560h
         JP      L14B0
 
@@ -3576,21 +3526,12 @@ L1558:  IN      A,(0Fh)
         OR      A
         XOR     D
 
-Tan:
-	CALL    FPush
-        CALL    Sin
-        POP     BC
-        POP     HL
-        CALL    FPush
-        EX      DE,HL
-        CALL    L11A6
-        CALL    Cos
-        JP      FDiv
+		include	"fnTan.inc"
 
         ; --- START PROC Atn ---
 Atn:	RST     FTestSign
         CALL    M,L1405
-        CALL    M,L118E
+        CALL    M,FNegate
         LD      A,(FACCUM+3)
         CP      81h
         JP      C,L15AD
@@ -3640,10 +3581,10 @@ L15B7:  ADD     HL,BC
         NOP
         NOP
 
-	INCLUDE	"fnPeek.inc"
+		INCLUDE	"fnPeek.inc"
 
 Poke:
-	CALL    EvalNumericExpression
+		CALL    EvalNumericExpression
         RST     FTestSign
         CALL    FTestIntegerExpression
         PUSH    DE
@@ -3676,7 +3617,7 @@ Init:   LD      HL,(INIT_PROGAM_BASE)
         CALL    0F818h
         CALL    L0351
         RST     OutChar
-        CP      59h             ; 'Y'
+        CP      'Y'             ; 'Y'
         CALL    New
         ; --- START PROC L1635 ---
 L1635:  CALL    ResetStack
@@ -3821,7 +3762,7 @@ L16FA:  LD      E,20h           ; ' '
         JP      ClearAll
 
 Edit:
-	CALL    LineNumberFromStr
+		CALL    LineNumberFromStr
         RET     NZ
         POP     BC
         ; --- START PROC L171B ---
@@ -3838,7 +3779,7 @@ L171B:  CALL    FindProgramLine
         JP      L010D
 
 Delete:
-	CALL    L03B6
+		CALL    L03B6
         JP      NC,SyntaxError
         POP     BC
         CALL    FindProgramLine
@@ -3877,7 +3818,7 @@ L1759:  LD      A,(DE)
         JP      L1BC3
 
 Renum:
-	EX      DE,HL
+		EX      DE,HL
         CALL    L01CD
         EX      DE,HL
         CALL    L189A
@@ -4110,7 +4051,7 @@ L18C3:  LD      (207Bh),HL
         RET
 
 Auto:
-	EX      DE,HL
+		EX      DE,HL
         CALL    L01CD
         EX      DE,HL
         CALL    L189A
@@ -4163,7 +4104,7 @@ L191B:  LD      D,A
 
         ; --- START PROC Cur ---
 Cur:
-	CALL    L18F7
+		CALL    L18F7
         LD      (7600h),HL
         LD      A,1Bh
         SUB     B
@@ -4177,7 +4118,7 @@ Cur:
         RET
 
 Plot:
-	CALL    EvalByteExpression
+		CALL    EvalByteExpression
         LD      (2054h),A
         CALL    L0ED8
         LD      (2055h),A
@@ -4348,7 +4289,7 @@ L1A46:  RST     NextChar
 L1A55:  RST     NextChar
         LD      BC,8249h
         LD      DE,0FDBh
-        JP      L11A6
+        JP      FLoadFromBCDE
 
         ; --- START PROC L1A5F ---
 L1A5F:  CALL    EvalNumericExpression
@@ -4622,11 +4563,11 @@ L1C27:  CALL    L1BD0
         RET
 
 Verify:
-	LD      BC,0100h
+		LD      BC,0100h
         JP      L1B72
 
 Merge:
-	LD      BC,0001h
+		LD      BC,0001h
         CALL    NZ,L1ABC
         PUSH    HL
         LD      HL,(VAR_BASE)
@@ -4662,14 +4603,14 @@ L1C57:  RST     NextChar
 
         ; --- START PROC L1C7E ---
 L1C7E:  LD      HL,1558h
-        CALL    L0F07
+        CALL    FAddFromMem
         POP     HL
         RET
 
         ; --- START PROC L1C86 ---
 L1C86:  CALL    L1C57
         PUSH    HL
-        CALL    L118E
+        CALL    FNegate
         JP      L1C7E
 
         ; --- START PROC L1C90 ---
@@ -4680,7 +4621,7 @@ L1C90:  RST     NextChar
         CALL    FPush
         LD      BC,8213h
         LD      DE,5D8Eh
-        CALL    L11A6
+        CALL    FLoadFromBCDE
         POP     BC
         POP     DE
         CALL    L10B2
@@ -4688,7 +4629,7 @@ L1C90:  RST     NextChar
         RET
 
 Lprint:
-	PUSH    AF
+		PUSH    AF
         LD      A,01h
         LD      (ControlChar),A
         POP     AF
@@ -4702,9 +4643,9 @@ Llist:  LD      A,01h
         JP      List
 
 Cls:
-	LD      DE,76D0h
+		LD      DE,76D0h
 ClsLoop:
-	XOR     A
+		XOR     A
         LD      (DE),A
         INC     DE
         LD      A,D
