@@ -43,6 +43,7 @@ FACCUM		EQU	214Dh
 ERR_NF		EQU 00H
 ERR_SN		EQU 02H		
 ERR_RG		EQU 04H
+ERR_FC		EQU	08H
 ERR_OM		EQU 0CH
 ERR_US		EQU 0EH
 ERR_DZ		EQU 14H
@@ -243,7 +244,7 @@ PrintInLine:
         PUSH    HL
         CALL    L1313
         LD      A,':'           ; ':'
-        RST     18H
+        RST    	OutChar
         LD      A,(208Dh)
         INC     A
         LD      E,A
@@ -271,7 +272,7 @@ GetNonBlankLine:
         CALL    L0279
 		
         ; --- START PROC L010D ---
-L010D:  CALL    L06DA
+L010D:  CALL    TerminateInput
 
         ; --- START PROC L0110 ---
 L0110:  RST     NextChar
@@ -416,7 +417,8 @@ New:
         LD      (VAR_BASE),HL
 		
         ; --- START PROC ResetAll ---
-ResetAll:  LD      HL,(PROGRAM_BASE)
+ResetAll:
+		LD      HL,(PROGRAM_BASE)
         DEC     HL
         LD      (HL),00h
 		
@@ -473,7 +475,7 @@ L01FA:  LD      A,(HL)
 L021D:  PUSH    DE
         LD      DE,KEYWORDS-1
         PUSH    HL
-		DB	3Eh			; LD      A, ...
+		DB		3Eh			; LD      A, ...
 L0223: 	INC		HL			; !! Отличается от Микро-80 !!
 
         INC     DE
@@ -490,7 +492,7 @@ L0225:  LD      A,(DE)
         OR      80h
         DB		0F2H			; JP      P,...
 L0239:
-		POP 	HL			; Restore input ptr
+		POP 	HL				; Restore input ptr
 		LD		A, (HL)			; and get input char
         POP     DE
 WriteChar:
@@ -589,10 +591,10 @@ L02B8:  DEC     DE
         LD      (HL),C
         ; --- START PROC L02C4 ---
 L02C4:  CALL    0F818h
-        LD      C,20h           ; ' '
+        LD      C,' '           ; ' '
         CALL    0F809h
         LD      A,08h
-L02CE:  RST     18H
+L02CE:  RST     OutChar
         DEC     B
         JP      NZ,L02CE
         POP     HL
@@ -742,6 +744,7 @@ L03AC:  CALL    L03D1
         POP     HL
         JP      C,Main
         JP      Z,L03A1
+	
         ; --- START PROC L03B6 ---
 L03B6:  CALL    LineNumberFromStr
         RET     Z
@@ -867,20 +870,20 @@ L04AA:  LD      (DATA_PROG_PTR),HL
 
         ; --- START PROC TestBreakKey ---
 TestBreakKey:
-	CALL    0F812h
+		CALL    0F812h
         OR      A
         RET     Z
         CALL    L0351
         CP      05h
 
-	INCLUDE "stStop.inc"
-	INCLUDE "stEnd.inc"
+		INCLUDE "stStop.inc"
+		INCLUDE "stEnd.inc"
 
 InputBreak:
         POP     BC
         ; --- START PROC EndOfProgram ---
 EndOfProgram:
-	PUSH    AF
+		PUSH    AF
         LD      HL,(CURRENT_LINE)
         LD      A,L
         AND     H
@@ -890,11 +893,11 @@ EndOfProgram:
         LD      HL,(PROG_PTR_TEMP)
         LD      (OLD_TEXT),HL
 L04D3:  POP     AF
-        LD      HL,1DD2h
+        LD      HL,szStop
         JP      NZ,PrintInLine
         JP      Main
 
-	INCLUDE	"stCont.inc"
+		INCLUDE	"stCont.inc"
 
         ; --- START PROC CharIsAlpha ---
 CharIsAlpha:  LD      A,(HL)
@@ -904,33 +907,39 @@ CharIsAlpha:  LD      A,(HL)
         CCF
         RET
 
-        ; --- START PROC L04F9 ---
-L04F9:  RST     NextChar
+        ; --- START PROC GetSubscript ---
+GetSubscript:
+		RST     NextChar
         ; --- START PROC EvalPositiveNumericExpression ---
 EvalPositiveNumericExpression:
-	CALL    EvalNumericExpression
-        ; --- START PROC L04FD ---
-L04FD:  RST     FTestSign
+		CALL    EvalNumericExpression
+        ; --- START PROC FTestPositiveIntegerExpression ---
+FTestPositiveIntegerExpression:
+		RST     FTestSign
         JP      M,FunctionCallError
         ; --- START PROC FTestIntegerExpression ---
-FTestIntegerExpression:  LD      A,(FACCUM+3)
+FTestIntegerExpression:
+		LD      A,(FACCUM+3)
         CP      91h
-        JP      C,L120B
+        JP      C,FAsInteger
         LD      BC,8001h
         LD      DE,0000h
-        CALL    L11E0
+        CALL    FCompare
         LD      D,C
         RET     Z
         ; --- START PROC FunctionCallError ---
 FunctionCallError:
-	LD      E,08h
+		LD      E,ERR_FC
         JP      Error
 
         ; --- START PROC LineNumberFromStr ---
-LineNumberFromStr:  DEC     HL
-        ; --- START PROC L051A ---
-L051A:  LD      DE,0000h
-L051D:  RST     NextChar
+LineNumberFromStr:  
+		DEC     HL
+        ; --- START PROC LineNumberFromStr2 ---
+LineNumberFromStr2:
+		LD      DE,0000h
+NextLineNumChar:
+		RST     NextChar
         RET     NC
         PUSH    HL
         PUSH    AF
@@ -944,42 +953,25 @@ L051D:  RST     NextChar
         ADD     HL,DE
         ADD     HL,HL
         POP     AF
-        SUB     30h             ; '0'
+        SUB     '0'
         LD      E,A
         LD      D,00h
         ADD     HL,DE
         EX      DE,HL
         POP     HL
-        JP      L051D
+        JP      NextLineNumChar
 
 		INCLUDE	"stClear.inc"
 		INCLUDE	"stRun.inc"
 		INCLUDE	"stGosub.inc"
 		INCLUDE	"stGoto.inc"
 		INCLUDE	"stReturn.inc"
-
-Data:
-FindNextStatement:
-		DB	01H, ":"	;LD BC,..3AH эмулирует LD C, ":"
-Rem:	LD	C, 0
-        LD      B,00h
-L05B7:  LD      A,C
-        LD      C,B
-        LD      B,A
-L05BA:  LD      A,(HL)
-        OR      A
-        RET     Z
-        CP      B
-        RET     Z
-        INC     HL
-        CP      22h             ; '"'
-        JP      Z,L05B7
-        JP      L05BA
+		INCLUDE	"stDataRem.inc"
 
         ; --- START PROC Let ---
-Let:  CALL    GetVar
+Let:  	CALL    GetVar
         RST     SyntaxCheck
-        XOR     H
+        DB		TK_EQ			; '='
         LD      A,(VALTYP)
         PUSH    AF
         PUSH    DE
@@ -990,7 +982,7 @@ Let:  CALL    GetVar
         POP     AF
         PUSH    DE
         RRA
-        CALL    L086E
+        CALL    CheckType
         JP      Z,CopyNumeric
 L05E3:  PUSH    HL
         LD      HL,(FACCUM)
@@ -1022,35 +1014,18 @@ L05FD:  LD      A,(DE)
         RET
 
 CopyNumeric:
-	PUSH    HL
+		PUSH    HL
         CALL    FCopyToMem
         POP     DE
         POP     HL
         RET
 
-On:	CALL    EvalByteExpression
-        LD      A,(HL)
-        LD      B,A
-        CP      8Ch
-        JP      Z,OkToken
-        RST     SyntaxCheck
-        ADC     A,B
-        DEC     HL
-OkToken:
-	LD      C,E
-OnLoop:
-	DEC     C
-        LD      A,B
-        JP      Z,ExecA
-        CALL    L051A
-        CP      2Ch             ; ','
-        RET     NZ
-        JP      OnLoop
+		INCLUDE	"stOn.inc"
+		INCLUDE	"stIf.inc"
 
-	INCLUDE	"stIf.inc"
-
-        ; --- START PROC L0647 ---
-L0647:  RST     NextChar
+        ; --- START PROC PrintLoop ---
+PrintLoop:
+		RST     NextChar
         ; --- START PROC Print ---
 Print:	JP      Z,NewLine
         ; --- START PROC L064B ---
@@ -1092,19 +1067,19 @@ L066B:  PUSH    HL
         CALL    NC,NewLine
         CALL    L0CC6
         LD      A,20h           ; ' '
-        RST     18H
+        RST     OutChar
         XOR     A
 L06A1:  CALL    NZ,L0CC6
 L06A4:  POP     HL
-        JP      L0647
+        JP      PrintLoop
 
 L06A8:  INC     HL
         CALL    EvalNumericExpression
         DEC     HL
         PUSH    HL
         CALL    FTestIntegerExpression
-        LD      A,20h           ; ' '
-        RST     18H
+        LD      A,' '           ; ' '
+        RST     OutChar
         LD      A,D
         OR      A
         JP      Z,L06BD
@@ -1127,18 +1102,20 @@ L06CD:  AND     0Fh
         CP      0Ah
         JP      C,L06D6
         ADD     A,07h
-L06D6:  ADD     A,30h           ; '0'
-        RST     18H
+L06D6:  ADD     A,'0'           ; '0'
+        RST     OutChar
         RET
 
-        ; --- START PROC L06DA ---
-L06DA:  LD      (HL),00h
-        LD      HL,208Fh
+        ; --- START PROC TerminateInput ---
+TerminateInput:
+		LD      (HL),00h
+        LD      HL,LINE_BUFFER-1
         ; --- START PROC NewLine ---
-NewLine:  LD      A,0Dh
-        RST     18H
+NewLine:
+		LD      A,0Dh
+        RST     OutChar
         LD      A,0Ah
-        RST     18H
+        RST     OutChar
         XOR     A
         LD      (TERMINAL_X),A
         RET
@@ -1158,7 +1135,7 @@ L06FC:  LD      B,A
         ; --- START PROC L06FF ---
 L06FF:  DEC     B
         JP      M,L0707
-        RST     18H
+        RST     OutChar
         JP      L06FF
 
         ; --- START PROC L0707 ---
@@ -1234,7 +1211,7 @@ L0777:  LD      A,3Fh           ; '?'
         JP      Z,L077D
         LD      A,C
         ; --- START PROC L077D ---
-L077D:  RST     18H
+L077D:  RST     OutChar
         LD      DE,LINE_BUFFER
         XOR     A
         LD      (DE),A
@@ -1246,8 +1223,8 @@ L077D:  RST     18H
         OR      (HL)
         RET     NZ
         ; --- START PROC L078C ---
-L078C:  LD      A,3Fh           ; '?'
-        RST     18H
+L078C:  LD      A,'?'           ; '?'
+        RST     OutChar
         LD      A,08h
         JP      L077D
 
@@ -1267,8 +1244,8 @@ L079E:  LD      BC,2CCFh
         LD      A,(INPUT_OR_READ)
         OR      A
         JP      NZ,L07FE
-        LD      A,2Ch           ; ','
-        RST     18H
+        LD      A,','           ; ','
+        RST     OutChar
         CALL    L078C
 L07B9:  LD      A,(VALTYP)
         OR      A
@@ -1350,13 +1327,13 @@ L0823:  CALL    NZ,GetVar
         POP     HL
         CALL    FCopyToMem
         POP     HL
-        CALL    L11B4
+        CALL    FLoadBCDEfromMem
         PUSH    HL
-        CALL    L11E0
+        CALL    FCompare
         POP     HL
         POP     BC
         SUB     B
-        CALL    L11B4
+        CALL    FLoadBCDEfromMem
         JP      Z,L085B
         EX      DE,HL
         LD      (CURRENT_LINE),HL
@@ -1379,8 +1356,8 @@ IsNumeric:
 	DB	0F6H			;OR 37H - это сброс флага CY
 IsString:
 	SCF				;37H
-        ; --- START PROC L086E ---
-L086E:  LD      A,(VALTYP)
+        ; --- START PROC CheckType ---
+CheckType:  LD      A,(VALTYP)
         ADC     A,A
         RET     PE
 L0873:  LD      E,18h
@@ -1620,10 +1597,10 @@ L09DF:  POP     HL
         POP     BC
         POP     DE
         PUSH    AF
-        CALL    L086E
+        CALL    CheckType
         LD      HL,0A1Eh
         PUSH    HL
-        JP      Z,L11E0
+        JP      Z,FCompare
         XOR     A
         LD      (VALTYP),A
         PUSH    DE
@@ -1632,7 +1609,7 @@ L09DF:  POP     HL
         RST     PushNextWord
         RST     PushNextWord
         CALL    L0DF0
-        CALL    L11B4
+        CALL    FLoadBCDEfromMem
         POP     HL
         EX      (SP),HL
         LD      D,L
@@ -1773,7 +1750,7 @@ L0ACD:  PUSH    HL
         LD      D,00h
 L0AD4:  PUSH    DE
         PUSH    BC
-        CALL    L04F9
+        CALL    GetSubscript
         POP     BC
         POP     AF
         EX      DE,HL
@@ -2072,16 +2049,17 @@ L0CA5:  LD      DE,212Bh
         LD      A,(HL)
         RET
 
-L0CC2:  INC     HL
+PrintString1:
+		INC     HL
         CALL    L0C7F
         ; --- START PROC L0CC6 ---
 L0CC6:  CALL    EvalCurrentString
-        CALL    L11B4
+        CALL    FLoadBCDEfromMem
         INC     E
 L0CCD:  DEC     E
         RET     Z
         LD      A,(BC)
-        RST     18H
+        RST     OutChar
         INC     BC
         JP      L0CCD
 
@@ -2147,7 +2125,7 @@ L0D31:  EX      DE,HL
         EX      DE,HL
         RST     CompareHLDE
         JP      Z,L0D7D
-        CALL    L11B4
+        CALL    FLoadBCDEfromMem
         LD      A,E
         PUSH    HL
         ADD     HL,BC
@@ -2437,7 +2415,7 @@ L0EDB:	RST	NextChar
         ; --- START PROC EvalByteExpression ---
 EvalByteExpression:  CALL    EvalNumericExpression
         ; --- START PROC L0EDF ---
-L0EDF:  CALL    L04FD
+L0EDF:  CALL    FTestPositiveIntegerExpression
         LD      A,D
         OR      A
         JP      NZ,FunctionCallError
@@ -2451,11 +2429,11 @@ L0EDF:  CALL    L04FD
         ; --- START PROC L0F04 ---
 L0F04:  LD      HL,13EFh
         ; --- START PROC L0F07 ---
-L0F07:  CALL    L11B4
+L0F07:  CALL    FLoadBCDEfromMem
         JP      L0F16
 
         ; --- START PROC L0F0D ---
-L0F0D:  CALL    L11B4
+L0F0D:  CALL    FLoadBCDEfromMem
         DB	21h			;LD      HL,...
 
 FSub:
@@ -2942,7 +2920,7 @@ FPush:  EX      DE,HL
         RET
 
         ; --- START PROC FLoadFromMem ---
-FLoadFromMem:  CALL    L11B4
+FLoadFromMem:  CALL    FLoadBCDEfromMem
         ; --- START PROC L11A6 ---
 L11A6:  EX      DE,HL
         LD      (FACCUM),HL
@@ -2954,8 +2932,8 @@ L11A6:  EX      DE,HL
 
         ; --- START PROC FCopyToBCDE ---
 FCopyToBCDE:  LD      HL,FACCUM
-        ; --- START PROC L11B4 ---
-L11B4:  LD      E,(HL)
+        ; --- START PROC FLoadBCDEfromMem ---
+FLoadBCDEfromMem:  LD      E,(HL)
         INC     HL
         LD      D,(HL)
         INC     HL
@@ -2999,8 +2977,8 @@ L11CB:  LD      HL,214Fh
         XOR     (HL)
         RET
 
-        ; --- START PROC L11E0 ---
-L11E0:  LD      A,B
+        ; --- START PROC FCompare ---
+FCompare:  LD      A,B
         OR      A
         JP      Z,FTestSign
         LD      HL,1172h
@@ -3038,8 +3016,8 @@ L11F8:  INC     HL
         POP     HL
         RET
 
-        ; --- START PROC L120B ---
-L120B:  LD      B,A
+        ; --- START PROC FAsInteger ---
+FAsInteger:  LD      B,A
         LD      C,A
         LD      D,A
         LD      E,A
@@ -3078,7 +3056,7 @@ Int:	LD      HL,FACCUM+3
         LD      A,(FACCUM)
         RET     NC
         LD      A,(HL)
-        CALL    L120B
+        CALL    FAsInteger
         LD      (HL),98h
         LD      A,E
         PUSH    AF
@@ -3230,7 +3208,7 @@ L1307:  LD      A,E
 
         ; --- START PROC L1313 ---
 L1313:  PUSH    HL
-        LD      HL,1DD9h
+        LD      HL,szIn
         CALL    0F818h
         POP     HL
         ; --- START PROC PrintInt ---
@@ -3239,7 +3217,7 @@ PrintInt:  EX      DE,HL
 L131C:  XOR     A
         LD      B,98h
         CALL    ReturnInteger
-        LD      HL,L0CC2
+        LD      HL,PrintString1
         PUSH    HL
         ; --- START PROC L1326 ---
 L1326:  LD      HL,2152h
@@ -3258,7 +3236,7 @@ L1332:  INC     HL
         CALL    L13E1
 L1341:  LD      BC,9143h
         LD      DE,4FF8h
-        CALL    L11E0
+        CALL    FCompare
         JP      PO,L135E
         POP     AF
         CALL    L12DE
@@ -3273,7 +3251,7 @@ L1355:  CALL    L10A4
         CALL    L13E1
 L135E:  CALL    L0F04
         INC     A
-        CALL    L120B
+        CALL    FAsInteger
         CALL    L11A6
         LD      BC,0206h
         POP     AF
@@ -3356,7 +3334,7 @@ L13DE:  LD      (HL),C
         ; --- START PROC L13E1 ---
 L13E1:  LD      BC,9474h
         LD      DE,23F7h
-        CALL    L11E0
+        CALL    FCompare
         POP     HL
         JP      PO,L1355
         JP      (HL)
@@ -3409,7 +3387,7 @@ L1415:  RST     FTestSign
         POP     BC
         POP     DE
         PUSH    AF
-        CALL    L11E0
+        CALL    FCompare
         POP     HL
         LD      A,H
         RRA
@@ -3505,7 +3483,7 @@ L14C7:  LD      B,0F1h
         PUSH    HL
         CALL    L1050
         POP     HL
-        CALL    L11B4
+        CALL    FLoadBCDEfromMem
         PUSH    HL
         CALL    L0F16
         POP     HL
@@ -3697,7 +3675,7 @@ Init:   LD      HL,(INIT_PROGAM_BASE)
         LD      HL,szHello
         CALL    0F818h
         CALL    L0351
-        RST     18H
+        RST     OutChar
         CP      59h             ; 'Y'
         CALL    New
         ; --- START PROC L1635 ---
@@ -3721,7 +3699,7 @@ L1650:  POP     HL
 L1651:  AND     7Fh             ; ''
         LD      (DE),A
         RET     Z
-        RST     18H
+        RST     OutChar
         INC     HL
         INC     DE
         LD      A,E
@@ -3749,7 +3727,7 @@ L1679:  LD      A,(HL)
         OR      A
         JP      M,L1650
         LD      (DE),A
-        RST     18H
+        RST     OutChar
         INC     HL
         INC     DE
         JP      L1679
@@ -3763,7 +3741,7 @@ Inkey:	CALL    0F81Bh
         JP      L0CA5
 
 Home:
-	LD      C,1Fh
+		LD      C,1Fh
         JP      0F809h
 
 Pause:  CALL    L1A5F
@@ -4143,7 +4121,7 @@ L18D0:  LD      HL,18D7h
         NOP
         NOP
         CALL    L027C
-        CALL    L06DA
+        CALL    TerminateInput
         LD      A,02h
         LD      (ControlChar),A
         JP      L0110
@@ -4382,7 +4360,7 @@ L1A5F:  CALL    EvalNumericExpression
         LD      BC,8A7Ah
         LD      DE,0000h
         CALL    L1050
-        CALL    L04FD
+        CALL    FTestPositiveIntegerExpression
         POP     HL
         RET
 
@@ -4399,7 +4377,7 @@ Beep:	CALL    L1A5F
         LD      BC,865Ah
         LD      DE,0FA95h
         CALL    L10B2
-        CALL    L04FD
+        CALL    FTestPositiveIntegerExpression
         EX      DE,HL
         POP     DE
         LD      B,20h           ; ' '
@@ -4763,8 +4741,10 @@ szError:
         DB		" o{ibka", 0
 szOK:
         DB		13,10, "vdu:",13,10, 0
-        DB		13,10, "stop", 0
-        DB		" w stroke ", 0
+szStop:	
+		DB		13,10, "stop", 0
+szIn:	
+		DB		" w stroke ", 0
 szHello:
 		DB		1Fh, "BASIC *mikron*", 13,10, "NEW?",0
         DB		13,10,"programma:", 0

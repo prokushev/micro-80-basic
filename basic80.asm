@@ -647,7 +647,7 @@ Error:
 	ENDIF
         LD      HL, szError
 PrintInLine:
-	CALL    PrintString
+		CALL    PrintString
         LD      HL, (CURRENT_LINE)
         LD      A,H
         AND     L
@@ -1375,18 +1375,18 @@ CharIsAlpha:
 ;Gets the subscript of an array variable encountered in an expression or a DIM declaration. The subscript is returned as a positive integer in CDE.
 
 GetSubscript:
-	RST     NextChar
+		RST     NextChar
 EvalPositiveNumericExpression:
-	CALL    EvalNumericExpression
+		CALL    EvalNumericExpression
 
 ; If subscript is negative then jump to FC error below.
 FTestPositiveIntegerExpression:
-	RST     FTestSign
+		RST     FTestSign
         JP      M,FunctionCallError
 
 ;Likewise, if subscript is >32767 then fall into FC error, otherwise exit to FAsInteger.
 FTestIntegerExpression:
-	LD      A,(FACCUM+3)
+		LD      A,(FACCUM+3)
         CP      90H
         JP      C,FAsInteger
 
@@ -1398,7 +1398,7 @@ FTestIntegerExpression:
 
 ; Invalid function call (FC) error..
 FunctionCallError:
-	LD      E,ERR_FC
+		LD      E,ERR_FC
         JP      Error
 		
 ;1.11 Jumping to Program Lines
@@ -1416,12 +1416,12 @@ FunctionCallError:
 		
 LineNumberFromStr:
 ; Уменьшение указателя строки (теперь указавает на предыдущий символ) и инициализация результата = 0.
-	DEC     HL
+		DEC     HL
 LineNumberFromStr2:
-	LD      DE,0000H
+		LD      DE,0000H
 NextLineNumChar:
 ; Получить следующий символ и выйти, если он не буквенно-цифровой.
-	RST     NextChar
+		RST     NextChar
         RET     NC
 
         PUSH    HL
@@ -1468,63 +1468,13 @@ NextLineNumChar:
 	CHK	06e3h, "Сдвижка кода"
 
 	INCLUDE	"stReturn.inc"
-
-;FindNextStatement
-; Finds the end of the statement or the end of the program line.
-
-; Rem is jumped to in two places - it is the REM handler, and also when an 
-; IF statement's condition evals to false and the rest of the line needs
-; to be skipped. Luckily in both these cases, C just happens to be
-; loaded with a byte that cannot occur in the program so the null 
-; byte marking the end of the line is found as expected.
-
-Data:
-FindNextStatement:
-	DB	01H, ":"	;LD BC,..3AH эмулирует LD C, ":"
-Rem:	LD	C, 0
-	LD      B,00H
-ExcludeQuote:
-	LD      A,C
-        LD      C,B
-        LD      B,A
-FindNextStatementLoop:
-	LD      A,(HL)
-        OR      A
-        RET     Z
-
-        CP      B
-        RET     Z
-
-        INC     HL
-        CP      '"'
-        JP      Z,ExcludeQuote
-        JP      FindNextStatementLoop
-
+	INCLUDE	"stDataRem.inc"
 	INCLUDE	"stLet.inc"
 
-; Обработчик ON x GOTO/ON x GOSUB
 
 	CHK	075Ch, "Сдвижка кода"
-On:
-        CALL    EvalByteExpression
-        LD      A,(HL)
-        LD      B,A
-        CP      TK_GOSUB
-        JP      Z,OkToken
-        RST     SyntaxCheck
-        DB	TK_GOTO
-        DEC     HL
-OkToken:
-	LD      C,E
-OnLoop:
-	DEC     C
-        LD      A,B
-        JP      Z, ExecA
-        CALL    LineNumberFromStr2
-        CP      ','
-        RET     NZ
-
-        JP      OnLoop
+	
+	INCLUDE	"stOn.inc"
 
 	CHK	0778h, "Сдвижка кода"
 
@@ -1543,9 +1493,9 @@ OnLoop:
 	ENDIF
 
 PrintLoop:
-	RST     NextChar
+		RST     NextChar
 
-	CHK	0791H, "Сдвижка кода"
+		CHK	0791H, "Сдвижка кода"
 Print:
         JP      Z,NewLine
 L0794:  RET     Z
@@ -1586,7 +1536,7 @@ L07D0:  CALL    NZ,L0D96
 ; reset HL to point to the start of the input line buffer, then fall into NewLine.
 		
 TerminateInput:
-	LD      (HL),00H		; Самомодифицирующийся код
+		LD      (HL),00H		; Самомодифицирующийся код
 TerminateInput2:
         LD      HL,LINE_BUFFER-1
 		
@@ -1642,7 +1592,7 @@ L07FF:  SUB     0EH
 ;Tabulation. The TAB keyword takes an integer argument denoting the absolute column to print spaces up to.
 		
 Tab:
-	PUSH    AF
+		PUSH    AF
         CALL    L0FB8
         RST     SyntaxCheck
         DB	')'
@@ -1657,9 +1607,9 @@ Tab:
         ADD     A,E
         JP      NC,ExitTab
 PrintSpaces:
-	INC     A
+		INC     A
 Spc:	
-	LD      B,A
+		LD      B,A
         LD      A, ' '
 PrintSpaceLoop:
 	RST     OutChar
@@ -2643,12 +2593,12 @@ TempStringToPool:
 PrintString1:
         INC     HL
 PrintString:
-	CALL    L0D4F
+		CALL    L0D4F
 L0D96:  CALL    EvalCurrentString
         CALL    FLoadBCDEfromMem
         INC     E
 PrintStringLoop:
-	DEC     E
+		DEC     E
         RET     Z
 
         LD      A,(BC)

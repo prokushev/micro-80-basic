@@ -4,7 +4,7 @@
 
 Let:	CALL    GetVar
         RST     SyntaxCheck
-        DB	TK_EQ			; '='
+        DB		TK_EQ			; '='
         LD      A,(VALTYP)
         PUSH    AF
         PUSH    DE
