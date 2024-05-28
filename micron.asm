@@ -48,6 +48,7 @@ ERR_FC		EQU	08H
 ERR_OM		EQU 0CH
 ERR_US		EQU 0EH
 ERR_DZ		EQU 14H
+ERR_TM		EQU	18H
 ERR_CN		EQU 20h
 
 Start:  LD      SP,75FFh
@@ -1319,28 +1320,30 @@ L0817:  RST     NextChar
 
         ; --- START PROC EvalNumericExpression ---
 EvalNumericExpression:
-	CALL    EvalExpression
+		CALL    EvalExpression
         ; --- START PROC IsNumeric ---
 IsNumeric:
-	DB	0F6H			;OR 37H - это сброс флага CY
+		DB	0F6H			;OR 37H - это сброс флага CY
 IsString:
-	SCF				;37H
+		SCF				;37H
         ; --- START PROC CheckType ---
-CheckType:  LD      A,(VALTYP)
+CheckType:
+		LD      A,(VALTYP)
         ADC     A,A
         RET     PE
-L0873:  LD      E,18h
+		
+L0873:  LD      E,ERR_TM
         JP      Error
 
         ; --- START PROC EvalExpression ---
 EvalExpression:
-	DEC     HL
+		DEC     HL
         LD      D,00h
         ; --- START PROC L087B ---
 L087B:  PUSH    DE
         CALL    CheckEnoughVarSpace2
         LD      BC,0E8CDh
-        DB	08H
+        DB		08H
         LD      (2139h),HL
         ; --- START PROC L0886 ---
 L0886:  LD      HL,(2139h)
@@ -1626,16 +1629,17 @@ L0A28:  LD      D,5Ah           ; 'Z'
         POP     BC
         JP      L0886
 
-L0A3F:  DEC     HL
+DimContd:
+		DEC     HL
         RST     NextChar
         RET     Z
         RST     SyntaxCheck
         INC     L
 Dim:
-        LD      BC,L0A3F
+        LD      BC,DimContd
         PUSH    BC
-        DB	0f6h	; OR      0AFH
-GetVar:	XOR	A          ; AFH
+        DB		0f6h	; OR      0AFH
+GetVar:	XOR		A         ; AFH
         LD      (DIM_OR_EVAL),A
         LD      B,(HL)
         ; --- START PROC L0A4E ---
@@ -1870,7 +1874,7 @@ Def:	CALL    L0C3F
         PUSH    DE
         CALL    L0C31
         RST     SyntaxCheck
-        DB	28H, 0CDH
+        DB		28H, 0CDH
         LD      C,C
         LD      A,(BC)
         CALL    IsNumeric
@@ -1950,7 +1954,7 @@ Str:	CALL    IsNumeric
         CALL    L0C7F
         CALL    EvalCurrentString
         POP     BC
-        LD      BC,0CA5h
+        LD      BC,TempStringToPool
         PUSH    BC
         ; --- START PROC L0C5F ---
 L0C5F:  LD      A,(HL)
@@ -2003,8 +2007,8 @@ L0C95:  CP      22h             ; '"'
         CALL    L0C76
         RST     CompareHLDE
         CALL    NC,L0C5F
-        ; --- START PROC L0CA5 ---
-L0CA5:  LD      DE,212Bh
+        ; --- START PROC TempStringToPool ---
+TempStringToPool:  LD      DE,212Bh
         LD      HL,(211Dh)
         LD      (FACCUM),HL
         LD      A,01h
@@ -2061,7 +2065,7 @@ L0CF1:  POP     AF
         PUSH    BC
         ; --- START PROC GarbageCollection ---
 GarbageCollection:
-	LD      HL,(MEMSIZ)
+		LD      HL,(MEMSIZ)
         ; --- START PROC L0D00 ---
 L0D00:  LD      (STR_TOP),HL
         LD      HL,0000h
@@ -2207,7 +2211,7 @@ L0DA2:  PUSH    BC
         LD      HL,0889h
         EX      (SP),HL
         PUSH    HL
-        JP      L0CA5
+        JP      TempStringToPool
 
         ; --- START PROC L0DD9 ---
 L0DD9:  POP     HL
@@ -2228,9 +2232,10 @@ L0DE0:  DEC     L
 
         ; --- START PROC EvalString ---
 EvalString:
-	CALL    IsString
+		CALL    IsString
         ; --- START PROC EvalCurrentString ---
-EvalCurrentString:  LD      HL,(FACCUM)
+EvalCurrentString:
+		LD      HL,(FACCUM)
         ; --- START PROC L0DEF ---
 L0DEF:  EX      DE,HL
         ; --- START PROC L0DF0 ---
@@ -2270,18 +2275,21 @@ L0E33:  LD      A,01h
         POP     DE
         LD      HL,(TMPSTR+2)
         LD      (HL),E
-        JP      L0CA5
+        JP      TempStringToPool
 
 Left:	CALL    L0ECB
         XOR     A
-L0E45:  EX      (SP),HL
+RightCont:
+		EX      (SP),HL
         LD      C,A
-        PUSH    HL
+MidCont:
+		PUSH    HL
         LD      A,(HL)
         CP      B
-        JP      C,L0E4E+1       ; reference not aligned to instruction
+        JP      C,L0E4F
         LD      A,B
-L0E4E:  LD      DE,000Eh
+        DB		11H		;LD      DE,000EH
+L0E4F:  LD		C, 0
         PUSH    BC
         CALL    L0CD5
         POP     BC
@@ -2302,14 +2310,14 @@ L0E4E:  LD      DE,000Eh
         CALL    L0DDF
         POP     DE
         CALL    L0DF0
-        JP      L0CA5
+        JP      TempStringToPool
 
 Right:	CALL    L0ECB
         POP     DE
         PUSH    DE
         LD      A,(DE)
         SUB     B
-        JP      L0E45
+        JP      RightCont
 
 Mid:	EX      DE,HL
         LD      A,(HL)
@@ -2325,7 +2333,7 @@ L0E8D:  RST     SyntaxCheck
         ADD     HL,HL
         POP     AF
         EX      (SP),HL
-        LD      BC,0E47h
+        LD      BC,MidCont
         PUSH    BC
         DEC     A
         CP      (HL)
@@ -2378,11 +2386,12 @@ L0ECE:  POP     BC
 
         ; --- START PROC L0ED8 ---
 L0ED8:  RST     SyntaxCheck
-        DB	','
-	DB	06h		; ld b,..
-L0EDB:	RST	NextChar
+        DB		','
+		DB		06h		; ld b,..
+L0EDB:	RST		NextChar
         ; --- START PROC EvalByteExpression ---
-EvalByteExpression:  CALL    EvalNumericExpression
+EvalByteExpression:
+		CALL    EvalNumericExpression
         ; --- START PROC L0EDF ---
 L0EDF:  CALL    FTestPositiveIntegerExpression
         LD      A,D
@@ -2406,8 +2415,8 @@ L0F0D:  CALL    FLoadBCDEfromMem
         DB	21h			;LD      HL,...
 
 FSub:
-	POP	BC			; Get lhs in BCDE.
-	POP	DE
+		POP	BC			; Get lhs in BCDE.
+		POP	DE
 
         ; --- START PROC L0F13 ---
 L0F13:  CALL    FNegate
@@ -3679,7 +3688,7 @@ Inkey:	CALL    0F81Bh
         JP      P,L0E33
         XOR     A
         CALL    L0C73
-        JP      L0CA5
+        JP      TempStringToPool
 
 Home:
 		LD      C,1Fh

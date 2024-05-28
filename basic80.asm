@@ -1794,17 +1794,17 @@ CheckType:
 ;Evaluates an expression, returning with the result in FACCUM. An expression is a combination of terms and operators.
 
 EvalExpression:
-	DEC     HL
+		DEC     HL
         LD      D,00H
 L0978:  PUSH    DE
 ;Check we've got enough space for one floating-point number.
         CALL    CheckEnoughVarSpace2
-	DB	01h
+		DB	01h
 ;Evaluate term and store prog ptr in 015f
-	CALL	EvalTerm
+		CALL	EvalTerm
         LD      (PROG_PTR_TEMP2),HL
 ArithParse:
-	LD      HL,(PROG_PTR_TEMP2)
+		LD      HL,(PROG_PTR_TEMP2)
 L0986:	POP     BC
         LD      A,B
         CP      78H
@@ -1876,7 +1876,7 @@ L09D2:  PUSH    BC
 ;Get first character of term, and if it's a digit (as indicated by the carry flag) then jump to FIn
 
 EvalTerm:
-	XOR     A
+		XOR     A
 L09E6:  LD      (VALTYP),A
         RST     NextChar
         JP      C,FIn
@@ -1904,7 +1904,7 @@ L09E6:  LD      (VALTYP),A
 ;The only possibility left is a bracketed expression. Here we check for an opening bracket, recurse into EvalExpression, and return.
 L0A16:  RST     SyntaxCheck
         DB	'('
-	CALL	EvalExpression
+		CALL	EvalExpression
         RST     SyntaxCheck
 L0A1C:  DB	')'
         RET     
@@ -1921,7 +1921,7 @@ L0A2A:	CALL    IsNumeric
 
 ;Evaluate a variable. The call to GetVar returns the address of the variable's value in DE, which is then moved to HL then the call to FLoadFromMem loads FACCUM with the variable's value.
 EvalVarTerm:
-	CALL    GetVar
+		CALL    GetVar
         PUSH    HL
         EX      DE,HL
         LD      (FACCUM),HL
@@ -1933,18 +1933,18 @@ EvalVarTerm:
 
 ; Evaluate an inline function. First we get the offset into the KW_INLINE_FNS table into BC and stick it on the stack.
 EvalInlineFn:
-	LD      B,00H
-	RLCA    
-	LD      C,A
-	PUSH    BC
+		LD      B,00H
+		RLCA    
+		LD      C,A
+		PUSH    BC
 ;Evaluate function argument
-	RST     NextChar
-	LD      A,C
+		RST     NextChar
+		LD      A,C
         CP      2*(TK_LEFTS-TK_SGN)-1		; Это строковые функции fn$ с несколькими параметрами?
         JP      C,L0A65				; Нет, обычная
         RST     SyntaxCheck
-	DB	'('
-	CALL	EvalExpression
+		DB	'('
+		CALL	EvalExpression
 
         RST     SyntaxCheck
         DB	','
@@ -1985,13 +1985,13 @@ L0A6D:  LD      BC, KW_INLINE_FNS	; 0043H
         JP      (HL)
 
 
-	CHK	0A76h, "Сдвижка кода"
+		CHK	0A76h, "Сдвижка кода"
 FOr:
-	DB	0F6h	;OR 0AFH
+		DB	0F6h	;OR 0AFH
 
-	CHK	0A77h, "Сдвижка кода"
+		CHK	0A77h, "Сдвижка кода"
 FAnd:
-	XOR	A	; AFh
+		XOR	A	; AFh
         PUSH    AF
         CALL    IsNumeric
         CALL    FTestIntegerExpression
@@ -2158,8 +2158,8 @@ L0B4C:  LD      A,(NO_ARRAY)
 
 ;Loop to find the variable if it's already been allocated. If HL==DE then we've reached VAR_ARRAY_BASE without finding it, and so can jump ahead to allocate a new variable.
 FindVarLoop:
-	RST     CompareHLDE
-	JP      Z,AllocNewVar
+		RST     CompareHLDE
+		JP      Z,AllocNewVar
         LD      A,C
         SUB     (HL)
         INC     HL
@@ -2804,16 +2804,16 @@ Left:
         CALL    L0F9F
         XOR     A
 RightCont:
-	EX      (SP),HL
+		EX      (SP),HL
         LD      C,A
 MidCont:
-	PUSH    HL
-	LD      A,(HL)
+		PUSH    HL
+		LD      A,(HL)
         CP      B
         JP      C,L0F22
         LD      A,B
-        DB	11H		;LD      DE,000EH
-L0F22:	LD	C, 0
+        DB		11H		;LD      DE,000EH
+L0F22:	LD		C, 0
         PUSH    BC
         CALL    L0DAA
         POP     BC
@@ -3222,18 +3222,19 @@ SetCurPos:
 	LD	C, A
 	JP	0F809H
 
-Plot:	CALL	EvalByteExpression
-	LD	(GPOSX), A		; 01954H
-	RST	SyntaxCheck
-	DB	','
+Plot:
+	CALL	EvalByteExpression
+	LD		(GPOSX), A		; 01954H
+	RST		SyntaxCheck
+	DB		','
 
 	CALL	EvalByteExpression
-	LD	(GPOSY), A		; 01955H
-	RST	SyntaxCheck
-	DB	','
+	LD		(GPOSY), A		; 01955H
+	RST		SyntaxCheck
+	DB		','
 
 	CALL	EvalByteExpression
-	LD	(GFILL), A		; 01956H
+	LD		(GFILL), A		; 01956H
 
 L17C5:	LD	A, (GPOSX)		; 01954H
 	CP	80H
