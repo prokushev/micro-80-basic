@@ -57,46 +57,30 @@ Start:  LD      SP,75FFh
 		NOP
         NOP
 
-SyntaxCheck:
-        LD      A,(HL)
-        EX      (SP),HL
-        CP      (HL)
-        INC     HL
-        EX      (SP),HL
-        JP      NZ,SyntaxError
+		;RST 08h
+		INCLUDE "spSyntaxCheck.inc"
 
-NextChar:
-        INC     HL
-        LD      A,(HL)
-        CP      ':'             ; ':'
-        RET     NC
-        JP      NextChar_tail
+		;RST 10h
+		INCLUDE "spNextChar.inc"
 
 OutChar:
 		PUSH    BC
         PUSH    HL
         PUSH    AF
         LD      C,A
-        JP      L0367
+        JP      OutChar_tail
 
 		NOP
 
-CompareHLDE:
-        LD      A,H
-        SUB     D
-        RET     NZ
-        LD      A,L
-        SUB     E
-        RET
+		; RST 20h
+		include "spCompareHLDE.inc"
 
 INIT_PROGAM_BASE:
 		DW	2201H
+
+		; RST 28h
+		include "spFTestSign.inc"
 	
-FTestSign:
-		LD	A, (FACCUM+3)
-        OR	A
-		JP	NZ, FTestSign_tail
-		RET
 
 PushNextWord:
 		LD		C, (HL)
@@ -121,72 +105,15 @@ RST6_CONT:
         LD      HL,(TMP_HL)
         RET
 
-        ; --- START PROC GetFlowPtr ---
-GetFlowPtr:
-		LD      HL,0004h
-        ADD     HL,SP
-GetFlowLoop:  LD      A,(HL)
-        INC     HL
-        CP      TK_FOR
-        RET     NZ
-        LD      C,(HL)
-        INC     HL
-        LD      B,(HL)
-        INC     HL
-        PUSH    HL
-        LD      L,C
-        LD      H,B
-        LD      A,D
-        OR      E
-        EX      DE,HL
-        JP      Z,NoVar
-        EX      DE,HL
-        RST     CompareHLDE
-NoVar:  LD      BC,000Dh
-        POP     HL
-        RET     Z
-        ADD     HL,BC
-        JP      GetFlowLoop
-
-        ; --- START PROC CopyMemoryUp ---
-CopyMemoryUp:
-		CALL    CheckEnoughMem
-        ; --- START PROC CopyMemoryUpNoCheck ---
-CopyMemoryUpNoCheck:
-		PUSH    BC
-        EX      (SP),HL
-        POP     BC
-CopyMemLoop:
-		RST     CompareHLDE
-        LD      A,(HL)
-        LD      (BC),A
-        RET     Z
-        DEC     BC
-        DEC     HL
-        JP      CopyMemLoop
-
-        ; --- START PROC CheckEnoughVarSpace2 ---
-CheckEnoughVarSpace2:
-		EX      (SP),HL
-        LD      C,(HL)
-        INC     HL
-        EX      (SP),HL
-        ; --- START PROC CheckEnoughVarSpace ---
-CheckEnoughVarSpace:  PUSH    HL
-        LD      HL,(VAR_TOP)
-        LD      B,00h
-        ADD     HL,BC
-        ADD     HL,BC
-        CALL    CheckEnoughMem
-        ; --- START PROC POPHL_RET ---
-POPHL_RET:
-		POP     HL
-        RET
+		include	"spGetFlowPtr.inc"
+		include	"spCopyMemoryUp.inc"
+		include "spCheckEnoughVarSpace.inc"
 
         ; --- START PROC CheckEnoughMem ---
-CheckEnoughMem:  PUSH    DE
+CheckEnoughMem:  
+		PUSH    DE
         EX      DE,HL
-        LD      HL,0FFDBh	; HL=-34 (extra 2 bytes for return address)
+        LD      HL,0FFDBh
         ADD     HL,SP
         RST     CompareHLDE
         EX      DE,HL
@@ -381,31 +308,7 @@ GetNonBlankLine2:
         LD      (ControlChar),A
         JP      L18E7
 
-        ; --- START PROC FindProgramLine ---
-FindProgramLine:
-		LD      HL,(PROGRAM_BASE)
-	
-        ; --- START PROC FindProgramLineInMem ---
-FindProgramLineInMem:
-		LD      B,H
-        LD      C,L
-        LD      A,(HL)
-        INC     HL
-        OR      (HL)
-        DEC     HL
-        RET     Z
-        PUSH    BC
-        RST     PushNextWord
-        RST     PushNextWord
-        POP     HL
-        RST     CompareHLDE
-        POP     HL
-        POP     BC
-        CCF
-        RET     Z
-        CCF
-        RET     NC
-        JP      FindProgramLineInMem
+		INCLUDE	"spFindProgramLine.inc"
 
         ; --- START PROC New ---
 New:
@@ -697,7 +600,7 @@ L0353:  CALL    0F803h
         LD      B,A
         JP      L0353
 
-L0367:  LD      HL,038Eh
+OutChar_tail:  LD      HL,L038E
 L036A:  LD      A,(HL)
         INC     HL
         CP      C
@@ -1148,7 +1051,7 @@ L0708:  RST     NextChar
 
         ; --- START PROC L070C ---
 L070C:  PUSH    AF
-        CALL    L0EDB         ; reference not aligned to instruction
+        CALL    L0EDB
         RST     SyntaxCheck
         ADD     HL,HL
         DEC     HL
@@ -1186,10 +1089,10 @@ Input:
         CALL    L0C80
         POP     BC
         LD      A,(HL)
-        CP      3Bh             ; ';'
+        CP      ';'
         JP      Z,L0759
         LD      B,A
-        CP      2Ch             ; ','
+        CP      ','
         JP      NZ,SyntaxError
 L0759:  RST     NextChar
         PUSH    HL
@@ -4392,7 +4295,7 @@ L1AD9:  LD      A,(HL)
 
         ; --- START PROC L1AF0 ---
 L1AF0:  LD      B,00h
-L1AF2:  CALL    L1CCF
+L1AF2:  CALL    Puncher
         DEC     B
         JP      NZ,L1AF2
         DEC     E
@@ -4400,7 +4303,7 @@ L1AF2:  CALL    L1CCF
         RET
 
         ; --- START PROC L1AFE ---
-L1AFE:  CALL    L1CCF
+L1AFE:  CALL    Puncher
         DEC     E
         JP      NZ,L1AFE
         RET
@@ -4411,7 +4314,7 @@ Csave:  CALL    L1ABC
         LD      E,01h
         CALL    L1AF0
         LD      A,0E6h
-        CALL    L1CCF
+        CALL    Puncher
         LD      A,0D3h
         LD      E,04h
         CALL    L1AFE
@@ -4419,7 +4322,7 @@ L1B1E:  INC     HL
         LD      A,(HL)
         CP      22h             ; '"'
         JP      Z,L1B2B
-        CALL    L1CCF
+        CALL    Puncher
         JP      L1B1E
 
 L1B2B:  INC     HL
@@ -4437,7 +4340,7 @@ L1B2B:  INC     HL
         LD      E,03h
         CALL    L1AF0
         LD      A,0E6h
-        CALL    L1CCF
+        CALL    Puncher
         LD      A,0D3h
         LD      E,03h
         CALL    L1AFE
@@ -4445,7 +4348,7 @@ L1B2B:  INC     HL
         DEC     HL
 L1B53:  LD      B,03h
 L1B55:  LD      A,(HL)
-        CALL    L1CCF
+        CALL    Puncher
         OR      A
         INC     HL
         JP      NZ,L1B53
@@ -4453,9 +4356,9 @@ L1B55:  LD      A,(HL)
         JP      NZ,L1B55
         LD      HL,(2115h)
         LD      A,L
-        CALL    L1CCF
+        CALL    Puncher
         LD      A,H
-        CALL    L1CCF
+        CALL    Puncher
         ; --- START PROC L1B6D ---
 L1B6D:  POP     HL
         RET
@@ -4662,8 +4565,8 @@ ClsLoop:
         RET     Z
         JP      ClsLoop
 
-        ; --- START PROC L1CCF ---
-L1CCF:  LD      C,A
+        ; --- START PROC Puncher ---
+Puncher:  LD      C,A
         JP      0F80Ch
 
 

@@ -34,7 +34,8 @@ ListNextLine:
         CALL    PrintInt
         LD      A,' '
 ;Restore current line ptr to HL, print current character, advance current line ptr and 
-L050D:  POP     HL
+ListChar1:
+		POP     HL
 ListChar:
 		RST     OutChar
         LD      A,(HL)
@@ -47,7 +48,8 @@ ListChar:
         LD      C,A
         PUSH    HL
         LD      DE, KEYWORDS
-L051F:  PUSH    DE
+ToNextKeyword1:
+		PUSH    DE
 ToNextKeyword:
 ;Find the start of the next keyword.
 		LD      A,(DE)
@@ -57,12 +59,12 @@ ToNextKeyword:
 ;Decrement keyword index and restore start of previous keyword to HL. If this is not yet the keyword we want, then loop back.
         DEC     C
         POP     HL
-        JP      NZ,L051F
+        JP      NZ,ToNextKeyword1
 PrintKeyword:
 ;Print the keyword. Note that printing of the last character is deferred to ListChar in the main loop.
 		LD      A,(HL)
         OR      A
-        JP      M,L050D
+        JP      M,ListChar1
         RST     OutChar
         INC     HL
         JP      PrintKeyword

@@ -4,4 +4,5 @@ Sqr:
         CALL    FLoadFromMem
 
 		;JP		FPower
+
 		

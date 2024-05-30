@@ -198,7 +198,8 @@
 ; for altering program flow so that code can run in loops and subroutines be called.
 ; These mechanisms are FOR/NEXT for looping, and GOSUB/RETURN for subroutines.
 ;
-; In both FOR and GOSUB cases, the stack is used to store specific information about the program line to return to.
+; In both FOR and GOSUB cases, the stack is used to store specific information about
+; the program line to return to.
 ;
 	CPU	8080
 	Z80SYNTAX	EXCLUSIVE
@@ -206,70 +207,75 @@
 ; Конфигурация
 
 	ifndef MIKROSHA
-MIKROSHA EQU	0	; Модификации для "Бейсик для Микроша"
+MIKROSHA 	EQU	0	; Модификации для "Бейсик для Микроша"
 	endif
 
 ; Т.к. Микроша близок в РК86, то используем его код в качестве основы
 	if MIKROSHA
-RK86	EQU	1	; Модификации для "Бейсик для Радио-86РК"
-RAM	EQU	32	; Микроша шла только с 32кб
+RK86		EQU	1	; Модификации для "Бейсик для Радио-86РК"
+RAM			EQU	32	; Микроша шла только с 32кб
 	endif
 
 	ifndef RK86
-RK86	EQU	0	; Модификации для "Бейсик для Радио-86РК"
+RK86		EQU	0	; Модификации для "Бейсик для Радио-86РК"
 	endif
 	ifndef UT88
-UT88	EQU	0	; Модификации для "Бейсик для ЮТ-88"
+UT88		EQU	0	; Модификации для "Бейсик для ЮТ-88"
 	endif
 	ifndef SERVICE
-SERVICE	EQU	0	; Модификации для Бейсик-Сервис
+SERVICE		EQU	0	; Модификации для Бейсик-Сервис
 	endif
 	ifndef BASICNEW
 BASICNEW	EQU	0	; Включить мои изменения в коде
 	endif
-ANSI	EQU	0	; Включить поддержку совместимости с ANSI Minimal Basic
-GOST	EQU	0	; Включить поддержку совместимости с ГОСТ 27787-88
+ANSI		EQU	0	; Включить поддержку совместимости с ANSI Minimal Basic
+GOST		EQU	0	; Включить поддержку совместимости с ГОСТ 27787-88
 
 	IFNDEF	RAM
-RAM	EQU	16
+RAM			EQU	16
 	ENDIF
 
-; Верхний адрес доступной памяти. В МИКРО-80 задано жестко, 
+; Верхний адрес доступной памяти. В МИКРО-80/ЮТ-88 задано жестко, 
 ; а в РК-86 настраивается при инициализации. В Микроше тоже жестко.
+	if MIKROSHA
+MEM_TOP		EQU	075FFH
+	else; MIKROSHA
 	IF	RAM=12
-MEM_TOP	EQU	02FFFH
+MEM_TOP		EQU	02FFFH
 	ELSEIF	RAM=16
-MEM_TOP	EQU	03FFFH
+MEM_TOP		EQU	03FFFH
 	ELSEIF	RAM=32
-MEM_TOP	EQU	07FFFH
+MEM_TOP		EQU	07FFFH
 	ELSEIF	RAM=48
-MEM_TOP	EQU	0BFFFH
+MEM_TOP		EQU	0BFFFH
 	ENDIF
+	endif; MIKROSHA
 
+	
 	IF	BASICNEW
 	IF	ANSI
-OPTION	EQU	1	; Поддержка команды OPTION
-LET	EQU	1	; Поддержка команды LET
-RANDOMIZE EQU	1	; Поддержка команды RANDOMIZE
-END	EQU	1	; Поддержка команды END
+OPTION		EQU	1	; Поддержка команды OPTION
+LET			EQU	1	; Поддержка команды LET
+RANDOMIZE 	EQU	1	; Поддержка команды RANDOMIZE
+END			EQU	1	; Поддержка команды END
 	ELSE    ; ANSI
 	IF	GOST
-OPTION	EQU	1	; Поддержка команды OPTION
-LET	EQU	1	; Поддержка команды LET
-RANDOMIZE EQU	1	; Поддержка команды RANDOMIZE
-END	EQU	1	; Поддержка команды END
+OPTION		EQU	1	; Поддержка команды OPTION
+LET			EQU	1	; Поддержка команды LET
+RANDOMIZE	EQU	1	; Поддержка команды RANDOMIZE
+END			EQU	1	; Поддержка команды END
 	ELSE	; GOST
-OPTION	EQU	0	; Поддержка команды OPTION
-LET	EQU	1	; Поддержка команды LET
-RANDOMIZE EQU	0	; Поддержка команды RANDOMIZE
-END	EQU	1	; Поддержка команды END
+OPTION		EQU	0	; Поддержка команды OPTION
+LET			EQU	1	; Поддержка команды LET
+RANDOMIZE 	EQU	0	; Поддержка команды RANDOMIZE
+END			EQU	1	; Поддержка команды END
 	ENDIF   ; GOST
 	ENDIF   ; ANSI      
 	ELSE	; BASICNEW
-OPTION	EQU	0	; Поддержка команды OPTION
-LET	EQU	0	; Поддержка команды LET
-RANDOMIZE EQU	0	; Поддержка команды RANDOMIZE
-END	EQU	0	; Поддержка команды END
+OPTION		EQU	0	; Поддержка команды OPTION
+LET			EQU	0	; Поддержка команды LET
+RANDOMIZE 	EQU	0	; Поддержка команды RANDOMIZE
+END			EQU	0	; Поддержка команды END
 	ENDIF   ; BASICNEW
 
 
@@ -331,7 +337,7 @@ PROGRAM_BASE_INIT	EQU	2200H
 ; и обычно используются для часто вызываемых функций, что эконоит по 2 байта на каждом вызове.
 ; Всего Бейсик использует 7 рестартов. 8-й рестарт используется отладчиками.
 
-; Начало (RST 0)
+; Начало (RST 00h)
 
 ; Запуск интерпретатора осуществляется с адреса 0. Проводится инициализация стека и
 ; переход на код инициализации.
@@ -348,46 +354,24 @@ RST	MACRO	adr
 
 Start:
 	IF	RK86
-	LD	SP, TMPSTACK
+		LD	SP, TMPSTACK
 	ELSE
-	LD	SP, MEM_TOP
+		LD	SP, MEM_TOP
 	ENDIF
-	JP	Init
+		JP	Init
 
 ; Данные байты не используются? В оригинале здесь указатели на какие-то данные, а не код.
-	INC	HL
-	EX	(SP),HL
+		INC	HL
+		EX	(SP),HL
 
-; SyntaxCheck (RST 1)
-; Here is a truly beautiful piece of code, it's Golden Weasel richly deserved. It's used at run-time to check syntax in a very cool way : the byte 
-; immediately following an RST 1 instruction is not the following instruction, but the keyword or operator ID that's expected to appear in the program 
-; at that point. If the keyword or operator is not present, then it Syntax Errors out, but if it is present then the return address is fixed-up - ie 
-; advanced one byte - and the function falls into NextChar so the caller has even less work to do. I honestly doubt syntax checks could be done more 
-; efficiently than this. Sheer bloody genius.
+		;RST 08h
+		INCLUDE "spSyntaxCheck.inc"
 
-SyntaxCheck:
-	LD	A,(HL)
-	EX	(SP),HL
-	CP	(HL)
-	INC	HL
-	EX	(SP),HL
-	JP	NZ,SyntaxError
-
-; NextChar (RST 2)
-;
-; Возвращает следующий введенный символ из буфера по адресу HL, пропуская символы пробелов.
-; Флаг переноса C выставлен, если возвращаемый символ не алфавитно-цифровой.
-; Также флаг Z выставляется, если символ равен NULL.
 
 	IF	BASICNEW
-	JP	NextChar
 	ELSE
-NextChar:
-	INC	HL
-	LD	A,(HL)
-	CP	':'			; 3AH
-	RET	NC			; End of statement or bigger
-	JP	NextChar_tail
+		;RST 10h
+		INCLUDE "spNextChar.inc"
 	ENDIF
 
 	IF	BASICNEW
@@ -396,22 +380,14 @@ NextChar:
 ; Печать символа на терминал.
 
 OutChar:
-	PUSH	AF
-	LD	A,(ControlChar)
-	OR	A
-	JP	OutChar_tail
+		PUSH	AF
+		LD	A,(ControlChar)
+		OR	A
+		JP	OutChar_tail
 	ENDIF
 
-; CompareHLDE (RST 4)
-; Сравниает HL и DE с таким же логическим результатом (флаги C и Z), что и стандартное 8-мибитное сравнение.
-
-CompareHLDE:
-	LD	A,H
-	SUB	D
-	RET	NZ
-	LD	A,L
-	SUB	E
-	RET
+		; RST 20h
+		include "spCompareHLDE.inc"
 
 ;
 	IF	BASICNEW
@@ -420,15 +396,9 @@ NULLS:	DB	01	; Число нолей-1, которое надо вывести �
 	ENDIF
 TERMINAL_X:	DB		00	; Variable controlling the current X positions of terminal output
 
-;
-;FTestSign (RST 5)
-;Tests the state of FACCUM. This part returns with A=0 and zero set if FACCUM==0, the tail of the function sets the sign flag and A accordingly (0xFF is negative, 0x01 if positive) before returning.
+		; RST 28h
+		include "spFTestSign.inc"
 
-FTestSign:
-	LD	A,(FACCUM+3)
-	OR	A
-	JP	NZ,FTestSign_tail
-	RET  
 ;
 ;PushNextWord (RST 6)
 ;Effectively PUSH (HL). First we write the return address to the JMP instruction at the end of the function; then we read the word at (HL) into BC and push it onto the stack; lastly jumping to the return address.
@@ -473,113 +443,19 @@ RST6RET:	EQU	$+1
 ;=========================
 
 ; Some useful functions.
-; GetFlowPtr
-; Sets HL to point to the appropriate flow struct on the stack. On entry, 
-; if this was called by the NEXT keyword handler then DE is pointing to 
-; the variable following the NEXT keyword.
 
-	CHK 027ah, "Сдвижка кода"
+		CHK 027ah, "Сдвижка кода"
+		include	"spGetFlowPtr.inc"
+		include	"spCopyMemoryUp.inc"
+		include "spCheckEnoughVarSpace.inc"
 
-
-; The first four bytes on the stack are (or rather, should be) two return addresses.
-; We're not interested in them, so the first thing to do is set HL to point to SP+4.
-
-GetFlowPtr:		
-	LD      HL,0004H
-    ADD     HL,SP
-
-; Get the keyword ID, the byte that precedes the flow struct. Then we increment HL
-; so it points to (what should be) the flow struct, and return if the keyword ID is not 'FOR'.
-
-GetFlowLoop:
-	LD      A,(HL)
-	INC     HL
-	CP      TK_FOR
-	RET     NZ
-
-; Special treatment for FOR flow structs. Here we check that we've got the right one,
-; ie the one required by the NEXT statement which called us. When we're called by NEXT,
-; it sets DE to point to the variable in the NEXT statement. So here we get the first
-; word of the FOR flow struct which is the address of the FOR variable, and compare
-; it to the one we've been given in DE. If they match, then we've found the flow 
-;struct wanted and we can safely return. If not then we jump 13 bytes up the 
-;stack - 13 bytes is the size of the FOR flow struct - and loop back to try again.
-
-        LD      C,(HL)
-        INC     HL
-        LD      B,(HL)
-        INC     HL
-        PUSH    HL
-	LD      L,C
-	LD      H,B
-        LD      A,D
-        OR      E
-
-        EX      DE,HL
-        JP      Z,NoVar			; NEXT без переменной (возвращаем первый попавшийся FOR)
-        EX      DE,HL
-        RST     CompareHLDE
-NoVar:  LD      BC,000DH		; Размер структуры FOR
-        POP     HL
-        RET     Z
-
-        ADD     HL,BC
-        JP      GetFlowLoop
-
-;
-; CopyMemoryUp
-;
-; Copies a block of memory from BC to HL. Copying is done backwards, 
-; down to and including the point where BC==DE. It goes backwards 
-; because this function is used to move blocks of memory forward by
-; as little as a couple of bytes. If it copied forwards then the
-; block of memory would overwrite itself.
-
-CopyMemoryUp:
-	CALL    CheckEnoughMem
-;Exchange BC with HL, so HL now points to the source and BC points to destination.
-CopyMemoryUpNoCheck:
-	PUSH    BC
-        EX      (SP),HL
-        POP     BC
-CopyMemLoop:
-	RST     CompareHLDE
-        LD      A,(HL)
-        LD      (BC),A
-        RET     Z
-
-        DEC     BC
-        DEC     HL
-        JP      CopyMemLoop
-
-; CheckEnoughVarSpace2
-; То же, что и ниже, но C берется из следующей ячейки, откуда вызвана подпрограмма.
-; Более эффективно, чем в Altair Basic
-CheckEnoughVarSpace2:
-	EX      (SP),HL
-        LD      C,(HL)
-        INC     HL
-        EX      (SP),HL
-
-; CheckEnoughVarSpace
-; Checks that there is enough room for C*4 bytes on top of (VAR_TOP) before it 
-; intrudes on the stack. Probably varspace.
-
-        PUSH    HL
-        LD      HL,(VAR_TOP)
-        LD      B,00H			;BC=C*4
-        ADD     HL,BC
-        ADD     HL,BC
-        CALL    CheckEnoughMem
-        POP     HL
-        RET     
 
 ; CheckEnoughMem
 ; Checks that HL is more than 32 bytes away from the stack pointer. If HL is within 32 bytes
 ; of the stack pointer then this function falls into OutOfMemory.
 
 CheckEnoughMem:
-	PUSH    DE
+		PUSH    DE
         EX      DE,HL
         LD      HL,0FFDAH		; HL=-34 (extra 2 bytes for return address)
         ADD     HL,SP
@@ -593,21 +469,21 @@ CheckEnoughMem:
 ; (Здесь можно еще пооптимизировать, используя трюки с INC/DEC/LD B,...)
 
 OutOfMemory:
-	LD	E, ERR_OM
-	JP	Error
+		LD	E, ERR_OM
+		JP	Error
 
 DATASyntaxError:
-	LD      HL,(DATA_LINE)
-	LD      (CURRENT_LINE),HL
+		LD      HL,(DATA_LINE)
+		LD      (CURRENT_LINE),HL
 
 SyntaxError:
-	LD      E, ERR_SN
-	DB		01				; LD BC,...
+		LD      E, ERR_SN
+		DB		01				; LD BC,...
 DivideByZero:
-	LD      E, ERR_DZ
-	DB		01				; LD BC,...
+		LD      E, ERR_DZ
+		DB		01				; LD BC,...
 WithoutFOR:
-	LD      E, ERR_NF
+		LD      E, ERR_NF
 
 ; Error
 ;
@@ -616,15 +492,15 @@ WithoutFOR:
 ; программы.
 Error:
 	IF	BASICNEW
-	LD	A, E			; Делим смещение на 2
-	SCF
-	CCF
-	RRA
-	LD	(ErrorCode), A		; И сохраняем для получения по ERR
-	LD	HL, (CURRENT_LINE)	; Получаем текущую строку
-	LD	(ErrorLine), HL		; И сохраняем ее для получения по ERL
+		LD	A, E			; Делим смещение на 2
+		SCF
+		CCF
+		RRA
+		LD	(ErrorCode), A		; И сохраняем для получения по ERR
+		LD	HL, (CURRENT_LINE)	; Получаем текущую строку
+		LD	(ErrorLine), HL		; И сохраняем ее для получения по ERL
 	ENDIF
-	CALL    ResetStack
+		CALL    ResetStack
         XOR     A
         LD      (ControlChar),A
         CALL    NewLine
@@ -634,11 +510,11 @@ Error:
         RST     OutChar
         ADD     HL,DE
 	IF	BASICNEW
-	LD	E, (HL)
-	INC	HL
-	LD	D, (HL)
-	EX	DE, HL
-	CALL    PrintString
+		LD	E, (HL)
+		INC	HL
+		LD	D, (HL)
+		EX	DE, HL
+		CALL    PrintString
 	ELSE
         LD      A,(HL)
         RST     OutChar
@@ -660,30 +536,30 @@ PrintInLine:
 ;
 
 Main:
-	XOR	A
-	LD	(ControlChar),A			; Включаем вывод на экран (не управляющий символ)
-	LD	HL,0FFFFH			; Сбрасываем текущую выполняемую строку
-	LD	(CURRENT_LINE),HL
+		XOR		A
+		LD		(ControlChar),A		; Включаем вывод на экран (не управляющий символ)
+		LD		HL,0FFFFH			; Сбрасываем текущую выполняемую строку
+		LD		(CURRENT_LINE),HL
 
-	LD	HL,szOK				; Выводим приглашение
-	CALL	PrintString
+		LD		HL,szOK				; Выводим приглашение
+		CALL	PrintString
 
 GetNonBlankLine:
 L030E:	EQU	$+1
-	CALL	InputLine			; Самомодифицирующийся код. Считываем строку с клавиатуры
-	RST	NextChar			; Считываем первый символ из буфера. Флаг переноса =1, если это цифра
-	INC	A				; Проверяем на пустую строку. Инкремент/декремент не сбрасывает флаг переноса.
-	DEC	A
-	JP	Z, GetNonBlankLine		; Снова вводим строку, если пустая
+		CALL	InputLine			; Самомодифицирующийся код. Считываем строку с клавиатуры
+		RST		NextChar			; Считываем первый символ из буфера. Флаг переноса =1, если это цифра
+		INC		A					; Проверяем на пустую строку. Инкремент/декремент не сбрасывает флаг переноса.
+		DEC		A
+		JP		Z, GetNonBlankLine	; Снова вводим строку, если пустая
 
-	PUSH	AF				; Сохраняем флаг переноса
-	CALL	LineNumberFromStr		; Получаем номер строки в DE
-	PUSH	DE				; Запоминаем номер строки
-	CALL	Tokenize			; Запускаем токенизатор. В C возвращается длина токенизированной строки, а в А = 0
-	LD	B,A				; Теперь BC=длина строки
-	POP	DE				; Восстанавливаем номер строки
-	POP	AF				; Восстанавлливаем флаг переноса
-	JP	NC, Exec			; Если у нас строка без номера, то сразу исполняем
+		PUSH	AF					; Сохраняем флаг переноса
+		CALL	LineNumberFromStr	; Получаем номер строки в DE
+		PUSH	DE					; Запоминаем номер строки
+		CALL	Tokenize			; Запускаем токенизатор. В C возвращается длина токенизированной строки, а в А = 0
+		LD		B,A					; Теперь BC=длина строки
+		POP		DE					; Восстанавливаем номер строки
+		POP		AF					; Восстанавлливаем флаг переноса
+		JP		NC, Exec			; Если у нас строка без номера, то сразу исполняем
 
 ; StoreProgramLine
 ; Here's where a program line has been typed, which we now need to store in program memory.
@@ -695,7 +571,7 @@ StoreProgramLine:
         PUSH    AF
         CALL    FindProgramLine			; Ищем строку в программе
         PUSH    BC
-        JP      NC,InsertProgramLine		; Если не нашли, то вставляем строку
+        JP      NC,InsertProgramLine	; Если не нашли, то вставляем строку
 
 ; Carry was set by the call to FindProgramLine, meaning that the line already exists.
 ; So we have to remove the old program line before inserting the new one in it's place.
@@ -778,36 +654,7 @@ FindEndOfLine:
         EX      DE,HL
         JP      UpdateLinkedListLoop
 
-; FindProgramLine
-; Given a line number in DE, this function returns the address of that progam line in BC.
-; If the line doesn't exist, then BC points to the next line's address, ie where the 
-; line could be inserted. Carry flag is set if the line exists, otherwise carry reset.
-
-FindProgramLine:
-	LD      HL,(PROGRAM_BASE)
-FindProgramLineInMem:
-	LD      B,H
-        LD      C,L
-        LD      A,(HL)
-        INC     HL
-        OR      (HL)
-        DEC     HL
-        RET     Z
-
-        PUSH    BC
-        RST     PushNextWord
-        RST     PushNextWord
-        POP     HL
-        RST     CompareHLDE
-        POP     HL
-        POP     BC
-        CCF     
-        RET     Z
-
-        CCF     
-        RET     NC
-
-        JP      FindProgramLineInMem
+		INCLUDE	"spFindProgramLine.inc"
 
 
 	CHK	039Dh, "Сдвижка кода"
@@ -818,7 +665,7 @@ FindProgramLineInMem:
 ;Gets a line of input at a '? ' prompt.
 
 InputLineWithQ:
-	LD      A, '?'
+		LD      A, '?'
         RST     OutChar
         LD      A, ' '
         RST     OutChar
@@ -927,14 +774,14 @@ L044A:  SUB     TK_REM-':'
 ;copy is complete and it jumps back
 	
 FreeCopyLoop:
-	LD      A,(HL)			; A=Input char
+		LD      A,(HL)			; A=Input char
         OR      A			; If char is null then exit
         JP      Z,Exit			; 
         CP      B			; If input char is term char then 
         JP      Z,WriteChar		; we're done free copying.
 FreeCopy:
-	INC     HL
-	LD      (DE),A
+		INC     HL
+		LD      (DE),A
         INC     C
         INC     DE
         JP      FreeCopyLoop
@@ -942,12 +789,12 @@ FreeCopy:
 ; NextKeyword. Advances keyword ptr in DE to point to the next keyword in the table, then jumps back to KwCompare to see if it matches. Note we also increment the keyword ID.
 
 NextKeyword:
-	POP     HL			; Restore input ptr
+		POP     HL			; Restore input ptr
         PUSH    HL
         INC     B			; Keyword ID ++
         EX      DE,HL			; HL=keyword table ptr
 NextKwLoop:
-	OR      (HL)			; Loop until
+		OR      (HL)			; Loop until
         INC     HL			; bit 7 of previous
         JP      P,NextKwLoop		; keyword char is set.
         EX      DE,HL			; DE=keyword ptr, HL=input ptr
@@ -966,28 +813,28 @@ Exit:	LD      HL,LINE_BUFFER-1
 
 Backspace:
 	IF	SERVICE
-	DEC	HL
-	DEC	HL
-	DEC	B
-	DEC	B
-	JP	P, L04B1
+		DEC	HL
+		DEC	HL
+		DEC	B
+		DEC	B
+		JP	P, L04B1
 L047D:	CALL	Z, NewLine
 	ELSE	; SERVICE
-	DEC     B			; Char count--;
+		DEC     B			; Char count--;
         DEC     HL			; Input ptr--;
         RST     OutChar			; Print backspace char.
         JP      NZ,InputNext		; 
 ResetInput:
-	RST     OutChar
+		RST     OutChar
 L047D:	CALL    NewLine
 	ENDIF	; SERVICE
 InputLine:
-	LD      HL,LINE_BUFFER
+		LD      HL,LINE_BUFFER
         LD      B,01H
 
 ; Get a character and jump out of here if user has pressed 'Enter'. 
 InputNext:
-	CALL    InputChar
+		CALL    InputChar
 ;Deal with backspace.
 
 L0488:	CP      08H
@@ -997,37 +844,37 @@ L0488:	CP      08H
 
 	IF	SERVICE
 	IF	RK86
-	CP	0AH
+		CP	0AH
 	ELSE    ; RK86
-	CP	1AH
+		CP	1AH
 	ENDIF	; RK86
 L0495:	EQU	$+1
-	JP	Z, L047D		; Самомодифицирующийся код
-	CP	01FH
-	JP	Z, L1BE4
-	CP	07FH
+		JP	Z, L047D		; Самомодифицирующийся код
+		CP	01FH
+		JP	Z, L1BE4
+		CP	07FH
 	IF	RK86
-	JP	Z, L1995
+		JP	Z, L1995
 	ELSE	; RK86
-	JP	NC, InputNext
+		JP	NC, InputNext
 	ENDIF	; RK86
-	LD	C,A
-	LD	A, B
-	CP	72
+		LD	C,A
+		LD	A, B
+		CP	72
 	IF	BASICNEW
 	ELSE
-	NOP
-	NOP
+		NOP
+		NOP
 	ENDIF
-	JP	NC, L1CD8
-	LD	A, C
-	CP	" "
-	JP	C, L1BFB
+		JP	NC, L1CD8
+		LD	A, C
+		CP	" "
+		JP	C, L1BFB
 L04B0:	LD	(HL), C
 L04B1:	INC	HL
-	RST	OutChar
-	INC	B
-	JP	InputNext
+		RST	OutChar
+		INC	B
+		JP	InputNext
 
 	ELSE	; SERVICE
 
@@ -1037,11 +884,11 @@ L04B1:	INC	HL
 ;If user has not given a printable character, then loop back until they do.
         CP      7FH
 	IF	RK86
-	JP	Z, L1995
-	CP	03H
-	JP	C, L1967
-	CP	1BH
-	JP	Z, L1959			; Обработка Esc-последовательности
+		JP	Z, L1995
+		CP	03H
+		JP	C, L1967
+		CP	1BH
+		JP	Z, L1959			; Обработка Esc-последовательности
 	ELSE	; RK86
         JP      NC,InputNext
         CP      01H
@@ -1052,7 +899,7 @@ L04B1:	INC	HL
         NOP     
         NOP     
         NOP     
-	NOP
+		NOP
 	ENDIF
 	ENDIF	; RK86
 ;A normal character has been pressed. Here we store it in LINE_BUFFER, only we don't if the terminal width has been exceeded. If the terminal width is exceeded then we ring the bell (ie print ASCII code 7) and ignore the char. Finally we loop back for the next input character.
@@ -1062,11 +909,11 @@ L04B1:	INC	HL
         LD      A,07H
         JP      NC,IgnoreChar
         LD      A,C			; Write char to LINE_BUFFER.
-	LD      (HL),C
+		LD      (HL),C
 L04B1:	INC     HL
         INC     B
 IgnoreChar:
-	RST     OutChar
+		RST     OutChar
         JP      InputNext
 
 	ENDIF	; SERVICE
@@ -1076,13 +923,13 @@ IgnoreChar:
 ; Печать символа на терминал.
 
 OutChar:
-	PUSH	AF
-	LD	A,(ControlChar)
-	OR	A
+		PUSH	AF
+		LD	A,(ControlChar)
+		OR	A
 	ENDIF
 
 OutChar_tail:
-	JP      NZ,POPAFRET
+		JP      NZ,POPAFRET
         POP     AF
         PUSH    AF
 L04BD:	EQU	$+1
@@ -1100,18 +947,18 @@ L04BD:	EQU	$+1
 	IF	SERVICE
 	IF	BASICNEW
 	ELSE
-	NOP
-	NOP
-	NOP
-	NOP
-	NOP
+		NOP
+		NOP
+		NOP
+		NOP
+		NOP
 	ENDIF
 L04C9:	SCF				; Самомодифицирующийся код
-	CALL	C, L1B50
+		CALL	C, L1B50
 	ELSE	; SERVICE
-        CP      72
-        CALL    Z,NewLine
-        INC     A
+		CP      72
+		CALL    Z,NewLine
+		INC     A
         LD      (TERMINAL_X),A
 	ENDIF	; SERVICE
 
@@ -1158,8 +1005,8 @@ InputChar:
 
 	if	BASICNEW
 	else
-	NOP
-	NOP
+		NOP
+		NOP
 	include "prnflag.inc"
 	endif
 
@@ -1200,9 +1047,9 @@ InputChar:
 ExecNext:
 ; Даем пользователю шанс прервать исполнение.
 	if	BASICNEW
-	CALL	TestBreakKey
+		CALL	TestBreakKey
 	else
-	CALL    0F812h			;---------------
+		CALL    0F812h			;---------------
         NOP				; !! Этот блок можно заменить одним вызовом CALL TestBreakKey
         CALL    NZ,CheckBreak		;---------------
 	endif
@@ -1363,7 +1210,7 @@ L0609:  XOR     A
 ;If character pointed to by HL is alphabetic, the carry flag is reset otherwise set.
 ;
 CharIsAlpha:
-	LD      A,(HL)
+		LD      A,(HL)
         CP      'A'
         RET     C
 
@@ -1506,7 +1353,7 @@ L0794:  RET     Z
         JP      Z,Tab
         PUSH    HL
         CP      ','
-        JP      Z,L07F4
+        JP      Z,ToNextTabBreak
         CP      ';'
         JP      Z,ExitTab
         POP     BC
@@ -1579,12 +1426,14 @@ PrintNullLoop:
 ;ToNextTabBreak
 ;Calculate how many spaces are needed to get us to the next tab-break then jump to PrintSpaces to do it.
 
-L07F4:  LD      A,(TERMINAL_X)
+ToNextTabBreak:
+		LD      A,(TERMINAL_X)
         CP      30H
         CALL    NC,NewLine
         JP      NC,ExitTab
-L07FF:  SUB     0EH
-        JP      NC,L07FF
+CalcSpaceCount:
+		SUB     0EH
+        JP      NC,CalcSpaceCount
         CPL     
         JP      PrintSpaces
 
@@ -3008,7 +2857,7 @@ L100E:  LD      A,(DE)
 
 ContInit:
 	IF	MIKROSHA
-	LD	HL, 75FFH
+	LD	HL, MEM_TOP
 	DB	12 DUP (0)
 	ELSE
 	LD	HL, (VAR_BASE)
@@ -3175,8 +3024,8 @@ Init:	XOR     A
 
 	IF	RK86
 
-	CALL	0F818H
-	JP	ContInit
+		CALL	0F818H
+		JP		ContInit
 
 	IF	BASICNEW
 	ELSE
@@ -3184,14 +3033,14 @@ Init:	XOR     A
 	ENDIF
 
 Cls:	PUSH	HL
-	CALL	0F81EH
-	LD	BC, 01D18H
-	ADD	HL, BC
-	LD	(POSX), HL		; 01957H
-	POP	HL
-	LD	C, 1FH
-	CALL	0F809H
-	JP	SetCurPos
+		CALL	0F81EH
+		LD		BC, 01D18H
+		ADD		HL, BC
+		LD		(POSX), HL		; 01957H
+		POP		HL
+		LD		C, 1FH
+		CALL	0F809H
+		JP		SetCurPos
 
 Cur:	CALL	EvalByteExpression
 	CP	40H

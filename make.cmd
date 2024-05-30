@@ -3,65 +3,65 @@ rem fpc ctrlbas.pas
 
 rem Стандартные бейсики
 
-asw -lU -D RAM=12 basic80.asm > logs\basic80-12kb.lst
+asw -lU -D RAM=12 basic80.asm -o obj\basic80.p > logs\basic80-12kb.lst
 if errorlevel 1 goto error
-p2bin basic80.p bin\micro-80\basic80-12kb.bin
-if errorlevel 1 goto error
-
-asw -lU basic80.asm > logs\basic80-16kb.lst
-if errorlevel 1 goto error
-p2bin basic80.p bin\micro-80\basic80-16kb.bin
+p2bin obj\basic80.p bin\micro-80\basic80-12kb.bin
 if errorlevel 1 goto error
 
-asw -lU -D RAM=32 basic80.asm > logs\basic80-32kb.lst
+asw -lU basic80.asm -o obj\basic80.p > logs\basic80-16kb.lst
 if errorlevel 1 goto error
-p2bin basic80.p bin\micro-80\basic80-32kb.bin
-if errorlevel 1 goto error
-
-asw -lU -D RAM=48 basic80.asm > logs\basic80-48kb.lst
-if errorlevel 1 goto error
-p2bin basic80.p bin\micro-80\basic80-48kb.bin
+p2bin obj\basic80.p bin\micro-80\basic80-16kb.bin
 if errorlevel 1 goto error
 
-rem ------------------------------------------------------------
-
-asw -lU -D RK86=1 basic80.asm > logs\basic80-rk86-16kb.lst
+asw -lU -D RAM=32 basic80.asm -o obj\basic80.p > logs\basic80-32kb.lst
 if errorlevel 1 goto error
-p2bin basic80.p bin\radio-86rk\basic80-rk86-16kb.bin
+p2bin obj\basic80.p bin\micro-80\basic80-32kb.bin
 if errorlevel 1 goto error
 
-asw -lU -D RK86=1 -D RAM=32 basic80.asm > logs\basic80-rk86-32kb.lst
+asw -lU -D RAM=48 basic80.asm -o obj\basic80.p > logs\basic80-48kb.lst
 if errorlevel 1 goto error
-p2bin basic80.p bin\radio-86rk\basic80-rk86-32kb.bin
+p2bin obj\basic80.p bin\micro-80\basic80-48kb.bin
 if errorlevel 1 goto error
 
 rem ------------------------------------------------------------
 
-asw -lU -D MIKROSHA=1 basic80.asm > logs\basic80-mikrosha-32kb.lst
+asw -lU -D RK86=1 basic80.asm -o obj\basic80.p > logs\basic80-rk86-16kb.lst
 if errorlevel 1 goto error
-p2bin basic80.p bin\mikrosha\basic80-mikrosha-32kb.bin
+p2bin obj\basic80.p bin\radio-86rk\basic80-rk86-16kb.bin
+if errorlevel 1 goto error
+
+asw -lU -D RK86=1 -D RAM=32 basic80.asm -o obj\basic80.p > logs\basic80-rk86-32kb.lst
+if errorlevel 1 goto error
+p2bin obj\basic80.p bin\radio-86rk\basic80-rk86-32kb.bin
 if errorlevel 1 goto error
 
 rem ------------------------------------------------------------
 
-asw -lU -D UT88=1 -D RAM=12 basic80.asm > logs\basic80-ut88-12kb.lst
+asw -lU -D MIKROSHA=1 basic80.asm -o obj\basic80.p > logs\basic80-mikrosha-32kb.lst
 if errorlevel 1 goto error
-p2bin basic80.p bin\ut-88\basic80-ut88-12kb.bin
-if errorlevel 1 goto error
-
-asw -lU -D UT88=1 basic80.asm > logs\basic80-ut88-16kb.lst
-if errorlevel 1 goto error
-p2bin basic80.p bin\ut-88\basic80-ut88-16kb.bin
+p2bin obj\basic80.p bin\mikrosha\basic80-mikrosha-32kb.bin
 if errorlevel 1 goto error
 
-asw -lU -D UT88=1 -D RAM=32 basic80.asm > logs\basic80-ut88-32kb.lst
+rem ------------------------------------------------------------
+
+asw -lU -D UT88=1 -D RAM=12 basic80.asm -o obj\basic80.p > logs\basic80-ut88-12kb.lst
 if errorlevel 1 goto error
-p2bin basic80.p bin\ut-88\basic80-ut88-32kb.bin
+p2bin obj\basic80.p bin\ut-88\basic80-ut88-12kb.bin
 if errorlevel 1 goto error
 
-asw -lU -D UT88=1 -D RAM=48 basic80.asm > logs\basic80-ut88-48kb.lst
+asw -lU -D UT88=1 basic80.asm -o obj\basic80.p > logs\basic80-ut88-16kb.lst
 if errorlevel 1 goto error
-p2bin basic80.p bin\ut-88\basic80-ut88-48kb.bin
+p2bin obj\basic80.p bin\ut-88\basic80-ut88-16kb.bin
+if errorlevel 1 goto error
+
+asw -lU -D UT88=1 -D RAM=32 basic80.asm -o obj\basic80.p > logs\basic80-ut88-32kb.lst
+if errorlevel 1 goto error
+p2bin obj\basic80.p bin\ut-88\basic80-ut88-32kb.bin
+if errorlevel 1 goto error
+
+asw -lU -D UT88=1 -D RAM=48 basic80.asm -o obj\basic80.p > logs\basic80-ut88-48kb.lst
+if errorlevel 1 goto error
+p2bin obj\basic80.p bin\ut-88\basic80-ut88-48kb.bin
 if errorlevel 1 goto error
 
 rem ------------------------------------------------------------
