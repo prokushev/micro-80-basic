@@ -127,7 +127,7 @@ if errorlevel 1 goto error
 p2bin basic80.p bin\ut-88\basic80-ut88-service-48kb.bin
 if errorlevel 1 goto error
 
-rem Бейсик-Микрон
+echo Бейсик-Микрон
 
 asw -lU -D RK86=1 -D RAM=32 micron.asm > logs\basic-rk86-micron-32kb.lst
 if errorlevel 1 goto error

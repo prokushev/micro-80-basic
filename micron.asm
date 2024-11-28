@@ -1,18 +1,213 @@
 ; ═════════════════════════════════════════════════════════════════════════════════
-;  БЕЙСИК-МИКРОН для РАДИО-86РК
+;  БЕЙСИК для МИКРО-80/БЕЙСИК для РАДИО-86РК/БЕЙСИК для ЮТ-88
+;  БЕЙСИК-СЕРВИС для МИКРО-80/БЕЙСИК-СЕРВИС для РАДИО-86РК
+;  БЕЙСИК-СЕРВИС для ЮТ-88/БЕЙСИК-МИКРОН для РАДИО-86РК
 ; ═════════════════════════════════════════════════════════════════════════════════
 ;
-; Это дизассемблер Бейсика-Микрон для "Радио-86РК".
+; Это дизассемблер Бейсика для "МИКРО-80" и Бейсика для "Радио-86РК" и других...
+; Гипотетически Бейсик для МИКРО-80=Бейсик для ЮТ-88, но это пока не проверялось.
 ; Имена меток взяты с дизассемблера Altair BASIC 3.2 (4K)
+; По ходу разбора встречаются мысли и хотелки.
 ;
-; TAB: 4
+; Общие хотелки:
+; !!Добавить поддержку каналов и потоков, как в Sinclair Basic, не забывая совместимость с ECMA стандартом
+; !!Пересобрать с адреса 100h. Вначале добавить CP/M адаптер. При наличии поддержки дисковых фунок - адаптер не цепляем. 
+; !!Добавить OPTION BASE для управления индеском массива (Совместимость ANSI)
+; !!Автонастройка памяти (сейчас жестко задано в коде), кроме версии для РК-86
+; !!GO TO=GOTO, GO SUB=GOSUB (учесть в токенизаторе)
+; ??ГОСТ расширение основных средств уровень 1 и 2 не могут быть реализованы из-за усеченного знакогенератора. Нет строчных букв.
+; !!Отвязать по максимуму от работы в ОЗУ (версия для ROM-диска? Мысль интересная, т.к можно высвободить гору ОЗУ. 
+;   Больше актуально не для М-80/ЮТ-88, а для РК-86. При этом для самого интерпретатора можно заполучить 32Кб
+;   для стандартного ROM-диска).
+; !!Добавить IF x GOSUB
 ;
+; Для микроши f82d есть? Или как-то по другому?
+;
+; БЕЙСИК для МИКРО-80/РАДИО-86РК - Общее устройство
+;
+; Как распределяется память
+;
+; +-------------------------------+ FFFFH
+; !       ПЗУ  МОНИТОРа  (2К)     !
+; +-------------------------------+ F800H
+; !     Рабочие  ячейки  МОНИТОРа !
+; +-------------------------------+ F750H
+; !        Не  использована       !
+; +-------------------------------+ F000H (МИКРО-80/ЮТ-88)
+; !          ОЗУ  экрана          !
+; +-------------------------------+ E800H (МИКРО-807/ЮТ-88)
+; !         ОЗУ  курсора          !
+; +-------------------------------+ E000H (МИКРО-80)
+; !        Не  использована       !
+; +-------------------------------+ (MEM_TOP)
+; !      Строковые переменные     !
+; +-------------------------------+ (STR_TOP)
+; !         Стек  Бейсика         !
+; +-------------------------------+ (STACK_TOP)
+; !            Массивы            !
+; +-------------------------------+ (VAR_ARRAY_BASE)
+; !      Числовые переменные      !
+; +-------------------------------+ (VAR_BASE)
+; ! Текст  программы  на  Бейсике !
+; +-------------------------------+ (PROGRAM_BASE)
+; !         Буфер  экрана         !
+; +-------------------------------+ (SCRBUF) (МИКРО-80/ЮТ-88)
+; !      Область  подпрограмм     !
+; !         пользователя          !
+; +-------------------------------+ 1960H
+; !    Интерпретатор  Бейсика     !
+; +-------------------------------+ 0000H
+;
+; Рассмотрим блоки памяти, которые идут непосредственно после интерпретатора Бейсика:
+;
+; The minimum amount of stack space is 18 bytes - at initialisation, after the
+; user has stated the options they want, the amount of space is reported as 
+; "X BYTES FREE", where X is 4096 minus (amount needed for Basic, plus 18 bytes
+; for the stack). With all optional inline functions selected - SIN, RND, and SQR
+; - X works out to 727 bytes. With no optional inline functions selected, the 
+; amount increases to 973 bytes.
+;
+; Текст программы на Бейсике
+;
+; На рис. показан формат строки программы на Бейсике в том виде, в каком она хранится в памяти микро-ЭВМ. 
+; В начале каждой строки два байта отведены для хранения указателя адреса начала следующей строки программы,
+; следующие два байта хранят номер строки, а заканчивается она байтом, заполненным одними нулями. Таким образом,
+; текст программы хранится в памяти в виде специальной структуры данных, называемой в литературе "односвязным списком".
+;
+; Для большей эффективности по скорости и использованию памяти, программа храниться в токенизированном виде.
+; Токенизация заключается в простой замене ключевых слов их идентификаторами. Идентификатора занимают один байта
+; (более поздние версии используют 1- и 2-байтовые идентификаторы). Идентификатор определяется установленным
+; старшим битом, т.е. коды индентификаторов находятся в диапазоне 0x80 - 0xFF.
+;
+; Например, строка:
+;
+; FOR I=1 TO 10
+;
+; В токенизированном виде выглядит как :
+;
+; 81 " I=1" 95 " 10"
+;
+; Здесь 081H - идентификатор для FOR, далее следует строка " I=1", после которой - идентификатор 095H для TO, и оканчивается
+; строкой " 10". Всего 9 байт вместо 13 байт для нетокенизированной строки.
+;
+; This particular example line of input is meaningless unless it is part of a larger program. As you should know already,
+; each line of a program is prefixed with a line number. These line numbers get stored as 16-bit integers preceding the
+; tokenised line content. Additionally, each line is stored with a pointer to the following line. Let's consider the 
+; example input again, this time as a part of a larger program :
+;
+; 10 FOR I=1 TO 10
+; 20 PRINT "HELLO WORLD"
+; 30 NEXT I
+;
+; Приняв начало памяти программы за 0D18, данная программа будет сохранена в памяти следующим образом:
+;
+;
+;
+; Таким образом, каждая строка программы состоит из трех компонент:
+;
+; Указатель на следующую строку
+; Номер строки
+; Токенизированная строка
+;
+; Последняя строка программы всегда присутствует и
+; содержит нулевой указатель на несуществующую следующую строку.
+; Эта нулевая строка, длиной два байта, маркер конца программы.
 
-		CPU	8080
-		Z80SYNTAX	EXCLUSIVE
+; Заканчивая обработку очередной строки программы, интерпретатор 
+; последовательно просматривает указатели списка до тех пор, пока 
+; не будет найдена строка с требуемым номером. Конец списка
+; помечается двумя "нулевыми" байтами. Вы таким же образом
+; можете вручную (с помощью директив Монитора) определить,
+; где заканчивается программа, просматривая указатель списка
+; до тех пор, пока не обнаружите три смежных байта, заполненных
+; нулями. Во многих практических случаях, воспользовавшись
+; рассмотренными рекомендациями, можно восстановить программу,
+; в которой в результате сбоя была нарушена целостность списка. 
+; После восстановления структуры списка необходимо изменить значения,
+; хранящиеся в ячейках памяти 0245Н и 0246Н. В этих ячейках хранятся 
+; значения соответственно младшего и старшего байта конечного адреса 
+; программы. Этот адрес на двойку превосходит адрес первого байта 
+; маркера конца списка.
+;
+; Переменные
+; ----------
+;
+; Поддержка переменных в этой версии Бейсика достаточно ограниченная.
+; Разрешенный тип переменных только числовой - нет символьных, структур, и, конечно,
+; не различаются целые числи и числа с плавающей точкой. Все переменные хранятся и
+; обрабатываются как числа с плавающей точкой.
+;
+; Длина имени переменных ограничена максимум двумя символами: первый (обязательный)
+; символ должен быть буквой (латинской), а второй (опциональный) символ - число.
+; Таким образом следующие определения некорректны:
+;
+; LET FOO=1
+; LET A="HELLO"
+; LET AB=A
+;
+; В то время как следующие - корректны:
+;
+; LET A=1
+; LET B=2.5
+; LET B2=5.6
+; 	 
+; Фиксированная длина переменных существенно упрощает их хранение в памяти.
+; Каждая переменная занимает 6 байт в памяти: два байта для имени и четыре
+; байта для значения переменной.
+;
+; Массивы
+; -------
+;
+; Массивы хранятся в отдельной области памяти, сразу после области переменных. Начала области массивов определяется переменной
+; VAR_ARRAY_BASE. Массивы определяются ключевым словом DIM. Размерность массива n приводит к выделению n+1 элементов,
+; адресуемых значениями индекса от 0 до n включительно.
+;
+; Соответственно, код ниже корректен:
+;
+; DIM A(2)
+; A(0) = 1
+; A(1) = 2
+; A(2) = 3
+;
+; но:
+;
+; A(3) = 4
+;
+; приведет к ошибке Ошибка 09. Индекс не соответствует размерности массива.
+;
+; Массив хранится в памяти аналогично обычным переменным. Вначале следует двух-байтовое имя
+; переменной. Далее следует 16-битное целое, содержащее размер в байтах элементов массива.
+; Далее следуют непосредственно элементы массива (по 4-е байта на каждый элемент).
+; Например, указанный выше массив A(2), если сохранен по адресу 0D20, будет храниться так:
+;
+; Address	Bytes		Value	Description
+; 0D20		0x4100		'A\0'	Variable name
+; 0D22		0x000C	 		Total size, in bytes, of the array elements.
+; 0D24		0x81000000	1	Element 0 value
+; 0D28		0x82000000	2	Element 1 value
+; 0D2C		0x82400000	3	Element 2 value
+; 
+;
+; Порядок исполнения
+; ------------------
+;
+; При выполнении команды RUN исполнение начинается с первой строки программы.
+; Когда строка заканчивается, исполнение продолжается со следующей строки и так далее до тех
+; пор, пока не будет достигнут конец программы, команда END или STOP.
+;
+; This is too simple for all but the simplest programs - there are two mechanisms in Basic 
+; for altering program flow so that code can run in loops and subroutines be called.
+; These mechanisms are FOR/NEXT for looping, and GOSUB/RETURN for subroutines.
+;
+; In both FOR and GOSUB cases, the stack is used to store specific information about
+; the program line to return to.
+;
+	CPU	8080
+	Z80SYNTAX	EXCLUSIVE
 
 		ORG     0000h
 
+VarSize		EQU	2049h
 IOCode		EQU	205Ch		; три байта in a, (n) или out (n), a плюс ret
 TERMINAL_X	EQU	2063h
 TMP_HL		EQU	2064h
@@ -25,10 +220,12 @@ MEMSIZ		EQU	211Bh
 TMPST		EQU	211Fh
 TMPSTR		EQU	212Bh
 STR_TOP		EQU	212FH
+CUR_TOKEN_ADR	EQU	2131h
 DATA_LINE	EQU	2133h
 NO_ARRAY	EQU	2135h
 INPUT_OR_READ	EQU	2136h
 PROG_PTR_TEMP	EQU	2137h
+PROG_PTR_TEMP2	EQU	2139h
 CURRENT_LINE	EQU	213Bh
 OLD_LINE	EQU	213Dh
 OLD_TEXT	EQU	213Fh
@@ -48,6 +245,7 @@ ERR_OD		EQU	06H
 ERR_FC		EQU	08H
 ERR_OM		EQU 0CH
 ERR_US		EQU 0EH
+ERR_DD		EQU 12H
 ERR_DZ		EQU 14H
 ERR_TM		EQU	18H
 ERR_CN		EQU 20h
@@ -83,6 +281,10 @@ INIT_PROGAM_BASE:
 		include "spFTestSign.inc"
 	
 
+;
+;PushNextWord (RST 6)
+;Effectively PUSH (HL). First we write the return address to the JMP instruction at the end of the function; then we read the word at (HL) into BC and push it onto the stack; lastly jumping to the return address.
+;
 PushNextWord:
 		LD		C, (HL)
         INC     HL
@@ -110,34 +312,41 @@ RST6_CONT:
 		include	"spCopyMemoryUp.inc"
 		include "spCheckEnoughVarSpace.inc"
 
-        ; --- START PROC CheckEnoughMem ---
-CheckEnoughMem:  
+
+; CheckEnoughMem
+; Checks that HL is more than 32 bytes away from the stack pointer. If HL is within 32 bytes
+; of the stack pointer then this function falls into OutOfMemory.
+
+CheckEnoughMem:
 		PUSH    DE
         EX      DE,HL
-        LD      HL,0FFDBh
+        LD      HL,0FFDBh		; Отличается от более старых версий на 1 байт. Должно быть -34. 0FFDFh. Причину не разбирал
         ADD     HL,SP
         RST     CompareHLDE
         EX      DE,HL
         POP     DE
         RET     NC
 
+; 5 обработчиков ошибки
+; Используется трюк с LD BC,...
+; (Здесь можно еще пооптимизировать, используя трюки с INC/DEC/LD B,...)
+
 OutOfMemory:
-		LD      E,ERR_OM
-        JP      Error
+		LD	E, ERR_OM
+		JP	Error
 
 DATASyntaxError:
 		LD      HL,(DATA_LINE)
-        LD      (CURRENT_LINE),HL
+		LD      (CURRENT_LINE),HL
 
-        ; --- START PROC SyntaxError ---
 SyntaxError:
 		LD      E,ERR_SN
-        XOR     A
-        LD      (2078h),A
+	        XOR     A
+	        LD      (2078h),A
 		DB		01		;LD      BC,...
 DivideByZero:
 		LD      E, ERR_DZ
-		DB		01		;LD      BC,...
+		DB		01				; LD BC,...
 WithoutFOR:
 		LD      E, ERR_NF
 
@@ -162,8 +371,6 @@ L00BC:  LD      A,(HL)
 MessageFound:
 		CALL    0F818h
         LD      HL, szError
-
-        ; --- START PROC PrintInLine ---
 PrintInLine:
 		CALL    0F818h
         LD      HL,(CURRENT_LINE)
@@ -203,29 +410,39 @@ GetNonBlankLine:
 		
         ; --- START PROC L010D ---
 L010D:  CALL    TerminateInput
-
         ; --- START PROC L0110 ---
-L0110:  RST     NextChar
-        INC     A
-        DEC     A
-        JP      Z,GetNonBlankLine
-        PUSH    AF
-        CALL    LineNumberFromStr
-        PUSH    DE
-        CALL    Tokenize
-        LD      B,A
-        POP     DE
-        POP     AF
-        JP      NC,Exec
+
+L0110:	RST		NextChar			; Считываем первый символ из буфера. Флаг переноса =1, если это цифра
+		INC		A					; Проверяем на пустую строку. Инкремент/декремент не сбрасывает флаг переноса.
+		DEC		A
+		JP		Z, GetNonBlankLine	; Снова вводим строку, если пустая
+		PUSH	AF					; Сохраняем флаг переноса
+		CALL	LineNumberFromStr	; Получаем номер строки в DE
+		PUSH	DE					; Запоминаем номер строки
+		CALL	Tokenize			; Запускаем токенизатор. В C возвращается длина токенизированной строки, а в А = 0
+		LD		B,A					; Теперь BC=длина строки
+		POP		DE					; Восстанавливаем номер строки
+		POP		AF					; Восстанавлливаем флаг переноса
+		JP		NC, Exec			; Если у нас строка без номера, то сразу исполняем
+
+; StoreProgramLine
+; Here's where a program line has been typed, which we now need to store in program memory.
+
+StoreProgramLine:
         PUSH    DE
         PUSH    BC
         RST     NextChar
         PUSH    AF
-        CALL    FindProgramLine
+        CALL    FindProgramLine			; Ищем строку в программе
         PUSH    BC
-        JP      NC,InsertProgramLine
-		
-RemoveProgramLine:		
+        JP      NC,InsertProgramLine	; Если не нашли, то вставляем строку
+
+; Carry was set by the call to FindProgramLine, meaning that the line already exists.
+; So we have to remove the old program line before inserting the new one in it's place.
+; To remove the program line we simply move the remainder of the program 
+;(ie every line that comes after it) down in memory.
+
+RemoveProgramLine:
         EX      DE,HL
         LD      HL,(VAR_BASE)
 RemoveProgramLineLoop:
@@ -234,12 +451,15 @@ RemoveProgramLineLoop:
         INC     BC
         INC     DE
         RST     CompareHLDE
-        JP      NC,RemoveProgramLineLoop
+        JP      NC, RemoveProgramLineLoop
         LD      H,B
         LD      L,C
         INC     HL
         LD      (VAR_BASE),HL
-		
+
+;To insert the program line, firstly the program remainder (every line that comes
+; after the one to be inserted) must be moved up in memory to make room.
+
 InsertProgramLine:
 		POP     DE
         POP     AF
@@ -263,8 +483,7 @@ InsertProgramLine:
         INC     HL
 		
 CopyFromBuffer:
-		
-        LD      DE,LINE_BUFFER
+        LD      DE,LINE_BUFFER		;Copy the line into the program
 CopyFromBufferLoop:
 		LD      A,(DE)
         LD      (HL),A
@@ -272,8 +491,9 @@ CopyFromBufferLoop:
         INC     DE
         OR      A
         JP      NZ,CopyFromBufferLoop
-		
-        ; --- START PROC UpdateLinkedList ---
+
+;Now the program line has been inserted/removed, all the pointers from each line to the next need to be updated.
+
 UpdateLinkedList:
 		CALL    ResetAll
         INC     HL
@@ -354,39 +574,61 @@ ResetStack:
         PUSH    BC
         RET
 
-        ; --- START PROC Tokenize ---
+
+
+	
+; Tokenize
+;
+; Токенизирует строку в буфере LINE_BUFFER, заменяя ключевые слова кодом токена.
+; На выходе C содержит длину токенизированной строки плюс несколько байт
+; для завершения строки программы.
+
 Tokenize:
 		XOR     A
-        ; --- START PROC L01F2 ---
 L01F2:  LD      (DATA_STM),A
         LD      C,05h
         LD      DE,LINE_BUFFER
-L01FA:  LD      A,(HL)
-        CP      ' '             ; ' '
+
+L01FA:
+	LD      A,(HL)
+
+;If char is a space, jump ahead to write it out.
+        CP      ' '
         JP      Z,WriteChar
+;If char is a " (indicating a string literal) then freely copy up to the closing ". Obviously we don't want to tokenize string literals.
         LD      B,A
-        CP      '"'             ; '"'
+        CP      '"'
         JP      Z,FreeCopy
+;If char is null then we've reached the end of input, and can exit this function.
         OR      A
         JP      Z,Exit
+; Обработка DATA
         LD      A,(DATA_STM)
         OR      A
         LD      B,A
-        LD      A,(HL)
+        LD      A,(HL)			; Восстанавливаем введенный символа
         JP      NZ,WriteChar
-        CP      30h             ; '0'
+
+
+
+
+        CP      '0'
         JP      C,L021D
-        CP      3Ch             ; '<'
+        CP      ';'+1
         JP      C,WriteChar
-L021D:  PUSH    DE
+
+L021D:
+	PUSH    DE
         LD      DE,KEYWORDS-1
         PUSH    HL
-		DB		3Eh			; LD      A, ...
-L0223: 	INC		HL			; !! Отличается от Микро-80 !!
+	DB		3Eh			; LD      A, ...
 
+L0223: 	INC		HL			; !! Отличается от Микро-80 !!
         INC     DE
-L0225:  LD      A,(DE)
-        AND     7Fh             ; ''
+
+L0225:
+	LD      A,(DE)
+        AND     7Fh
         JP      Z,L0239
         CP      (HL)
         JP      NZ,L0263
@@ -401,36 +643,51 @@ L0239:
 		POP 	HL				; Restore input ptr
 		LD		A, (HL)			; and get input char
         POP     DE
+
 WriteChar:
-		INC     HL
-        LD      (DE),A
-        INC     DE
-        INC     C
-        SUB     3Ah             ; ':'
+	INC	HL			; Advance input ptr
+        LD	(DE),A			; Store output char
+        INC	DE			; Advance output ptr
+        INC	C			; C++ (arf!).
+; If we've just written the ID of keyword REM then we need to freecopy the rest of the line.
+; Here we test for REM (8E) and jump back to the outer loop if it isn't. Note that if it is
+; REM, then we set B to 0 so the freecopy won't stop prematurely.
+        SUB     ':'
         JP      Z,L024A
-        CP      49h             ; 'I'
+        CP      TK_DATA-':'
         JP      NZ,L024D
 L024A:  LD      (DATA_STM),A
-L024D:  SUB     54h             ; 'T'
+L024D:  SUB     TK_REM-':'
         JP      NZ,L01FA
         LD      B,A
-L0253:  LD      A,(HL)
+
+;Free copy loop. This loop copies from input to output without tokenizing, 
+;as needs to be done for string literals and comment lines. The B register
+;holds the terminating character - when this char is reached the free 
+;copy is complete and it jumps back
+
+L0253:
+	LD      A,(HL)
         OR      A
         JP      Z,Exit
         CP      B
         JP      Z,WriteChar
 FreeCopy:
 		INC     HL
-        LD      (DE),A
+		LD      (DE),A
         INC     C
         INC     DE
         JP      L0253
 
-L0263:  POP     HL
+; NextKeyword. Advances keyword ptr in DE to point to the next keyword in the table, then jumps back to KwCompare to see if it matches. Note we also increment the keyword ID.
+
+L0263:
+	POP     HL
         PUSH    HL
         INC     B
         EX      DE,HL
-L0267:  OR      (HL)
+L0267:
+	OR      (HL)
         INC     HL
         JP      P,L0267
         EX      DE,HL
@@ -444,7 +701,8 @@ Exit:	LD      HL,LINE_BUFFER-1
         LD      (DE),A
         RET
 
-        ; --- START PROC L0279 ---
+;InputLine
+;Gets a line of input into LINE_BUFFER.
 
 L0279:  LD      DE,LINE_BUFFER
 
@@ -593,6 +851,7 @@ L034A:  AND     7Fh             ; ''
 L0351:  LD      B,00h
 L0353:  CALL    0F803h
         CP      1Fh
+
         JP      Z,0F800h
         CP      03h
         JP      Z,L1635
@@ -687,72 +946,99 @@ L03D1:  RST     PushNextWord
 
 		include "stFor.inc"
 
-        ; --- START PROC ExecNext ---
+
 ExecNext:
 		CALL    TestBreakKey
+
+; Если у нас ':', являющийся разделителем команд (что позволяет иметь несколько команд в строке), то исполняем следующую команду.
         LD      (PROG_PTR_TEMP),HL
         LD      A,(HL)
         EX      DE,HL
         LD      HL,208Dh
         INC     (HL)
+
+; Если это не ':', то должен быть нулевой байт, завершающий строку. В противном случае у нас синтаксическая ошибка.
         OR      A
         JP      Z,L044F
-        CP      3Ah             ; ':'
+        CP      ':'
         JP      NZ,SyntaxError
         EX      DE,HL
         JP      Exec
-
 L044F:  LD      (HL),A
         EX      DE,HL
+
+; Следующие два байта должны содержать адрес следующей строки. Можно просто их проигнорировать,
+; т.к. строки в памяти идут подряд, но мы должны завершить программу, если дошли до ее конца.
         INC     HL
         LD      A,(HL)
         INC     HL
         OR      (HL)
         INC     HL
-        JP      Z,EndOfProgram
+        JP      Z, EndOfProgram
+; Получаем номер следующей строки, кохраняем ее в CURRENT_LINE и переходим к Exec для ее исполнения.
         LD      E,(HL)
         INC     HL
         LD      D,(HL)
         EX      DE,HL
         LD      (CURRENT_LINE),HL
         EX      DE,HL
-        ; --- START PROC Exec ---
-Exec:  	RST     NextChar
+
+;		
+; Exec
+;
+; Запуск команды BASIC по адресу в HL.
+;
+		
+; Получаем первый символ команды.
+Exec:	RST     NextChar
+; Сохраняем адрес ExecNext в стеке, чтобы переходить по RET.
         LD      DE,ExecNext
         PUSH    DE
+
 ExecANotZero:
-		RET     Z
+; Если нет команды, то прекращаем исполнение.
+	RET     Z
 
 ExecA:  SUB     80h
         JP      C,Let
         CP      1Dh
         JP      C,L0478
-
         CP      4Ah             ; 'J'
         JP      C,SyntaxError
         SUB     2Dh             ; '-'
 
-L0478:  RLCA
+; Вычисляем адрес обработчика команды в таблице обработчиков в HL, сохранив текущий указатель программы в DE.
+
+L0478:
+	RLCA				;	BC = A*2
         LD      C,A
-        LD      B,00h
+        LD      B,00H
         EX      DE,HL
         LD      HL,KW_GENERAL_FNS
         ADD     HL,BC
+; Считываем в BC адрес обработчика.
         LD      C,(HL)
         INC     HL
         LD      B,(HL)
+; Помещаем адрес обработчика в стек, восстанавливаем указатель программы в HL,
+; получаем следующий символ и переходим по RET в обработчик команды.
         PUSH    BC
         EX      DE,HL
         ; --- START PROC L0486 ---
 L0486:  INC     HL
         LD      A,(HL)
-        CP      ':'             ; ':'
+        CP      ':'
         RET     NC
+
 NextChar_tail:
-		CP      20h             ; ' '
+; Пропускаем пробел.
+	CP      ' '
         JP      Z,L0486
-        CP      30h             ; '0'
-        CCF
+
+; Если символ >= '0', то устанавливаем флаг переноса.
+        CP      '0'
+        CCF     
+; Проверяем на ноль, не трогая флаг переноса.
         INC     A
         DEC     A
         RET
@@ -774,56 +1060,77 @@ L04AA:  LD      (DATA_PROG_PTR),HL
         EX      DE,HL
         RET
 
-        ; --- START PROC TestBreakKey ---
+; TestBreakKey
+; Apparently the Altair had a 'break' key, to break program execution. 
+; This little function tests to see if the terminal input device is ready,
+; and returns if it isn't. If it is ready (ie user has pressed a key) 
+; then it reads the char from the device, compares it to the code for
+; the break key (0x03) and jumps to Stop. Since the first instruction 
+; at Stop is RNZ, this will return at once if the user pressed some other key.
+
 TestBreakKey:
-		CALL    0F812h
+	CALL    0F812h
         OR      A
         RET     Z
         CALL    L0351
         CP      05h
 
-		INCLUDE "stStop.inc"
-		INCLUDE "stEnd.inc"
 
-InputBreak:
-        POP     BC
-        ; --- START PROC EndOfProgram ---
+	INCLUDE "stStop.inc"
+	INCLUDE "stEnd.inc"
+
+InputBreak:			; При входе по InputBreak Z=0
+	POP     BC		; Убираем адрес возврата из стека
+
 EndOfProgram:
-		PUSH    AF
-        LD      HL,(CURRENT_LINE)
-        LD      A,L
-        AND     H
-        INC     A
+	PUSH    AF		; Сохраняем флаг "STOP" для последующего использования
+	LD      HL,(CURRENT_LINE)	; Получаем текущий номер строки
+	LD      A,L			; Проверяем, что текущая строка =0FFFFH
+	AND     H
+	INC     A
+
         JP      Z,L04D3
         LD      (OLD_LINE),HL
         LD      HL,(PROG_PTR_TEMP)
         LD      (OLD_TEXT),HL
-L04D3:  POP     AF
-        LD      HL,szStop
-        JP      NZ,PrintInLine
-        JP      Main
 
-		INCLUDE	"stCont.inc"
+L04D3:
 
-        ; --- START PROC CharIsAlpha ---
-CharIsAlpha:  LD      A,(HL)
-        CP      'A'             ; 'A'
+        POP     AF
+        LD      HL, szStop		; Сообщение "СТОП"
+        JP      NZ, PrintInLine		; Если флаг "STOP", то печатаем сообщение
+        JP      Main			; Иначе уходим в диалоговый режим
+
+;
+
+	INCLUDE	"stCont.inc"
+
+;
+;CharIsAlpha
+;If character pointed to by HL is alphabetic, the carry flag is reset otherwise set.
+;
+CharIsAlpha:
+		LD      A,(HL)
+        CP      'A'
         RET     C
-        CP      'Z'+1             ; '['
+        CP      'Z'+1
         CCF
         RET
 
-        ; --- START PROC GetSubscript ---
+;GetSubscript
+;Gets the subscript of an array variable encountered in an expression or a DIM declaration. The subscript is returned as a positive integer in CDE.
+
 GetSubscript:
 		RST     NextChar
-        ; --- START PROC EvalPositiveNumericExpression ---
 EvalPositiveNumericExpression:
 		CALL    EvalNumericExpression
-        ; --- START PROC FTestPositiveIntegerExpression ---
+
+; If subscript is negative then jump to FC error below.
 FTestPositiveIntegerExpression:
 		RST     FTestSign
         JP      M,FunctionCallError
-        ; --- START PROC FTestIntegerExpression ---
+
+;Likewise, if subscript is >32767 then fall into FC error, otherwise exit to FAsInteger.
 FTestIntegerExpression:
 		LD      A,(FACCUM+3)
         CP      91h
@@ -833,25 +1140,43 @@ FTestIntegerExpression:
         CALL    FCompare
         LD      D,C
         RET     Z
-        ; --- START PROC FunctionCallError ---
+
+; Invalid function call (FC) error..
 FunctionCallError:
 		LD      E,ERR_FC
         JP      Error
+		
+;1.11 Jumping to Program Lines
+;
+; LineNumberFromStr
+;
+; Получает номер строки из указателя на строку. Указатель на строку передается в HL,
+; а целочисленный результат возвращается в DE. Ведущие пробелы пропускаются, т осуществляется
+; возврат, при первом нечисловом символе. Наибольшее возможное число
+; 65529 - будет выведена синтаксическая ошибка, если первые четыре цифры больше 6552.
 
-        ; --- START PROC LineNumberFromStr ---
-LineNumberFromStr:  
+; Одна из интересных фишек этой функции в том, что она возвращает установленным флаг Z,
+; если найдено корректное число (или строка пустая), или флаг NZ если строка начинается
+; не с цифры.
+		
+LineNumberFromStr:
+; Уменьшение указателя строки (теперь указавает на предыдущий символ) и инициализация результата = 0.
 		DEC     HL
-        ; --- START PROC LineNumberFromStr2 ---
 LineNumberFromStr2:
-		LD      DE,0000h
+		LD      DE,0000H
 NextLineNumChar:
+; Получить следующий символ и выйти, если он не буквенно-цифровой.
 		RST     NextChar
         RET     NC
+
         PUSH    HL
         PUSH    AF
-        LD      HL,1998h
+; Выводится синтаксическая ошибка, если номер строки > 6552. Фактически, ошибка возникает, еслиномер строки >65529,
+; т.к. следующая цифра еще не учтена.
+        LD      HL,1998H
         RST     CompareHLDE
         JP      C,SyntaxError
+; Умножаем результат на 10.
         LD      H,D
         LD      L,E
         ADD     HL,DE
@@ -859,20 +1184,26 @@ NextLineNumChar:
         ADD     HL,DE
         ADD     HL,HL
         POP     AF
+; Прибавляем значение данной цифры к результату и продолжаем вычисление.
         SUB     '0'
         LD      E,A
-        LD      D,00h
+        LD      D,00H
         ADD     HL,DE
         EX      DE,HL
         POP     HL
         JP      NextLineNumChar
 
-		INCLUDE	"stClear.inc"
+	INCLUDE	"stClear.inc"
+
 		INCLUDE	"stRun.inc"
-		INCLUDE	"stGosub.inc"
-		INCLUDE	"stGoto.inc"
-		INCLUDE	"stReturn.inc"
-		INCLUDE	"stDataRem.inc"
+
+	INCLUDE	"stGosub.inc"
+
+	INCLUDE	"stGoto.inc"
+
+	INCLUDE	"stReturn.inc"
+
+	INCLUDE	"stDataRem.inc"
 
         ; --- START PROC Let ---
 Let:  	CALL    GetVar
@@ -927,22 +1258,33 @@ CopyNumeric:
         RET
 
 		INCLUDE	"stOn.inc"
+
 		INCLUDE	"stIf.inc"
 
-        ; --- START PROC PrintLoop ---
+
+		
+;1.14 Printing
+;Print
+;Prints something! It can be an empty line, a single expression/literal, 
+;or multiple expressions/literals seperated by tabulation directives 
+;(comma, semi-colon, or the TAB keyword).
+
+
 PrintLoop:
 		RST     NextChar
-        ; --- START PROC Print ---
-Print:	JP      Z,NewLine
-        ; --- START PROC L064B ---
+
+
+Print:
+        JP      Z,NewLine
+
 L064B:  RET     Z
         CP      27h             ; '''
         CALL    Z,NewLine
         JP      Z,L0708
         CP      9Dh
-        JP      Z,L070C
+        JP      Z,Tab
         CP      9Fh
-        JP      Z,L070C
+        JP      Z,Tab
         CP      0C8h		; AT ?
         JP      NZ,L066B
         RST     NextChar
@@ -951,13 +1293,14 @@ L064B:  RET     Z
         JP      L0708
 
 L066B:  PUSH    HL
-        CP      2Ch             ; ','
+        CP      ','
         JP      Z,L06EA
-        CP      3Bh             ; ';'
+        CP      ';'
         JP      Z,L0707
         POP     BC
         CP      0D3h
         JP      Z,L06A8
+
         CALL    EvalExpression
         DEC     HL
         PUSH    HL
@@ -969,10 +1312,10 @@ L066B:  PUSH    HL
         LD      HL,(FACCUM)
         LD      A,(TERMINAL_X)
         ADD     A,(HL)
-        CP      40h             ; '@'
+        CP      '@'
         CALL    NC,NewLine
         CALL    L0CC6
-        LD      A,20h           ; ' '
+        LD      A, ' '
         RST     OutChar
         XOR     A
 L06A1:  CALL    NZ,L0CC6
@@ -1012,19 +1355,34 @@ L06D6:  ADD     A,'0'           ; '0'
         RST     OutChar
         RET
 
-        ; --- START PROC TerminateInput ---
+	
+;TerminateInput
+;HL points to just beyond the last byte of a line of user input. Here we write a null byte to terminate it,
+; reset HL to point to the start of the input line buffer, then fall into NewLine.
+		
 TerminateInput:
-		LD      (HL),00h
+		LD      (HL),00H		; Самомодифицирующийся код
+TerminateInput2:
         LD      HL,LINE_BUFFER-1
-        ; --- START PROC NewLine ---
+		
+;NewLine
+;Prints carriage return + line feed, plus a series of nulls which was probably due to some peculiarity of the teletypes of the day.
+
 NewLine:
-		LD      A,0Dh
+	LD      A,0DH
+
         RST     OutChar
-        LD      A,0Ah
+        LD      A,0AH
         RST     OutChar
-        XOR     A
+
+	XOR	A
         LD      (TERMINAL_X),A
         RET
+
+;ToNextTabBreak
+;Calculate how many spaces are needed to get us to the next tab-break then jump to PrintSpaces to do it.
+
+
 
         ; --- START PROC L06EA ---
 L06EA:  LD      A,(TERMINAL_X)
@@ -1035,9 +1393,10 @@ L06F5:  SUB     0Eh
         JP      NC,L06F5
         CPL
         INC     A
+
         ; --- START PROC L06FC ---
 L06FC:  LD      B,A
-        LD      A,20h           ; ' '
+        LD      A, ' '
         ; --- START PROC L06FF ---
 L06FF:  DEC     B
         JP      M,L0707
@@ -1050,14 +1409,17 @@ L0707:  POP     HL
 L0708:  RST     NextChar
         JP      L064B
 
-        ; --- START PROC L070C ---
-L070C:  PUSH    AF
+;Tab и Spc
+;Tabulation. The TAB keyword takes an integer argument denoting the absolute column to print spaces up to.
+		
+Tab:
+	PUSH    AF
         CALL    L0EDB
         RST     SyntaxCheck
-        ADD     HL,HL
+        DB	')'
         DEC     HL
         POP     AF
-        CP      9Fh
+        CP      TK_SPC
         PUSH    HL
         LD      A,E
         JP      Z,L06FC
@@ -1076,6 +1438,7 @@ L070C:  PUSH    AF
 L0730:  LD      B,A
         LD      A,18h
         JP      L06FF
+
 
 L0736:  LD      A,(INPUT_OR_READ)
         OR      A
@@ -1135,30 +1498,41 @@ InputLineWithQ:  LD      A,'?'           ; '?'
         JP      L077D
 
 Read:
-		PUSH    HL
+        PUSH    HL
         LD      HL,(DATA_PROG_PTR)
-        DB		0F6h		; OR 0AFH
+        DB	0F6h		; OR 0AFH
 ReadParse:
-		XOR		A			; 0AFh
+		XOR	A		; 0AFH
         LD      (INPUT_OR_READ),A
+;Preserve data prog ptr on stack and restore prog ptr to HL. This should point to the name of the variable to read data into. Note we also LXI over the syntax check for a comma that's done on subsequent reads.
         EX      (SP),HL
-        DB		01h		; LD      BC,...
+        DB	01h		; LD      BC,...
 ReadNext:
-		RST		SyntaxCheck
-		DB		','
+		RST	SyntaxCheck
+		DB	','
+;Get variable value address in DE.
         CALL    GetVar
+;Preserve prog ptr and get data prog ptr into HL.
         EX      (SP),HL
+;Preserve variable value address on stack.
         PUSH    DE
+;Get byte of data part of program. If this is a comma seperator then we've found our data item and can jump ahead to GotDataItem
         LD      A,(HL)
         CP      ','
         JP      Z,GotDataItem
+
         LD      A,(INPUT_OR_READ)
+;If the next byte of data is not a null byte terminating the line then syntax error out.
         OR      A
         JP      NZ,ReadError
-        LD      A,','           ; В микро-80 тут '?'
+;We've been called by the INPUT handler, and we have more inputs to take - the interpreter allows 'INPUT A,B,C' -type statement. So here we get the next input, only Bill has made a mistake here - he prints an unnecessary '?' , so the user gets two question marks for all inputs after the first one.
+
+	LD      A,','           ; В микро-80 тут '?'
         RST     OutChar
         CALL    InputLineWithQ
-GotDataItem: 
+
+; Restore variable address, advance the data ptr so it points to the start of the next data item, and assign the data item to the variable. 
+GotDataItem:
 		LD      A,(VALTYP)
         OR      A
         JP      Z,L07D9
@@ -1182,7 +1556,8 @@ L07D9:  RST     NextChar
         EX      (SP),HL
         CALL    FCopyToMem
         POP     HL
-L07E2:  DEC     HL
+L07E2:
+	DEC     HL
         RST     NextChar
         JP      Z,L07EC
         CP      ','
@@ -1190,7 +1565,7 @@ L07E2:  DEC     HL
 L07EC:  EX      (SP),HL
         DEC     HL
         RST     NextChar
-        JP      NZ,ReadNext
+        JP      NZ, ReadNext
         POP     DE
         LD      A,(INPUT_OR_READ)
         OR      A
@@ -1199,9 +1574,9 @@ L07EC:  EX      (SP),HL
         JP      L04AA
 
 ReadError:
-		CALL    Data
+	CALL    Data
         OR      A
-        JP      NZ,L0817
+        JP      NZ,ReadError1
         INC     HL
         RST     PushNextWord
         LD      A,C
@@ -1215,46 +1590,53 @@ ReadError:
         EX      DE,HL
         LD      (DATA_LINE),HL
         EX      DE,HL
-L0817:  RST     NextChar
-        CP      TK_DATA			;83h
+ReadError1:
+	RST     NextChar
+        CP      TK_DATA
         JP      NZ,ReadError
         JP      GotDataItem
 
 		INCLUDE	"stNext.inc"
 
-        ; --- START PROC EvalNumericExpression ---
+; Evalute expression and check is it value is Numeric
 EvalNumericExpression:
 		CALL    EvalExpression
-        ; --- START PROC IsNumeric ---
 IsNumeric:
 		DB	0F6H			;OR 37H - это сброс флага CY
 IsString:
 		SCF				;37H
-        ; --- START PROC CheckType ---
 CheckType:
 		LD      A,(VALTYP)
         ADC     A,A
         RET     PE
-		
-L0873:  LD      E,ERR_TM
+
+L0873:
+	LD      E,ERR_TM
         JP      Error
 
-        ; --- START PROC EvalExpression ---
+;1.17 Expression Evaluation
+;EvalExpression
+;Evaluates an expression, returning with the result in FACCUM. An expression is a combination of terms and operators.
+
 EvalExpression:
 		DEC     HL
-        LD      D,00h
-        ; --- START PROC L087B ---
-L087B:  PUSH    DE
+        LD      D,00H
+
+L087B:
+	PUSH    DE
+;Check we've got enough space for one floating-point number.
         CALL    CheckEnoughVarSpace2
-        LD      BC,0E8CDh
+        LD      BC,0E8CDh		;!!!! Трюк с LD BC,...
         DB		08H
-        LD      (2139h),HL
+        LD      (PROG_PTR_TEMP2),HL
         ; --- START PROC L0886 ---
-L0886:  LD      HL,(2139h)
+L0886:
+	LD      HL,(PROG_PTR_TEMP2)
         POP     BC
         LD      A,B
-        CP      78h             ; 'x'
+        CP      78H
         CALL    NC,IsNumeric
+;Get byte following sub-expression. This is where we deal with arithmetic operators. If the byte is less than KWID_+ then return.
         LD      A,(HL)
         LD      D,00h
 L0893:  SUB     0ABh
@@ -1267,7 +1649,7 @@ L0893:  SUB     0ABh
         CP      D
         LD      D,A
         JP      C,SyntaxError
-        LD      (2131h),HL
+        LD      (CUR_TOKEN_ADR),HL
         RST     NextChar
         JP      L0893
 
@@ -1275,11 +1657,13 @@ L08AD:  LD      A,D
         OR      A
         JP      NZ,L09CD
         LD      A,(HL)
-        LD      (2131h),HL
-        SUB     0A4h
+        LD      (CUR_TOKEN_ADR),HL
+        SUB     0A4H
         RET     C
-        CP      07h
+
+        CP      07H
         RET     NC
+
         LD      E,A
         LD      A,(VALTYP)
         DEC     A
@@ -1295,19 +1679,23 @@ L08AD:  LD      A,D
         LD      D,(HL)
         CP      D
         RET     NC
+
         INC     HL
         CALL    IsNumeric
-        ; --- START PROC L08D5 ---
+;Push counter and address of ArithParse onto the stack (the latter so we return to it after the arith fn runs)
+
 L08D5:  PUSH    BC
         LD      BC,0886h
         PUSH    BC
+;Push FACCUM, taking care to preserve the operator precedence byte in D.
         LD      B,E
         LD      C,D
         CALL    FPush
         LD      E,B
         LD      D,C
+;Push address of arithmetic fn and jump back to 
         RST     PushNextWord
-        LD      HL,(2131h)
+        LD      HL,(CUR_TOKEN_ADR)
         JP      L087B
 
         ; --- START PROC L08E8 ---
@@ -1315,6 +1703,7 @@ L08E8:  XOR     A
         LD      (VALTYP),A
         RST     NextChar
         JP      C,FIn
+;If the character is alphabetic then we have a variable, so jump ahead to get it.
         CALL    CharIsAlpha
         JP      NC,L0950
         CP      0A4h
@@ -1356,7 +1745,7 @@ L0937:  RST     SyntaxCheck
         ; --- START PROC L093F ---
 L093F:  LD      D,7Dh           ; '}'
         CALL    L087B
-        LD      HL,(2139h)
+        LD      HL,(PROG_PTR_TEMP2)
         PUSH    HL
         CALL    FNegate
         ; --- START PROC L094B ---
@@ -1391,12 +1780,13 @@ L0961:  LD      B,00h
         EX      (SP),HL
         JP      L099C
 
-L097B:  RST     SyntaxCheck
-        DB	28H, 0CDH
-        LD      A,B
-        db	08h
+L097B:
+	RST     SyntaxCheck
+	DB	'('
+	CALL	EvalExpression
+
         RST     SyntaxCheck
-        INC     L
+        DB	','
         CALL    IsString
         EX      DE,HL
         LD      HL,(FACCUM)
@@ -1452,14 +1842,13 @@ L09C8:  OR      E
         OR      D
         JP      (HL)
 
-        ; --- START PROC L09CD ---
 L09CD:  LD      HL,09DFh
         LD      A,(VALTYP)
         RRA
         LD      A,D
         RLA
         LD      E,A
-        LD      D,64h           ; 'd'
+        LD      D,64H
         LD      A,B
         CP      D
         RET     NC
@@ -1493,6 +1882,7 @@ L09DF:  POP     HL
 L0A06:  LD      A,E
         OR      D
         RET     Z
+
         LD      A,D
         OR      A
         CPL
@@ -1501,6 +1891,7 @@ L0A0D:  XOR     A
         CP      E
         INC     A
         RET     NC
+
         DEC     D
         DEC     E
         LD      A,(BC)
@@ -1515,11 +1906,10 @@ L0A1E:  INC     A
         ADC     A,A
         POP     BC
         AND     B
-        ADD     A,0FFh
+        ADD     A,0FFH
         SBC     A,A
         JP      FCharToFloat
 
-        ; --- START PROC L0A28 ---
 L0A28:  LD      D,5Ah           ; 'Z'
         CALL    L087B
         CALL    IsNumeric
@@ -1534,24 +1924,23 @@ L0A28:  LD      D,5Ah           ; 'Z'
         JP      L0886
 
 DimContd:
-		DEC     HL
+	DEC     HL
         RST     NextChar
         RET     Z
         RST     SyntaxCheck
-        INC     L
+        DB	','
 Dim:
         LD      BC,DimContd
         PUSH    BC
-        DB		0f6h	; OR      0AFH
-GetVar:	XOR		A         ; AFH
+        DB	0f6h	; OR      0AFH
+GetVar:	XOR	A          ; AFH
         LD      (DIM_OR_EVAL),A
         LD      B,(HL)
-        ; --- START PROC L0A4E ---
 L0A4E:  CALL    CharIsAlpha
         JP      C,SyntaxError
         XOR     A
         LD      C,A
-        LD      (VALTYP),A
+        LD      (VALTYP),A		; A=0, т.е. числовая переменная
         RST     NextChar
         JP      C,L0A63
         CALL    CharIsAlpha
@@ -1575,6 +1964,7 @@ L0A7B:  LD      A,(NO_ARRAY)
         JP      Z,L0ACD
         XOR     A
         LD      (NO_ARRAY),A
+;Preserve program ptr on stack, and get VAR_ARRAY_BASE into DE and VAR_BASE into HL. This is where we iterate through the stored variables (ie from VAR_BASE to VAR_ARRAY_BASE) to see if the variable has already been declared. 
         PUSH    HL
         LD      HL,(VAR_ARRAY_BASE)
         EX      DE,HL
@@ -1595,8 +1985,9 @@ L0A9C:  INC     HL
         INC     HL
         JP      L0A90
 
-L0AA7:  PUSH    BC
-        LD      BC,0006h
+L0AA7:
+	PUSH    BC
+        LD      BC,0006H
         LD      HL,(VAR_TOP)
         PUSH    HL
         ADD     HL,BC
@@ -1608,8 +1999,9 @@ L0AA7:  PUSH    BC
         LD      H,B
         LD      L,C
         LD      (VAR_ARRAY_BASE),HL
-L0ABE:  DEC     HL
-        LD      (HL),00h
+L0ABE:
+	DEC     HL
+        LD      (HL),00H
         RST     CompareHLDE
         JP      NZ,L0ABE
         POP     DE
@@ -1640,8 +2032,8 @@ L0AD4:  PUSH    DE
         CP      2Ch             ; ','
         JP      Z,L0AD4
         RST     SyntaxCheck
-        ADD     HL,HL
-        LD      (2139h),HL
+        DB	')'
+        LD      (PROG_PTR_TEMP2),HL
         POP     HL
         LD      (DIM_OR_EVAL),HL
         PUSH    DE
@@ -1666,26 +2058,25 @@ L0B07:  INC     HL
         JP      NZ,L0AF4+1      ; reference not aligned to instruction
         LD      A,(DIM_OR_EVAL)
         OR      A
-        LD      E,12h
+        LD      E,ERR_DD
         JP      NZ,Error
         POP     AF
         CP      (HL)
         JP      Z,L0B81
-        ; --- START PROC L0B1D ---
-L0B1D:  LD      E,10h
+L0B1D:
+	LD      E,10h
         JP      Error
 
-        ; --- START PROC L0B22 ---
 L0B22:  LD      DE,0004h
         LD      (HL),C
         INC     HL
         LD      (HL),B
         INC     HL
         POP     AF
-        LD      (2049h),A
+        LD      (VarSize),A
         LD      C,A
         CALL    CheckEnoughVarSpace
-        LD      (2131h),HL
+        LD      (CUR_TOKEN_ADR),HL
         INC     HL
         INC     HL
         LD      B,C
@@ -1725,12 +2116,12 @@ L0B63:  DEC     HL
         LD      H,A
         LD      A,(DIM_OR_EVAL)
         OR      A
-        LD      A,(2049h)
+        LD      A,(VarSize)
         LD      L,A
         ADD     HL,HL
         ADD     HL,BC
         EX      DE,HL
-        LD      HL,(2131h)
+        LD      HL,(CUR_TOKEN_ADR)
         LD      (HL),E
         INC     HL
         LD      (HL),D
@@ -1763,7 +2154,7 @@ L0B85:  LD      D,0E1h
         ADD     HL,BC
         EX      DE,HL
         ; --- START PROC L0BA3 ---
-L0BA3:  LD      HL,(2139h)
+L0BA3:  LD      HL,(PROG_PTR_TEMP2)
         DEC     HL
         RST     NextChar
         RET
@@ -2008,7 +2399,7 @@ L0D31:  EX      DE,HL
         ADD     HL,BC
         OR      A
         JP      P,L0D30
-        LD      (2131h),HL
+        LD      (CUR_TOKEN_ADR),HL
         POP     HL
         LD      C,(HL)
         LD      B,00h
@@ -2016,7 +2407,7 @@ L0D31:  EX      DE,HL
         ADD     HL,BC
         INC     HL
         EX      DE,HL
-        LD      HL,(2131h)
+        LD      HL,(CUR_TOKEN_ADR)
         EX      DE,HL
         RST     CompareHLDE
         JP      Z,L0D31
@@ -2029,9 +2420,11 @@ L0D5D:  RST     PushNextWord
         POP     DE
         POP     BC
         RET     P
+
         LD      A,C
         OR      A
         RET     Z
+
         LD      B,H
         LD      C,L
         LD      HL,(STR_TOP)
@@ -2039,6 +2432,7 @@ L0D5D:  RST     PushNextWord
         LD      H,B
         LD      L,C
         RET     C
+
         POP     HL
         EX      (SP),HL
         RST     CompareHLDE
@@ -2047,6 +2441,7 @@ L0D5D:  RST     PushNextWord
         LD      H,B
         LD      L,C
         RET     NC
+
         POP     BC
         POP     AF
         POP     AF
@@ -2061,6 +2456,7 @@ L0D7D:  POP     DE
         LD      A,L
         OR      H
         RET     Z
+
         DEC     HL
         LD      B,(HL)
         DEC     HL
@@ -2069,7 +2465,7 @@ L0D7D:  POP     DE
         DEC     HL
         DEC     HL
         LD      L,(HL)
-        LD      H,00h
+        LD      H,00H
         ADD     HL,BC
         LD      D,B
         LD      E,C
@@ -2128,21 +2524,19 @@ L0DD9:  POP     HL
 L0DDF:  INC     L
 L0DE0:  DEC     L
         RET     Z
+
         LD      A,(BC)
         LD      (DE),A
         INC     BC
         INC     DE
         JP      L0DE0
 
-        ; --- START PROC EvalString ---
+
 EvalString:
-		CALL    IsString
-        ; --- START PROC EvalCurrentString ---
+	CALL    IsString
 EvalCurrentString:
-		LD      HL,(FACCUM)
-        ; --- START PROC L0DEF ---
+	LD      HL,(FACCUM)
 L0DEF:  EX      DE,HL
-        ; --- START PROC L0DF0 ---
 L0DF0:  LD      HL,(211Dh)
         DEC     HL
         LD      B,(HL)
@@ -2181,7 +2575,8 @@ L0E33:  LD      A,01h
         LD      (HL),E
         JP      TempStringToPool
 
-Left:	CALL    L0ECB
+Left:
+	CALL    L0ECB
         XOR     A
 RightCont:
 		EX      (SP),HL
@@ -2205,7 +2600,7 @@ L0E4F:  LD		C, 0
         INC     HL
         LD      H,(HL)
         LD      L,B
-        LD      B,00h
+        LD      B,00H
         ADD     HL,BC
         LD      B,H
         LD      C,L
@@ -2223,32 +2618,35 @@ Right:	CALL    L0ECB
         SUB     B
         JP      RightCont
 
-Mid:	EX      DE,HL
+Mid:
+	EX      DE,HL
         LD      A,(HL)
         CALL    L0ECE
         PUSH    BC
-        LD      E,0FFh
-        CP      29h             ; ')'
+        LD      E,0FFH
+        CP      ')'
         JP      Z,L0E8D
         RST     SyntaxCheck
-        INC     L
+        DB	','
         CALL    EvalByteExpression
 L0E8D:  RST     SyntaxCheck
-        ADD     HL,HL
+        DB	')'
         POP     AF
         EX      (SP),HL
         LD      BC,MidCont
         PUSH    BC
         DEC     A
         CP      (HL)
-        LD      B,00h
+        LD      B,00H
         RET     NC
+
         LD      C,A
         LD      A,(HL)
         SUB     C
         CP      E
         LD      B,A
         RET     C
+
         LD      B,E
         RET
 

@@ -1,9 +1,10 @@
 ; ═════════════════════════════════════════════════════════════════════════════════
 ;  БЕЙСИК для МИКРО-80/БЕЙСИК для РАДИО-86РК/БЕЙСИК для ЮТ-88
-;  БЕЙСИК-СЕРВИС для МИКРО-80/БЕЙСИК-СЕРВИС для РАДИО-86РК/БЕЙСИК-СЕРВИС для ЮТ-88
+;  БЕЙСИК-СЕРВИС для МИКРО-80/БЕЙСИК-СЕРВИС для РАДИО-86РК
+;  БЕЙСИК-СЕРВИС для ЮТ-88/БЕЙСИК-МИКРОН для РАДИО-86РК
 ; ═════════════════════════════════════════════════════════════════════════════════
 ;
-; Это дизассемблер Бейсика для "МИКРО-80" и Бейсика для "Радио-86РК".
+; Это дизассемблер Бейсика для "МИКРО-80" и Бейсика для "Радио-86РК" и других...
 ; Гипотетически Бейсик для МИКРО-80=Бейсик для ЮТ-88, но это пока не проверялось.
 ; Имена меток взяты с дизассемблера Altair BASIC 3.2 (4K)
 ; По ходу разбора встречаются мысли и хотелки.
@@ -398,6 +399,7 @@ TERMINAL_X:	DB		00	; Variable controlling the current X positions of terminal ou
 
 		; RST 28h
 		include "spFTestSign.inc"
+	
 
 ;
 ;PushNextWord (RST 6)
@@ -524,11 +526,11 @@ Error:
         LD      HL, szError
 PrintInLine:
 		CALL    PrintString
-        LD      HL, (CURRENT_LINE)
-        LD      A,H
-        AND     L
-        INC     A
-        CALL    NZ, PrintIN
+		LD      HL, (CURRENT_LINE)
+		LD      A,H
+		AND     L
+		INC     A
+		CALL    NZ, PrintIN
 
 ;
 ; Main
@@ -540,18 +542,17 @@ Main:
 		LD		(ControlChar),A		; Включаем вывод на экран (не управляющий символ)
 		LD		HL,0FFFFH			; Сбрасываем текущую выполняемую строку
 		LD		(CURRENT_LINE),HL
-
 		LD		HL,szOK				; Выводим приглашение
 		CALL	PrintString
 
 GetNonBlankLine:
 L030E:	EQU	$+1
 		CALL	InputLine			; Самомодифицирующийся код. Считываем строку с клавиатуры
+
 		RST		NextChar			; Считываем первый символ из буфера. Флаг переноса =1, если это цифра
 		INC		A					; Проверяем на пустую строку. Инкремент/декремент не сбрасывает флаг переноса.
 		DEC		A
 		JP		Z, GetNonBlankLine	; Снова вводим строку, если пустая
-
 		PUSH	AF					; Сохраняем флаг переноса
 		CALL	LineNumberFromStr	; Получаем номер строки в DE
 		PUSH	DE					; Запоминаем номер строки
@@ -617,6 +618,7 @@ InsertProgramLine:
         INC     HL
         LD      (HL),D
         INC     HL
+		
 CopyFromBuffer:
         LD      DE,LINE_BUFFER		;Copy the line into the program
 CopyFromBufferLoop:
@@ -661,6 +663,9 @@ FindEndOfLine:
 
 	INCLUDE	"stNew.inc"
 
+
+
+
 ;InputLineWith'?'
 ;Gets a line of input at a '? ' prompt.
 
@@ -670,7 +675,10 @@ InputLineWithQ:
         LD      A, ' '
         RST     OutChar
         JP      InputLine
-		
+	
+
+
+	
 ; Tokenize
 ;
 ; Токенизирует строку в буфере LINE_BUFFER, заменяя ключевые слова кодом токена.
@@ -682,8 +690,10 @@ Tokenize:
 		LD      (DATA_STM),A
 		LD      C,05H			; Initialise line length to 5
 		LD      DE,LINE_BUFFER		; ie, output ptr is same as input ptr at start.
+
 TokenizeNext:
 		LD      A,(HL)			; Получение введенного символа
+
 ;If char is a space, jump ahead to write it out.
         CP      ' '
         JP      Z,WriteChar
@@ -716,20 +726,23 @@ TokenizeNext:
 
 ;
         LD      A,(HL)			; Восстанавливаем введенный символ
+
         CP      '0'			; Меньше '0'?
         JP      C,L041A			; Ищем ключевое слово
         CP      ';'+1			; 0123456789:;
         JP      C,WriteChar
 
 ; Here's where we start to see if we've got a keyword. B здесь содержит 0 (см. код выше где OR A; LD B,A)
-
-L041A:  PUSH    DE			; Preserve output ptr.
+L041A:
+	PUSH    DE			; Preserve output ptr.
         LD      DE,KEYWORDS-1		; 
         PUSH    HL			; Preserve input ptr.
         DB	3Eh			; LD      A, ...
+
 KwCompare:
-		RST	NextChar		; Get next input char
+	RST	NextChar		; Get next input char
         INC     DE
+
 KwCompareDE:
 		LD      A,(DE)			; Get keyword char to compare with.
         AND     7FH			; Ignore bit 7 of keyword char.
@@ -751,6 +764,7 @@ NotAKeyword:
 	LD 	A, (HL)			; and get input char
 ; Write character, and advance buffer pointers.
         POP	DE			; Restore output ptr
+
 WriteChar:
 	INC	HL			; Advance input ptr
         LD	(DE),A			; Store output char
@@ -772,9 +786,9 @@ L044A:  SUB     TK_REM-':'
 ;as needs to be done for string literals and comment lines. The B register
 ;holds the terminating character - when this char is reached the free 
 ;copy is complete and it jumps back
-	
+
 FreeCopyLoop:
-		LD      A,(HL)			; A=Input char
+	LD      A,(HL)			; A=Input char
         OR      A			; If char is null then exit
         JP      Z,Exit			; 
         CP      B			; If input char is term char then 
@@ -789,24 +803,24 @@ FreeCopy:
 ; NextKeyword. Advances keyword ptr in DE to point to the next keyword in the table, then jumps back to KwCompare to see if it matches. Note we also increment the keyword ID.
 
 NextKeyword:
-		POP     HL			; Restore input ptr
+	POP     HL			; Restore input ptr
         PUSH    HL
         INC     B			; Keyword ID ++
         EX      DE,HL			; HL=keyword table ptr
 NextKwLoop:
-		OR      (HL)			; Loop until
+	OR      (HL)			; Loop until
         INC     HL			; bit 7 of previous
         JP      P,NextKwLoop		; keyword char is set.
         EX      DE,HL			; DE=keyword ptr, HL=input ptr
         JP      KwCompareDE
-	
+
 Exit:	LD      HL,LINE_BUFFER-1
         LD      (DE),A
         INC     DE
         LD      (DE),A
         INC     DE
         LD      (DE),A
-        RET     
+        RET
 
 ;InputLine
 ;Gets a line of input into LINE_BUFFER.
@@ -1053,14 +1067,17 @@ ExecNext:
         NOP				; !! Этот блок можно заменить одним вызовом CALL TestBreakKey
         CALL    NZ,CheckBreak		;---------------
 	endif
+
 ; Если у нас ':', являющийся разделителем команд (что позволяет иметь несколько команд в строке), то исполняем следующую команду.
         LD      (PROG_PTR_TEMP),HL
         LD      A,(HL)
         CP      ':'
         JP      Z,Exec
+
 ; Если это не ':', то должен быть нулевой байт, завершающий строку. В противном случае у нас синтаксическая ошибка.
         OR      A
         JP      NZ, SyntaxError
+
 ; Следующие два байта должны содержать адрес следующей строки. Можно просто их проигнорировать,
 ; т.к. строки в памяти идут подряд, но мы должны завершить программу, если дошли до ее конца.
         INC     HL
@@ -1100,8 +1117,10 @@ ExecA:
 ; Если это не основное слово, то это синтаксическая ошибка.
         CP      TKCOUNT
         JP      NC,SyntaxError
+
 ; Вычисляем адрес обработчика команды в таблице обработчиков в HL, сохранив текущий указатель программы в DE.
-        RLCA				;	BC = A*2
+
+	RLCA				;	BC = A*2
         LD      C,A
         LD      B,00H
         EX      DE,HL
@@ -1143,13 +1162,14 @@ NextChar_tail:
 ; Пропускаем пробел.
 	CP      ' '
         JP      Z,NextChar2
+
 ; Если символ >= '0', то устанавливаем флаг переноса.
         CP      '0'
         CCF     
 ; Проверяем на ноль, не трогая флаг переноса.
         INC     A
         DEC     A
-        RET     
+        RET
 
 	CHK	05DBh, "Сдвижка кода"
 
@@ -1189,12 +1209,15 @@ EndOfProgram:
 	LD      A,L			; Проверяем, что текущая строка =0FFFFH
 	AND     H
 	INC     A
+
 	JP      Z,L0609			; Если да, то это прерывание в операторе INPUT
 	LD      (OLD_LINE),HL		; Сохраняем номер строки останова
 	LD      HL,(PROG_PTR_TEMP)	; Сохранаяем адрес останова из временной переменной
 	LD      (OLD_TEXT),HL		; для последующего восстановления по CONT
+
 L0609:  XOR     A
         LD      (ControlChar),A
+
         POP     AF
         LD      HL, szStop		; Сообщение "СТОП"
         JP      NZ, PrintInLine		; Если флаг "STOP", то печатаем сообщение
@@ -1203,6 +1226,7 @@ L0609:  XOR     A
 	CHK	0617H, "Сдвижка кода"
 
 	INCLUDE	"stCont.inc"
+
 	INCLUDE	"stNull.inc"
 
 ;
@@ -1213,7 +1237,6 @@ CharIsAlpha:
 		LD      A,(HL)
         CP      'A'
         RET     C
-
         CP      'Z'+1
         CCF
         RET
@@ -1236,7 +1259,6 @@ FTestIntegerExpression:
 		LD      A,(FACCUM+3)
         CP      90H
         JP      C,FAsInteger
-
         LD      BC,9080H
         LD      DE,0000H
         CALL    FCompare
@@ -1315,7 +1337,9 @@ NextLineNumChar:
 	CHK	06e3h, "Сдвижка кода"
 
 	INCLUDE	"stReturn.inc"
+
 	INCLUDE	"stDataRem.inc"
+
 	INCLUDE	"stLet.inc"
 
 
@@ -1343,8 +1367,10 @@ PrintLoop:
 		RST     NextChar
 
 		CHK	0791H, "Сдвижка кода"
+
 Print:
         JP      Z,NewLine
+
 L0794:  RET     Z
 
         CP      TK_TAB
@@ -1357,6 +1383,7 @@ L0794:  RET     Z
         CP      ';'
         JP      Z,ExitTab
         POP     BC
+
         CALL    EvalExpression
         DEC     HL
         PUSH    HL
@@ -1377,7 +1404,9 @@ L0794:  RET     Z
 L07D0:  CALL    NZ,L0D96
         POP     HL
         JP      PrintLoop
-		
+	
+
+	
 ;TerminateInput
 ;HL points to just beyond the last byte of a line of user input. Here we write a null byte to terminate it,
 ; reset HL to point to the start of the input line buffer, then fall into NewLine.
@@ -1392,10 +1421,12 @@ TerminateInput2:
 
 NewLine:
 	LD      A,0DH
+
 	IF	BASICNEW
 	ELSE
         LD      (TERMINAL_X),A
 	ENDIF
+
         RST     OutChar
         LD      A,0AH
         RST     OutChar
@@ -1404,6 +1435,7 @@ NewLine:
 	ELSE
 PrintNull:
 	IF	BASICNEW
+
 	XOR	A
         LD      (TERMINAL_X),A
 	ENDIF
@@ -1415,7 +1447,6 @@ PrintNullLoop:
         LD      (TERMINAL_X),A
 	ENDIF
         RET     Z
-
         PUSH    AF
         XOR     A
         RST     OutChar
@@ -1441,7 +1472,7 @@ CalcSpaceCount:
 ;Tabulation. The TAB keyword takes an integer argument denoting the absolute column to print spaces up to.
 		
 Tab:
-		PUSH    AF
+	PUSH    AF
         CALL    L0FB8
         RST     SyntaxCheck
         DB	')'
@@ -1473,6 +1504,7 @@ ExitTab:
 	ELSE
 	include "szrepeat.inc"
 	ENDIF
+
 		
 L0840:  LD      A, (INPUT_OR_READ)
         OR      A
@@ -1509,6 +1541,7 @@ NoPrompt:
         JP      ReadParse
 
 	CHK	0879h, "Сдвижка кода"
+
 Read:
         PUSH    HL
         LD      HL,(DATA_PROG_PTR)
@@ -1530,7 +1563,7 @@ ReadNext:
         PUSH    DE
 ;Get byte of data part of program. If this is a comma seperator then we've found our data item and can jump ahead to GotDataItem
         LD      A,(HL)
-        CP		','
+        CP      ','
         JP      Z,GotDataItem
 
         LD      A,(INPUT_OR_READ)
@@ -1538,6 +1571,7 @@ ReadNext:
         OR      A
         JP      NZ,ReadError
 ;We've been called by the INPUT handler, and we have more inputs to take - the interpreter allows 'INPUT A,B,C' -type statement. So here we get the next input, only Bill has made a mistake here - he prints an unnecessary '?' , so the user gets two question marks for all inputs after the first one.
+
         LD      A, '?'
         RST     OutChar
         CALL    InputLineWithQ
@@ -1552,8 +1586,8 @@ GotDataItem:
         LD      B,A
         CP      '"'				; 22H
         JP      Z,L08B2
-        LD      D,':'				; 3AH
-        LD      B,','				; 2CH
+        LD      D,':'
+        LD      B,','
         DEC     HL
 L08B2:  CALL    L0D53
         EX      DE,HL
@@ -1571,13 +1605,12 @@ L08C7:
 		DEC     HL
         RST     NextChar
         JP      Z,L08D1
-        CP      ','				; 2CH
+        CP      ','
         JP      NZ,L0840
 L08D1:  EX      (SP),HL
         DEC     HL
         RST     NextChar
-        JP      NZ, ReadNext			;0884h
-;
+        JP      NZ, ReadNext
         POP     DE
         LD      A,(INPUT_OR_READ)
         OR      A
@@ -1597,9 +1630,9 @@ L08D1:  EX      (SP),HL
 
 
 ReadError:
-		CALL    Data
+	CALL    Data
         OR      A
-        JP      NZ,L0914
+        JP      NZ,ReadError1
         INC     HL
         RST     PushNextWord
         LD      A,C
@@ -1613,8 +1646,9 @@ ReadError:
         EX      DE,HL
         LD      (DATA_LINE),HL
         EX      DE,HL
-L0914:  RST     NextChar
-        CP      TK_DATA			; 83H
+ReadError1:
+	RST     NextChar
+        CP      TK_DATA
         JP      NZ,ReadError
         JP      GotDataItem
 
@@ -1635,7 +1669,8 @@ CheckType:
         ADC     A,A
         RET     PE
 
-        LD      E,ERR_TM
+
+	LD      E,ERR_TM
         JP      Error
 
 ;1.17 Expression Evaluation
@@ -1645,7 +1680,9 @@ CheckType:
 EvalExpression:
 		DEC     HL
         LD      D,00H
-L0978:  PUSH    DE
+
+L0978:
+	PUSH    DE
 ;Check we've got enough space for one floating-point number.
         CALL    CheckEnoughVarSpace2
 		DB	01h
@@ -1666,7 +1703,7 @@ L0990:  SUB     0ABH
         CP      03H
         JP      NC,L09AA
         CP      01H
-        RLA     
+        RLA
         XOR     D
         CP      D
         LD      D,A
@@ -1692,7 +1729,7 @@ L09AA:  LD      A,D
         OR      E
         LD      A,E
         JP      Z,L0E77
-        RLCA    
+        RLCA
         ADD     A,E
         LD      E,A
         LD      HL,0073H
@@ -1705,6 +1742,7 @@ L09AA:  LD      A,D
         INC     HL
         CALL    IsNumeric
 ;Push counter and address of ArithParse onto the stack (the latter so we return to it after the arith fn runs)
+
 L09D2:  PUSH    BC
         LD      BC,ArithParse
         PUSH    BC
@@ -1791,9 +1829,10 @@ EvalInlineFn:
 		LD      A,C
         CP      2*(TK_LEFTS-TK_SGN)-1		; Это строковые функции fn$ с несколькими параметрами?
         JP      C,L0A65				; Нет, обычная
-        RST     SyntaxCheck
-		DB	'('
-		CALL	EvalExpression
+
+	RST     SyntaxCheck
+	DB	'('
+	CALL	EvalExpression
 
         RST     SyntaxCheck
         DB	','
@@ -1836,11 +1875,11 @@ L0A6D:  LD      BC, KW_INLINE_FNS	; 0043H
 
 		CHK	0A76h, "Сдвижка кода"
 FOr:
-		DB	0F6h	;OR 0AFH
+	DB	0F6h	;OR 0AFH
 
 		CHK	0A77h, "Сдвижка кода"
 FAnd:
-		XOR	A	; AFh
+	XOR	A	; AFh
         PUSH    AF
         CALL    IsNumeric
         CALL    FTestIntegerExpression
@@ -1871,9 +1910,9 @@ L0A99:  OR      E
 
 L0A9E:  LD      HL,L0AB0
         LD      A,(VALTYP)
-        RRA     
+        RRA
         LD      A,D
-        RLA     
+        RLA
         LD      E,A
         LD      D,64H
         LD      A,B
@@ -1885,7 +1924,7 @@ L0AB0:	OR      D
         LD      A,(BC)
         LD      A,C
         OR      A
-        RRA     
+        RRA
         POP     BC
         POP     DE
         PUSH    AF
@@ -1912,7 +1951,7 @@ L0AD7:  LD      A,E
 
         LD      A,D
         OR      A
-        CPL     
+        CPL
         RET     Z
 
         XOR     A
@@ -1927,7 +1966,7 @@ L0AD7:  LD      A,E
         INC     HL
         INC     BC
         JP      Z,L0AD7
-        CCF     
+        CCF
         JP      L12D0
 	
 L0AEF:	INC     A
@@ -1943,10 +1982,10 @@ L0AF9:  LD      D,5AH
         CALL    IsNumeric
         CALL    FTestIntegerExpression
         LD      A,E
-        CPL     
+        CPL
         LD      C,A
         LD      A,D
-        CPL     
+        CPL
         CALL    WordFromACToFACCUM
         POP     BC
         JP      ArithParse
@@ -2051,7 +2090,7 @@ InitVarLoop:
 ;Swap HL and DE so that DE points to the variable value, then restore the prog ptr to HL and return
 L0B9B:  EX      DE,HL
         POP     HL
-        RET     
+        RET
 
 
 ;Accesses or allocates an array variable. The contents of DIM_OR_EVAL indicate whether we're dealing with an array declaration (ie a DIM statement) or whether an array element is being accessed. In the former case DIM_OR_EVAL is 0xEF, otherwise it is 0. 
@@ -2110,7 +2149,7 @@ L0BD8:  INC     HL
 BadSubscriptError:
 	LD      E,ERR_BS
         JP      Error
-	
+
 L0BF3:  LD      DE,0004H
         LD      (HL),C
         INC     HL
@@ -2120,7 +2159,7 @@ L0BF3:  LD      DE,0004H
         LD      (VarSize),A
         CALL    CheckEnoughVarSpace2
 VarSize:
-        DB	0e9h
+        DB	0e9h			; Самомодифицирующийся код
         LD      (CUR_TOKEN_ADR),HL
         INC     HL
         INC     HL
@@ -2519,7 +2558,7 @@ L0E32:  RST     PushNextWord
         PUSH    HL
         PUSH    DE
         PUSH    BC
-        RET     
+        RET
 
 L0E52:  POP     DE
         POP     HL
@@ -2628,7 +2667,7 @@ L0EC5:  LD      HL,(TEMPPT)		;021DH
         LD      (STR_TOP),HL
 POPHLRET2:
 	POP     HL
-        RET     
+        RET
 
 	CHK	0EE7h, "Сдвижка кода"
 
@@ -2657,7 +2696,7 @@ RightCont:
         LD      C,A
 MidCont:
 		PUSH    HL
-		LD      A,(HL)
+        LD      A,(HL)
         CP      B
         JP      C,L0F22
         LD      A,B
@@ -2696,7 +2735,7 @@ Right:
 
 	CHK	0f4eh, "Сдвижка кода"
 Mid:
-        EX      DE,HL
+	EX      DE,HL
         LD      A,(HL)
         CALL    L0FA2
         PUSH    BC
@@ -2725,7 +2764,7 @@ L0F60:  RST     SyntaxCheck
         RET     C
 
         LD      B,E
-        RET     
+        RET
 
 	CHK	0f75h, "Сдвижка кода"
 Inp:
