@@ -27,13 +27,13 @@ L072B:  PUSH    HL
         LD      HL,(STACK_TOP)
         RST     CompareHLDE
         POP     DE
-        JP      NC,L0745
+        JP      NC,Let1
         LD      HL,(VAR_BASE)
         RST     CompareHLDE
         LD      L,E
         LD      H,D
         CALL    C,L0D2F
-L0745:  LD      A,(DE)
+Let1:	LD      A,(DE)
         PUSH    AF
         XOR     A
         LD      (DE),A

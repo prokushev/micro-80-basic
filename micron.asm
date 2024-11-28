@@ -13,6 +13,7 @@
 
 		ORG     0000h
 
+IOCode		EQU	205Ch		; три байта in a, (n) или out (n), a плюс ret
 TERMINAL_X	EQU	2063h
 TMP_HL		EQU	2064h
 LINE_BUFFER	EQU	2090h
@@ -957,24 +958,7 @@ L051D:  RST     NextChar
 		INCLUDE	"stGosub.inc"
 		INCLUDE	"stGoto.inc"
 		INCLUDE	"stReturn.inc"
-
-Data:
-FindNextStatement:
-		DB	01H, ":"	;LD BC,..3AH эмулирует LD C, ":"
-Rem:	LD	C, 0
-        LD      B,00h
-L05B7:  LD      A,C
-        LD      C,B
-        LD      B,A
-L05BA:  LD      A,(HL)
-        OR      A
-        RET     Z
-        CP      B
-        RET     Z
-        INC     HL
-        CP      22h             ; '"'
-        JP      Z,L05B7
-        JP      L05BA
+		INCLUDE	"stData.inc"
 
         ; --- START PROC Let ---
 Let:  CALL    GetVar
@@ -1002,13 +986,13 @@ L05E3:  PUSH    HL
         LD      HL,(STACK_TOP)
         RST     CompareHLDE
         POP     DE
-        JP      NC,L05FD
+        JP      NC,Let1
         LD      HL,(VAR_BASE)
         RST     CompareHLDE
         LD      L,E
         LD      H,D
         CALL    C,L0C5F
-L05FD:  LD      A,(DE)
+Let1:	LD      A,(DE)
         PUSH    AF
         XOR     A
         LD      (DE),A
@@ -2327,14 +2311,16 @@ L0E33:  LD      A,01h
 
 Left:	CALL    L0ECB
         XOR     A
-L0E45:  EX      (SP),HL
+RightCont:
+	EX      (SP),HL
         LD      C,A
         PUSH    HL
         LD      A,(HL)
         CP      B
-        JP      C,L0E4E+1       ; reference not aligned to instruction
+        JP      C,L0E4E
         LD      A,B
-L0E4E:  LD      DE,000Eh
+        DB	11H		;LD      DE,000EH
+L0E4E:  LD	C, 0
         PUSH    BC
         CALL    L0CD5
         POP     BC
@@ -2362,7 +2348,7 @@ Right:	CALL    L0ECB
         PUSH    DE
         LD      A,(DE)
         SUB     B
-        JP      L0E45
+        JP      RightCont
 
 Mid:	EX      DE,HL
         LD      A,(HL)
@@ -2393,27 +2379,30 @@ L0E8D:  RST     SyntaxCheck
         LD      B,E
         RET
 
+; Данный код нигде не вызывается, но это рудимент от Inp(x)
 L0EA2:  JP      SyntaxError
 
 L0EA5:  PUSH    BC
-        LD      A,0DBh
-        CALL    L0EAE
-        JP      205Ch
+        LD      A,0DBh		; in (n), a
+        CALL    SetIOCode
+        JP      IOCode
 
-        ; --- START PROC L0EAE ---
-L0EAE:  LD      (205Ch),A
-        LD      A,0C9h
-        LD      (205Eh),A
+        ; --- START PROC SetIOCode ---
+SetIOCode:
+	LD      (IOCode),A
+        LD      A,0C9h		; RET
+        LD      (IOCode+2),A
         CALL    L0EDF
-        LD      (205Dh),A
+        LD      (IOCode+1),A
         RET
 
+; Данный код нигде не вызывается, но это рудимент от Out x
 L0EBD:  JP      SyntaxError
 
-L0EC0:  LD      A,0D3h
-        CALL    L0EAE
+L0EC0:  LD      A,0D3h           ; out (n), a
+        CALL    SetIOCode
         CALL    L0ED8
-        JP      205Ch
+        JP      IOCode
 
         ; --- START PROC L0ECB ---
 L0ECB:  EX      DE,HL
@@ -2435,7 +2424,8 @@ L0ED8:  RST     SyntaxCheck
 	DB	06h		; ld b,..
 L0EDB:	RST	NextChar
         ; --- START PROC EvalByteExpression ---
-EvalByteExpression:  CALL    EvalNumericExpression
+EvalByteExpression:
+	CALL    EvalNumericExpression
         ; --- START PROC L0EDF ---
 L0EDF:  CALL    L04FD
         LD      A,D
