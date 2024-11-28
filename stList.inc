@@ -16,9 +16,9 @@ List:
         PUSH    BC
 ListNextLine:
 ;Pop the current program line address into HL, and get the address of the *next* program line into BC.. 
-	POP     HL
+		POP     HL
         RST     PushNextWord
-	POP     BC
+		POP     BC
 ;If we've reached the null line at the end of the program, then exit. 
         LD      A,B
         OR      C
@@ -34,9 +34,10 @@ ListNextLine:
         CALL    PrintInt
         LD      A,' '
 ;Restore current line ptr to HL, print current character, advance current line ptr and 
-L050D:  POP     HL
+ListChar1:
+		POP     HL
 ListChar:
-	RST     OutChar
+		RST     OutChar
         LD      A,(HL)
         OR      A
         INC     HL
@@ -47,22 +48,23 @@ ListChar:
         LD      C,A
         PUSH    HL
         LD      DE, KEYWORDS
-L051F:  PUSH    DE
+ToNextKeyword1:
+		PUSH    DE
 ToNextKeyword:
 ;Find the start of the next keyword.
-	LD      A,(DE)
+		LD      A,(DE)
         INC     DE
         OR      A
         JP      P,ToNextKeyword
 ;Decrement keyword index and restore start of previous keyword to HL. If this is not yet the keyword we want, then loop back.
         DEC     C
         POP     HL
-        JP      NZ,L051F
+        JP      NZ,ToNextKeyword1
 PrintKeyword:
 ;Print the keyword. Note that printing of the last character is deferred to ListChar in the main loop.
-	LD      A,(HL)
+		LD      A,(HL)
         OR      A
-        JP      M,L050D
+        JP      M,ListChar1
         RST     OutChar
         INC     HL
         JP      PrintKeyword

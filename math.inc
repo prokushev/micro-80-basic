@@ -5,8 +5,8 @@
 ;
 ; 'Математический пакет' is a reasonably discrete block of
 ; code that provides floating-point arithmetic capability
-; for the rest of BASIC. It also includes some math 
-; functions, such as SQR (square root) and is probably the 
+; for the rest of BASIC. It also includes some math
+; functions, such as SQR (square root) and is probably the
 ; hardest part of BASIC to understand. There are three general
 ; reasons for this:
 ; - You may have forgotten a lot of the maths you learnt at
@@ -17,20 +17,20 @@
 ; - Unless you're a numerical analyst who has reason to
 ;   distrust conventional hardware/software floating-point
 ;   support, you probably never needed to think about how
-;   floating point worked before now. Modern processors, 
+;   floating point worked before now. Modern processors,
 ;   compilers, and runtime libraries took the pain away
 ;   years ago, and quite right too.
 ; - Floating point is hard to code. Consider this : Bill Gates
 ;   is one of the brightest kids in America at the time, but
 ;   he and his equally brainy pal Paul Allen end up having to
 ;   hire a third wunderkind, Monte Davidoff, just to do
-;   floating point. They needed a specialist to do 
+;   floating point. They needed a specialist to do
 ;   specialist work, and Monte had done it before.
 ; ════════════════════════════════════════════════════════════
 ; Maths Refresher
-; The Basics of Bases 
-; Consider an everyday decimal number such as 317.25. The 
-; digits that make up this and every other decimal number 
+; The Basics of Bases
+; Consider an everyday decimal number such as 317.25. The
+; digits that make up this and every other decimal number
 ; represent multiples of powers of ten, all added together:
 ;
 ; 102	101	100	.	10-1	10-2
@@ -38,7 +38,7 @@
 ;
 ; So writing 317.25 is basically just shorthand for
 ; 3*102 + 1*101 + 7*100 + 2*10-1 + 5*10-2. The shorthand form
-; is far more readable, and that's why everybody uses it. At 
+; is far more readable, and that's why everybody uses it. At
 ; risk of labouring the point, the below table should clarify
 ; this.
 ;
@@ -50,14 +50,14 @@
 ; -2	1/100	317.25	5 * .01	=	.05
 ; Total:	=	317.25
 ;
-; Now consider the same number in binary (base two). The 
+; Now consider the same number in binary (base two). The
 ; decimal number 317.25, expressed in binary, is :
 ;
 ;28	27	26	25	24	23	22	21	20	.	2-1	2-2
 ;1	0	0	1	1	1	1	0	1	.	0	1
 ;
 ; And here's a table like the decimal one above, which should
-; make it completely clear (remember 'bit' is short for 
+; make it completely clear (remember 'bit' is short for
 ; 'binary digit') :
 ;
 ; Bit Position	Bit Value for Position	Binary Number	Bit value for this number
@@ -77,19 +77,19 @@
 ;Mantissas, Exponents, and Scientific Notation
 ;
 ; Now let's think about decimal numbers again. Another way of
-; representing the number 317.25 is like this : 3.1725 * 102. 
+; representing the number 317.25 is like this : 3.1725 * 102.
 ; Yes we've split one number into two numbers - we've extracted
 ; the number's magnitude and written it seperately. Why is this
 ; useful? Well, consider a very small number such as
 ; 0.00000000000588. Looking at it now, precisely how small is
-; that? That's a lot of zeros to work through. Also, let's 
+; that? That's a lot of zeros to work through. Also, let's
 ; pretend we're using very small numbers like this one in a
 ; pen+paper calculation - something like 0.00000000000588 +
 ; 0.000000000000291. You'd better be sure you don't miss out
 ; a zero when you're working the problem through, or your
-; answer will be off by a factor of 10. It's much easier 
+; answer will be off by a factor of 10. It's much easier
 ; to have those numbers represented as 5.88 * 10-12 and
-; 2.91* 10-13 (yes the second number had an extra zero - 
+; 2.91* 10-13 (yes the second number had an extra zero -
 ; did you spot that?). The same principle applies for very
 ; large numbers like 100000000 - it's just easier and less
 ; human error prone to keep the magnitudes seperated out when
@@ -118,7 +118,7 @@
 ; computer memory. Not having infinate RAM means we cannot
 ; represent an infinite range of numbers. If we have eight
 ; bits of memory, we can represent the integers from 0 to 255
-; only. If we have sixteen, we can raise our range from 0 to 
+; only. If we have sixteen, we can raise our range from 0 to
 ; 65535, and so on. The more bits we can play with, the larger
 ; the range of numbers we can represent. With fractional
 ; numbers there is a second problem : precision. Many
@@ -126,9 +126,9 @@
 ; recurring. Likewise, one tenth is 0.1 in decimal but
 ; 0.0001100110011 last four bits recurring in binary.
 ;
-; So any method we choose for storing fractional numbers 
-; has to take these two problems into consideration. Bearing 
-; this in mind, consider the two possible approaches for 
+; So any method we choose for storing fractional numbers
+; has to take these two problems into consideration. Bearing
+; this in mind, consider the two possible approaches for
 ; storing fractional numbers :
 ;
 ; Fixed point. Store the integer part in one field, and the
@@ -138,7 +138,7 @@
 ;
 ; Floating point. Store the mantissa in one field, and the
 ; exponent in another field. This way, the point wouldn't be
-; fixed into place - it could be anywhere, as determined by 
+; fixed into place - it could be anywhere, as determined by
 ; the binary exponent. It would, in fact be, a floating point.
 ; Why is floating point better than fixed point? Let's say we
 ; have 32 bits to play with. Let's use fixed point and assign
@@ -189,7 +189,8 @@
 ;
 ;The 8-bit exponent field had a bias of 128. This just meant that the stored exponent was stored as 'exponent+128'.
 ;
-;Also, the mantissa was really 24 bits long, but squeezed into 23 bits. How did he save an extra bit of precision? By considering zero as a special case, indicated by exponent zero. Any non-zero number will always have a mantissa with a leading 1. And since the first bit is always going to be 1, why bother storing it?
+;Also, the mantissa was really 24 bits long, but squeezed into 23 bits. How did he save an extra bit of precision? By considering zero as a special case, indicated by exponent zero. Any non-zero number will always have a mantissa with a leading 1. And sin
+;ce the first bit is always going to be 1, why bother storing it?
 ;
 ;The intermediate storage of unpacked fp numbers is undefined and seems to be generally done on the fly.
 ;
@@ -229,22 +230,22 @@ FSub:
 	POP	BC			; Get lhs in BCDE.
 	POP	DE
 FSubBCDE:
-	CALL    FNegate			; Negate rhs and slimily 
+	CALL    FNegate			; Negate rhs and slimily
 FAddBCDE:
 ;Special cases for when lhs or rhs are zero.
 	LD      A,B			; If lhs==0 then we don't need
         OR      A			; to do anything and can just
         RET     Z			; exit.
 
-        LD      A,(FACCUM+3)		; If rhs==0 then exit via a copy 
+        LD      A,(FACCUM+3)		; If rhs==0 then exit via a copy
         OR      A			; of lhs to FACCUM.
         JP      Z,FLoadFromBCDE
 ; Get exponents' difference into A.
         SUB     B			; A=rhs.exponent-lhs.exponent.
         JP      NC,L109C		; If rhs' exponent >= lhs'exponent, jump ahead.
 ; Swap lhs and rhs if lhs exponent was more than rhs exponent.
-        CPL				; Two's complement the exponent 
-        INC     A			; Two's complement the exponent 
+        CPL				; Two's complement the exponent
+        INC     A			; Two's complement the exponent
         EX      DE,HL
         CALL    FPush			; Push old rhs
         EX      DE,HL
@@ -296,7 +297,7 @@ FSubMantissas:
 ; 2.3 Mantissa Magic
 ; A group of functions for manipulating mantissas.
 ;
-; 
+;
 ;
 ;FNormalise
 ;Result mantissa in CDEB is normalised, rounded up to CDE, and stored in FACCUM.
@@ -329,12 +330,12 @@ NormLoop:
 
 FZero:  XOR     A			;
 L10E9:  LD      (FACCUM+3),A
-        RET     
+        RET
 
 L10ED:  DEC     B
         ADD     HL,HL
         LD      A,D
-        RLA     
+        RLA
         LD      D,A
         LD      A,C
         ADC     A,A
@@ -358,7 +359,8 @@ FRoundUp:
 L1109:  LD      HL,FACCUM+3
         OR      A			; If bit 7 of the extra mantissa byte
         CALL    M,FMantissaInc		; is set, then round up the mantissa.
-;Set the sign and exit. The XRA C is interesting : remember that bit 7 of C is the most significant bit of the normalised mantissa, which is invariably 1. Also, we need to use this bit for the sign. Well, in FUnpackMantissas the temporary sign in FTEMP_SIGN was inverted, so an XOR with 1 will get back the correct sign.
+;Set the sign and exit. The XRA C is interesting : remember that bit 7 of C is the most significant bit of the normalised mantissa, which is invariably 1. Also, we need to use this bit for the sign. Well, in FUnpackMantissas the temporary sign in FTEMP_SI
+;GN was inverted, so an XOR with 1 will get back the correct sign.
         LD      B,(HL)			; B=exponent
         INC     HL
         LD      A,(HL)			; A=FTEMP_SIGN
@@ -402,7 +404,7 @@ FAddMantissas:
         LD      A,(HL)
         ADC     A,C
         LD      C,A
-        RET     
+        RET
 
 ;FNegateInt
 ;Negate the 32-bit integer in CDEB by subtracting it from zero. Also flips the sign in FTEMP. Used by FAsInteger and FAdd.
@@ -410,7 +412,7 @@ FAddMantissas:
 FNegateInt:
 	LD      HL,FTEMP
         LD      A,(HL)
-        CPL     
+        CPL
         LD      (HL),A
         XOR     A
         LD      L,A
@@ -425,7 +427,7 @@ FNegateInt:
         LD      A,L
         SBC     A,C
         LD      C,A
-        RET     
+        RET
 
 ;FMantissaRtMult
 ;Shifts the mantissa in CDE right by A places. Note that lost bits end up in B, general practice so we can round up from something later should we need to.
@@ -448,22 +450,22 @@ RtMultLoop:
 
 FMantissaRtOnce:
         LD      A,C
-L115F:  RRA     
+L115F:  RRA
         LD      C,A
         LD      A,D
-        RRA     
+        RRA
         LD      D,A
         LD      A,E
-        RRA     
+        RRA
         LD      E,A
         LD      A,B
-        RRA     
+        RRA
         LD      B,A
         JP      RtMultLoop
 
-L116D:  NOP     
-        NOP     
-        NOP     
+L116D:  NOP
+        NOP
+        NOP
         ADD     A,C
 L1171:        INC     BC
         XOR     D
@@ -477,6 +479,7 @@ L1171:        INC     BC
         db	38h, 82h
 
 	CHK	117eh, "Сдвижка кода"
+	
 Log:
 L117E:  RST     FTestSign
         JP      PE,FunctionCallError
@@ -510,10 +513,11 @@ L11B3:  LD      BC,8031H
 ;2.4 Multiplication & Division
 ;blah
 ;
-; 
+;
 ;
 ;FMul
-;Multiplying two floating point numbers is theoretically simple. All we have to do is add the exponents, multiply the mantissas, and normalise the result. The only problem is that the 8080 didn't have a MUL instruction. Therefore the fundamental logic of multiplication (shift and add) is done by hand in this function. FMul's logic read something like this :
+;Multiplying two floating point numbers is theoretically simple. All we have to do is add the exponents, multiply the mantissas, and normalise the result. The only problem is that the 8080 didn't have a MUL instruction. Therefore the fundamental logic of
+;multiplication (shift and add) is done by hand in this function. FMul's logic read something like this :
 ;
 ;Get lhs and rhs. Exit if rhs=0.
 ;Add lhs and rhs exponents
@@ -538,13 +542,13 @@ L11B3:  LD      BC,8031H
 ;}
 ;
 ;(fixme: Show why this works)
-	CHK	11BAh, "Сдвижка кода"
+		CHK	11BAh, "Сдвижка кода"
 FMul:					
-	POP	BC			; Get lhs in BCDE
-	POP	DE
+		POP	BC			; Get lhs in BCDE
+		POP	DE
 FMul2:	RST     FTestSign		; If rhs==0 then exit
         RET     Z
-;Add the exponents. 
+;Add the exponents.
         LD      L,00H			; L=0 to signify exponent add
         CALL    FExponentAdd
 ;Store the lhs mantissa in the operands for FMulInnerLoop
@@ -563,7 +567,7 @@ FMul2:	RST     FTestSign		; If rhs==0 then exit
         PUSH    HL
         LD      HL,FACCUM
 FMulOuterLoop:
-	LD      A,(HL)
+		LD      A,(HL)
         INC     HL
         OR      A
         JP      Z,L1207
@@ -571,7 +575,7 @@ FMulOuterLoop:
         EX      DE,HL
         LD      E,08H
 FMulInnerLoop:
-	RRA     
+		RRA
         LD      D,A
         LD      A,C
         JP      NC,L11F4
@@ -582,16 +586,16 @@ L11EE:	EQU	$+1
         POP     DE
 L11F3:	EQU	$+1
         ADC     A,00H		; <-- самомодифицирующийся код
-L11F4:  RRA     
+L11F4:  RRA
         LD      C,A
         LD      A,H
-        RRA     
+        RRA
         LD      H,A
         LD      A,L
-        RRA     
+        RRA
         LD      L,A
         LD      A,B
-        RRA     
+        RRA
         LD      B,A
         DEC     E
         LD      A,D
@@ -599,19 +603,19 @@ L11F4:  RRA
         EX      DE,HL
 	
 PopHLandReturn:
-	POP     HL
-        RET     
+		POP     HL
+        RET
 
 L1207:  LD      B,E
         LD      E,D
         LD      D,C
         LD      C,A
-        RET     
+        RET
 
 ; FDivByTen
 ; Деление FACCUM на 10. Used in FOut to bring the number into range before printing.
 FDivByTen:
-	CALL    FPush
+		CALL    FPush
         LD      BC,8420H		; BCDE=(float)10;
         LD      DE,0000H
         CALL    FLoadFromBCDE
@@ -619,7 +623,7 @@ FDivByTen:
 	CHK	1218H, "Сдвижка кода"
 FDiv:
 ;Get lhs into BCDE.
-	POP     BC
+		POP     BC
         POP     DE
 L121A:  RST     FTestSign
         JP      Z,DivideByZero
@@ -644,7 +648,7 @@ L121A:  RST     FTestSign
         LD      E,A
         LD      (L124C),A
 FDivLoop:
-	PUSH    HL
+		PUSH    HL
         PUSH    BC
         LD      A,L
 L1241:	EQU	$+1
@@ -661,36 +665,36 @@ L1249:	EQU	$+1
 L124C:	EQU	$+1
         LD      A,00H			; Самомодифицирующийся код
         SBC     A,00H
-        CCF     
+        CCF
         JP      NC,L125A
         LD      (L124C),A
         POP     AF
         POP     AF
-        SCF     
+        SCF
         DB	0D2H	;JP      NC,...
 L125A:	POP	BC
-	POP	HL
+		POP	HL
         LD      A,C
         INC     A
         DEC     A
-        RRA     
+        RRA
         JP      M,L1109
-        RLA     
+        RLA
         LD      A,E
-        RLA     
+        RLA
         LD      E,A
         LD      A,D
-        RLA     
+        RLA
         LD      D,A
         LD      A,C
-        RLA     
+        RLA
         LD      C,A
         ADD     HL,HL
         LD      A,B
-        RLA     
+        RLA
         LD      B,A
         LD      A,(L124C)
-        RLA     
+        RLA
         LD      (L124C),A
         LD      A,C
         OR      D
@@ -707,7 +711,7 @@ L125A:	POP	BC
 ;
 ;If BCDE is 0, then we don't need to do anything and can jump to the function exit.	
 FExponentAdd:
-	LD      A,B
+		LD      A,B
         OR      A
         JP      Z,L12AC
         LD      A,L
@@ -715,7 +719,7 @@ FExponentAdd:
         XOR     (HL)
         ADD     A,B
         LD      B,A
-        RRA     
+        RRA
         XOR     B
         LD      A,B
         JP      P,L12AB
@@ -725,10 +729,10 @@ FExponentAdd:
         CALL    FUnpackMantissas
         LD      (HL),A
         DEC     HL
-        RET     
+        RET
 
 L12A8:  RST     FTestSign
-        CPL     
+        CPL
         POP     HL
 L12AB:  OR      A
 L12AC:  POP     HL
@@ -739,7 +743,7 @@ L12AC:  POP     HL
 ;
 ;Copy FACCUM to BCDE and return if it's 0.
 FMulByTen:
-	CALL    FCopyToBCDE
+		CALL    FCopyToBCDE
         LD      A,B
         OR      A
         RET     Z
@@ -778,58 +782,27 @@ InvSignToInt:
 
 
 ;Get bit 7 into carry flag and subtract from itself with carry. If A was +ve then it is now 0, whereas if A was -ve then A is now FF.
-        RLA     
+        RLA
 L12D0:  SBC     A,A
         RET     NZ
 
         INC     A
-        RET     
+        RET
 
-;Sgn
-;Returns an integer that indicates FACCUM's sign. We do this by a simple call to FTestSign which gets the answer in A, then fall into FCharToFloat to get that answer back into FACCUM.
-;
-;Get FACCUM's sign in A. A will be 0x01 for positive, 0 for zero, and 0xFF for negative.
-	CHK	12D4H, "Сдвижка кода"
+		CHK	12D4H, "Сдвижка кода"
 
-Sgn:	RST     FTestSign
+		INCLUDE	"fnSgn.inc"
 
-;FCharToFloat
-;Converts the signed byte in A to a floating-point number in FACCUM..
+		CHK	12e8h, "Сдвижка кода"
 
-FCharToFloat:
-	LD      B,88H
-        LD      DE,0000H
-ReturnInteger:
-	LD      HL,FACCUM+3
-        LD      C,A
-        LD      (HL),B
-        LD      B,00H
-        INC     HL
-        LD      (HL),80H
-        RLA     
-        JP      FNormalise
+		INCLUDE	"fnAbs.inc"
 
-;Abs
-;FACCUM = |FACCUM|.
-;
-;Return if FACCUM is already positive, otherwise fall into FNegate to make it positive.
-	CHK	12e8h, "Сдвижка кода"
-Abs:
-        RST     FTestSign
-        RET     P
-
-FNegate:
-	LD      HL,FACCUM+2	;024FH
-        LD      A,(HL)
-        XOR     80H
-        LD      (HL),A
-        RET     
 
 ;2.6 Moving FACCUM about
 ;A group of functions for loading, copying, and pushing FACCUM.
 
 FPush:
-	EX      DE,HL
+		EX      DE,HL
         LD      HL,(FACCUM)
         EX      (SP),HL
         PUSH    HL
@@ -837,32 +810,32 @@ FPush:
         EX      (SP),HL
         PUSH    HL
         EX      DE,HL
-        RET     
+        RET
 
 ;FLoadFromMem
 ;FLoadFromMem loads FACCUM with the fp number pointed to by HL. It does this by calling a function to load BCDE with the in-memory number, then falls into FLoadFromBCDE.
 
 FLoadFromMem:
-	CALL    FLoadBCDEfromMem
+		CALL    FLoadBCDEfromMem
 
 ;FLoadFromBCDE
 ;Loads FACCUM with BCDE.
 FLoadFromBCDE:
-	EX      DE,HL
+		EX      DE,HL
         LD      (FACCUM),HL
         LD      H,B
         LD      L,C
         LD      (FACCUM+2),HL
         EX      DE,HL
-        RET     
+        RET
 	
 ;FCopyToBCDE and FLoadBCDE
 
 FCopyToBCDE:
-	LD      HL,FACCUM
+		LD      HL,FACCUM
 
 FLoadBCDEfromMem:
-	LD      E,(HL)
+		LD      E,(HL)
         INC     HL
         LD      D,(HL)
         INC     HL
@@ -870,30 +843,31 @@ FLoadBCDEfromMem:
         INC     HL
         LD      B,(HL)
 L1317:  INC     HL
-        RET     
+        RET
 
 ;FCopyToMem
 ;Copies FACCUM to another place in memory pointed to by HL.
 FCopyToMem:
-	LD      DE,FACCUM
+		LD      DE,FACCUM
 L131C:  LD      B,04H
 FCopyLoop:
-	LD      A,(DE)
+		LD      A,(DE)
         LD      (HL),A
         INC     DE
         INC     HL
         DEC     B
         JP      NZ,FCopyLoop
-        RET     
+        RET
 
 ;2.7 Unpacking & Comparison
 ;Two functions : the first is for unpacking the mantissas of two floating-point numbers, the second is for comparing two floating-point numbers.
 ;
-; 
+;
 ;FUnpackMantissas
 ;Unpacks the mantissas of FACCUM and BCDE. This is simple enough - we just restore the missing most-significant bit, invariably a 1 (see tech note). Unfortunately, doing this loses the sign bits of both packed numbers.
 ;
-;To compensate for this, a combination of both signs is returned. Duing the function FACC's sign is negated and later xor'ed with BCDE's sign, and returned in bit 7 of A. The effect of this is when the function returns, A is +ve if the signs mismatched, or -ve if the signs matched.
+;To compensate for this, a combination of both signs is returned. Duing the function FACC's sign is negated and later xor'ed with BCDE's sign, and returned in bit 7 of A. The effect of this is when the function returns, A is +ve if the signs mismatched, o
+;r -ve if the signs matched.
 ;
 ;FACC	Negated
 ;FACC	BCDE	Result
@@ -905,25 +879,25 @@ FCopyLoop:
 
 
 FUnpackMantissas:
-	LD      HL,FACCUM+2
+		LD      HL,FACCUM+2
         LD      A,(HL)
-        RLCA    
-        SCF     
-        RRA     
+        RLCA
+        SCF
+        RRA
         LD      (HL),A
-        CCF     
-        RRA     
+        CCF
+        RRA
         INC     HL
         INC     HL
         LD      (HL),A
         LD      A,C
-        RLCA    
-        SCF     
-        RRA     
+        RLCA
+        SCF
+        RRA
         LD      C,A
-        RRA     
+        RRA
         XOR     (HL)
-        RET     
+        RET
 
 ;FCompare
 ;Compares FACCUM to BCDE, with the result being returned in A as follows :
@@ -934,7 +908,7 @@ FUnpackMantissas:
 
 ;If BCDE is zero, then we don't need to compare and can just return via FTestSign.
 FCompare:
-	LD      A,B
+		LD      A,B
         OR      A
         JP      Z, FTestSign
         LD      HL,InvSignToInt
@@ -949,13 +923,13 @@ FCompare:
         RET     M
 
         CALL    FIsEqual
-        RRA     
+        RRA
         XOR     C
-        RET     
+        RET
 
 ;Test for equality between BCDE and FACCUM.
 FIsEqual:
-	INC     HL
+		INC     HL
         LD      A,B
         CP      (HL)
         RET     NZ
@@ -977,18 +951,18 @@ FIsEqual:
 
         POP     HL
         POP     HL
-        RET     
+        RET
 
 ;2.8 Converting to Integer
 ;blah
 ;
-; 
+;
 ;FAsInteger
 ;Returns the integer part of FACCUM in CDE.
 ;
 ;Return with BCDE=0 if A=0.
 FAsInteger:
-	LD      B,A
+		LD      B,A
         LD      C,A
         LD      D,A
         LD      E,A
@@ -1005,23 +979,23 @@ FAsInteger:
         SUB     B
         CALL    FMantissaRtMult
         LD      A,H
-        RLA     
+        RLA
         CALL    C,FMantissaInc
         LD      B,00H
         CALL    C,FNegateInt
         POP     HL
-        RET     
+        RET
 
 
 FMantissaDec:
-	DEC     DE
+		DEC     DE
         LD      A,D
         AND     E
         INC     A
         RET     NZ
 
         DEC     C
-        RET     
+        RET
 
 ;Int
 ;Removes the fractional part of FACCUM.
@@ -1030,7 +1004,7 @@ FMantissaDec:
 
 	CHK	1392h, "Сдвижка кода"
 Int:
-	LD      HL,FACCUM+3
+		LD      HL,FACCUM+3
         LD      A,(HL)
         CP      98H
         LD      A,(FACCUM)
@@ -1042,10 +1016,10 @@ Int:
         LD      A,E
         PUSH    AF
         LD      A,C
-        RLA     
+        RLA
         CALL    FNormalise
         POP     AF
-        RET     
+        RET
 
 L13AB:  LD      HL,0000H
         LD      A,B
@@ -1063,7 +1037,7 @@ L13B3:  ADD     HL,HL
         JP      C,BadSubscriptError
 L13C1:  DEC     A
         JP      NZ,L13B3
-        RET     
+        RET
 
 ;2.9 Reading Numbers
 ;Function that reads a floating-point number from ASCII text.
@@ -1088,7 +1062,7 @@ FIn:	CP      '-'		; '-'
 ;Decrement string ptr so it points to just before the number, also set FACCUM to 0.
         DEC     HL
 SkipSign:
-	CALL    FZero
+		CALL    FZero
         LD      B,A
         LD      D,A
         LD      E,A
@@ -1099,7 +1073,7 @@ SkipSign:
 ;
 ;Get next ASCII character and if it's a digit (as determined by carry flag) then jump down to ProcessDigit.
 FInLoop:
-	RST     NextChar
+		RST     NextChar
         JP      C,ProcessDigit
         CP      '.'		; '.'
         JP      Z,PointFound
@@ -1126,7 +1100,7 @@ FInLoop:
         POP     AF
         DEC     HL
 NextExponentDigit:
-	RST     NextChar
+		RST     NextChar
         JP      C,DoExponentDigit
         INC     D
         JP      NZ,ScaleResult
@@ -1135,39 +1109,39 @@ NextExponentDigit:
         LD      E,A
         INC     C
 PointFound:
-	INC     C
+		INC     C
         JP      Z,FInLoop
 ScaleResult:
-	PUSH    HL
+		PUSH    HL
         LD      A,E
         SUB     B
 DecimalLoop:
-	CALL    P,DecimalShiftUp
+		CALL    P,DecimalShiftUp
         JP      P,DecimalLoopEnd
         PUSH    AF
         CALL    FDivByTen
         POP     AF
         INC     A
 DecimalLoopEnd:
-	JP      NZ,DecimalLoop
+		JP      NZ,DecimalLoop
         POP     DE
         POP     AF
         CALL    Z,FNegate
         EX      DE,HL
-        RET     
+        RET
 
 ; Helper function for shifting the result decimally up one place. We only do this if A !=0, and at the end we decrement A before returning.
 
 DecimalShiftUp:
-	RET     Z
+		RET     Z
 L1428:  PUSH    AF
         CALL    FMulByTen
         POP     AF
         DEC     A
-        RET     
+        RET
 
 ProcessDigit:
-	PUSH    DE
+		PUSH    DE
         LD      D,A
         LD      A,B
         ADC     A,C
@@ -1185,10 +1159,11 @@ ProcessDigit:
         JP      FInLoop
 	
 AddDigit:
-	CALL    FPush
+		CALL    FPush
         CALL    FCharToFloat
 	
 	CHK	144ch, "Сдвижка кода"
+
 FAdd:
 ;The lhs is on the stack, the rhs is in FACCUM. The steps for adding the two numbers are :
 ;
@@ -1196,17 +1171,17 @@ FAdd:
 ;    Denormalise mantissas.
 ;    Align the two numbers. fixme: give Monte's decimal example.
 ;    Add (or subtract) mantissas.
-;    Normalise result and store in FACCUM. 
+;    Normalise result and store in FACCUM.
         POP     BC
         POP     DE
         JP      FAddBCDE
 	
 DoExponentDigit:
-	LD      A,E
-        RLCA    
-        RLCA    
+		LD      A,E
+        RLCA
+        RLCA
         ADD     A,E
-        RLCA    
+        RLCA
         ADD     A,(HL)
         SUB     '0'
         LD      E,A
@@ -1220,7 +1195,7 @@ DoExponentDigit:
 	
 		
 PrintIN:
-	PUSH    HL
+		PUSH    HL
         LD      HL,szIn
         CALL    PrintString
         POP     HL
@@ -1232,7 +1207,7 @@ PrintIN:
 ;number in no time at all! Took me a while to see that...
 
 PrintInt:
-	EX      DE,HL			; DE=integer
+		EX      DE,HL			; DE=integer
         XOR     A			; A=0 (ends up in C)
         LD      B,98H			; B (ie exponent) = 24
         CALL    ReturnInteger
@@ -1246,9 +1221,9 @@ FOut:	LD      HL,FBUFFER
         PUSH    HL
         RST     FTestSign
         LD      (HL), ' '
-        JP      P,L147C
+        JP      P,DoZero
         LD      (HL), '-'
-L147C:  INC     HL
+DoZero:	INC     HL
         LD      (HL), '0'
         JP      Z,L1525
         PUSH    HL
@@ -1335,7 +1310,7 @@ L1509:  POP     AF
         LD      (HL),'+'
         JP      P,L1519
         LD      (HL),'-'
-        CPL     
+        CPL
         INC     A
 L1519:  LD      B,'0'-1
 L151B:  INC     B
@@ -1349,13 +1324,13 @@ L1525:  INC     HL
         INC     HL
 L1528:  LD      (HL),C
         POP     HL
-        RET     
+        RET
 
 ;ToUnder1,000,000
 ;Divides FACCUM by ten until it's less than 1,000,000. This function is semi-recursive... if it needs to recurse (ie
 
 ToUnder1000000:
-	LD      BC,9474H
+		LD      BC,9474H
         LD      DE,23F7H
         CALL    FCompare
         POP     HL
@@ -1369,7 +1344,7 @@ ONE_HALF:
 ;Table of powers of ten.
 
 DECIMAL_POWERS:
-	DB	0A0h, 86h, 01h		;DD 100000
+	DB	0A0h, 86h, 01h			;DD 100000
 	DB	010h, 27h, 00h        	;DD 10000
 	DB	0E8h, 03h, 00h        	;DD 1000
 	DB	064h, 00h, 00h        	;DD 100
@@ -1382,10 +1357,8 @@ L154F:  LD      HL,FNegate
         JP      (HL)
 	
 	CHK	1554h, "Сдвижка кода"
-Sqr:
-        CALL    FPush
-        LD      HL,ONE_HALF
-        CALL    FLoadFromMem
+	
+		INCLUDE	"fnSqr.inc"
 
 	CHK	155dh, "Сдвижка кода"
 FPower:
@@ -1411,7 +1384,7 @@ FPower:
         CALL    FCompare
         POP     HL
         LD      A,H
-        RRA     
+        RRA
 L1581:  POP     HL
         LD      (FACCUM+2),HL
         POP     HL
@@ -1427,7 +1400,7 @@ L1581:  POP     HL
 	
 	CHK	1599h, "Сдвижка кода"
 Exp:
-	CALL    FPush
+		CALL    FPush
         LD      BC,8138H
         LD      DE,0AA3BH
         CALL    FMul2
@@ -1475,13 +1448,13 @@ L15D9:	DB	08h
         RST     38H
         LD      A,A
         LD      A,A
-        NOP     
-        NOP     
+        NOP
+        NOP
         ADD     A,B
         ADD     A,C
-        NOP     
-        NOP     
-        NOP     
+        NOP
+        NOP
+        NOP
         ADD     A,C
 	CHK	15fah, "Сдвижка кода"
 L15FA:  CALL    FPush
@@ -1539,8 +1512,8 @@ L1647:  CALL    FCopyToBCDE
         LD      A,E
         LD      E,C
         LD      C,A
-;Set FTEMP_SIGN to 0x80 to indicate to FNormalise that it doesn't need to change the sign. Also set FACCUM's exponent to 0 so the result, when normalised, will be less than 1.        
-	LD      (HL),80H
+;Set FTEMP_SIGN to 0x80 to indicate to FNormalise that it doesn't need to change the sign. Also set FACCUM's exponent to 0 so the result, when normalised, will be less than 1.
+		LD      (HL),80H
         DEC     HL
         LD      B,(HL)
         LD      (HL),80H
@@ -1554,15 +1527,17 @@ RND_SEED:
 	DB 052H, 0C7H, 04FH, 080H	; 0.811635
 	
 	CHK	1660H, "Сдвижка кода"
+	
 Cos:
-	LD      HL,PI2
+		LD      HL,PI2
         CALL    FAddFromMem
+		
 	CHK	1666h, "Сдвижка кода"
 
-;Divide x (in FACCUM) by 2p to get u. 
+;Divide x (in FACCUM) by 2p to get u.
 
 Sin:
-	CALL    FPush
+		CALL    FPush
         LD      BC,8349H		; 2*PI
         LD      DE,0FDBH
         CALL    FLoadFromBCDE
@@ -1578,14 +1553,14 @@ Sin:
         LD      HL,C14
         CALL    FSubFromMem
         RST     FTestSign
-        SCF     
+        SCF
         JP      P,NegateIfPositive
         CALL    FAddOneHalf
         RST     FTestSign
         OR      A
 
 NegateIfPositive:
-	PUSH    AF
+		PUSH    AF
         CALL    P,FNegate
         LD      HL,C14
         CALL    FAddFromMem
@@ -1606,16 +1581,8 @@ TAYLOR_SERIES:
 	DB	0DAH, 00FH, 049H, 083H	; 6.283185
 
 	CHK	16c3h, "Сдвижка кода"
-Tan:
-        CALL    FPush
-        CALL    Sin
-        POP     BC
-        POP     HL
-        CALL    FPush
-        EX      DE,HL
-        CALL    FLoadFromBCDE
-        CALL    Cos
-        JP      FDiv
+	
+	INCLUDE	"fnTan.inc"
 
 	CHK	16D8h, "Сдвижка кода"
 Atn:
@@ -1634,7 +1601,7 @@ Atn:
 L16F3:  LD      HL,ATNTAB
         CALL    L15FA
         LD      HL,PI2
-        RET     
+        RET
 
 ATNTAB:
 	DB	09H
@@ -1649,5 +1616,5 @@ ATNTAB:
 	DB	06CH, 0AAH, 0AAH, 07FH			; -.3333315
 	DB	000H, 000H, 000H, 081H			; 1.0
 
-        NOP     
-        NOP     
+        NOP
+        NOP
