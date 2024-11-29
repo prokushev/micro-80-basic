@@ -129,7 +129,7 @@ if errorlevel 1 goto error
 
 echo Бейсик-Микрон
 
-asw -lU -D RK86=1 -D RAM=32 micron.asm > logs\basic-rk86-micron-32kb.lst
+asw -lU -D MICRON=1 micron.asm > logs\basic-rk86-micron-32kb.lst
 if errorlevel 1 goto error
 p2bin micron.p bin\radio-86rk\basic-rk86-micron-32kb.bin
 if errorlevel 1 goto error

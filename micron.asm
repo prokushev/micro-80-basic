@@ -205,7 +205,145 @@
 	CPU	8080
 	Z80SYNTAX	EXCLUSIVE
 
-		ORG     0000h
+; Конфигурация
+
+	ifndef MICRON
+MICRON 	EQU	0		; Модификации для "Бейсик-Микрон"
+	endif
+
+	ifndef MIKROSHA
+MIKROSHA 	EQU	0	; Модификации для "Бейсик для Микроша"
+	endif
+
+; Т.к. Микроша близок в РК86, то используем его код в качестве основы
+	if MIKROSHA
+RK86		EQU	1	; Модификации для "Бейсик для Радио-86РК"
+RAM			EQU	32	; Микроша шла только с 32кб
+	endif
+
+	IF	MICRON
+RAM			EQU	32	; Микрон с 32кб
+	ENDIF
+
+	ifndef RK86
+RK86		EQU	0	; Модификации для "Бейсик для Радио-86РК"
+	endif
+	ifndef UT88
+UT88		EQU	0	; Модификации для "Бейсик для ЮТ-88"
+	endif
+	ifndef SERVICE
+SERVICE		EQU	0	; Модификации для Бейсик-Сервис
+	endif
+	ifndef BASICNEW
+BASICNEW	EQU	0	; Включить мои изменения в коде
+	endif
+ANSI		EQU	0	; Включить поддержку совместимости с ANSI Minimal Basic
+GOST		EQU	0	; Включить поддержку совместимости с ГОСТ 27787-88
+
+	IFNDEF	RAM
+RAM			EQU	16
+	ENDIF
+
+; Верхний адрес доступной памяти. В МИКРО-80/ЮТ-88 задано жестко, 
+; а в РК-86 настраивается при инициализации. В Микроше тоже жестко.
+; В Миероне тоже жестко
+	if MIKROSHA
+MEM_TOP		EQU	075FFH
+	else; MIKROSHA
+	if MICRON
+MEM_TOP		EQU	075FFH
+	else; MICRON
+	IF	RAM=12
+MEM_TOP		EQU	02FFFH
+	ELSEIF	RAM=16
+MEM_TOP		EQU	03FFFH
+	ELSEIF	RAM=32
+MEM_TOP		EQU	07FFFH
+	ELSEIF	RAM=48
+MEM_TOP		EQU	0BFFFH
+	ENDIF
+	endif; MICRON
+	endif; MIKROSHA
+
+	
+	IF	BASICNEW
+	IF	ANSI
+OPTION		EQU	1	; Поддержка команды OPTION
+LET			EQU	1	; Поддержка команды LET
+RANDOMIZE 	EQU	1	; Поддержка команды RANDOMIZE
+END			EQU	1	; Поддержка команды END
+	ELSE    ; ANSI
+	IF	GOST
+OPTION		EQU	1	; Поддержка команды OPTION
+LET			EQU	1	; Поддержка команды LET
+RANDOMIZE	EQU	1	; Поддержка команды RANDOMIZE
+END			EQU	1	; Поддержка команды END
+	ELSE	; GOST
+OPTION		EQU	0	; Поддержка команды OPTION
+LET			EQU	1	; Поддержка команды LET
+RANDOMIZE 	EQU	0	; Поддержка команды RANDOMIZE
+END			EQU	1	; Поддержка команды END
+	ENDIF   ; GOST
+	ENDIF   ; ANSI      
+	ELSE	; BASICNEW
+OPTION		EQU	0	; Поддержка команды OPTION
+LET			EQU	0	; Поддержка команды LET
+RANDOMIZE 	EQU	0	; Поддержка команды RANDOMIZE
+END			EQU	0	; Поддержка команды END
+	ENDIF   ; BASICNEW
+
+
+	IF	BASICNEW
+CHK	MACRO	adr, msg
+	ENDM
+	ELSE
+	IF	MICRON
+CHK	MACRO	adr, msg
+	ENDM
+	ELSE
+CHK	MACRO	adr, msg
+		IF	adr-$
+			ERROR	msg
+		ENDIF
+	ENDM
+	ENDIF
+	ENDIF
+
+	IF	RK86
+	IF SERVICE
+PROGRAM_BASE_INIT	EQU	1D00H
+	ELSE
+PROGRAM_BASE_INIT	EQU	1B00H
+	ENDIF
+
+
+	IF RAM=16
+SCRADDR	EQU	037C2H
+	ELSE		; 32kb
+SCRADDR	EQU	077C2H
+	ENDIF
+
+	ELSE
+
+	IF SERVICE
+
+SCRBUF			EQU	1D00H
+PROGRAM_BASE_INIT	EQU	2500H
+
+	ELSE
+	IF	BASICNEW
+SCRBUF			EQU	1D00H
+PROGRAM_BASE_INIT	EQU	2500H
+	ELSE
+SCRBUF			EQU	1A00H
+PROGRAM_BASE_INIT	EQU	2200H
+	ENDIF
+	ENDIF
+
+	ENDIF
+
+
+	IF	MICRON
 
 VarSize		EQU	2049h
 IOCode		EQU	205Ch		; три байта in a, (n) или out (n), a плюс ret
@@ -250,20 +388,73 @@ ERR_DD		EQU 12H
 ERR_DZ		EQU 14H
 ERR_TM		EQU	18H
 ERR_CN		EQU 20h
+		ENDIF
+; 
+;********************
+;* 1. Интерпретатор *
+;********************
 
-Start:  LD      SP,75FFh
-        JP      Init
+;================
+;= 1.1 Рестарты =
+;================
 
+; Полезной возможностью 8080 является возможность вызова ряда адресов в нижних адресах
+; памяти однобайтовой инструкцией вместо стандартных 3-х байтовых вызовов
+; CALL и подобными командами. Данные адреса называют адресами "Рестартов"
+; и обычно используются для часто вызываемых функций, что эконоит по 2 байта на каждом вызове.
+; Всего Бейсик использует 7 рестартов. 8-й рестарт используется отладчиками.
+
+; Начало (RST 00h)
+
+
+; Запуск интерпретатора осуществляется с адреса 0. Проводится инициализация стека и
+; переход на код инициализации.
+
+	IF	BASICNEW
+	ORG	0
+;	ORG	100H
+RST	MACRO	adr
+	CALL	adr
+	ENDM
+	ELSE
+	ORG	0
+	ENDIF
+
+Start:
+	IF	RK86
+		LD	SP, TMPSTACK
+	ELSE
+		LD	SP, MEM_TOP
+	ENDIF
+		JP	Init
+
+; Данные байты не используются? В оригинале здесь указатели на какие-то данные, а не код.
+	IF	MICRON
 		NOP
-        NOP
+		NOP
+	ELSE
+		INC	HL
+		EX	(SP),HL
+	ENDIF
 
 		;RST 08h
 		INCLUDE "spSyntaxCheck.inc"
 
+
+	IF	BASICNEW
+	ELSE
 		;RST 10h
 		INCLUDE "spNextChar.inc"
+	ENDIF
 
+; OutChar (RST 3)
+; Печать символа на терминал.
+
+	IF	BASICNEW
+	ELSE
 OutChar:
+	ENDIF
+	IF	MICRON
 		PUSH    BC
         PUSH    HL
         PUSH    AF
@@ -277,7 +468,26 @@ OutChar:
 
 INIT_PROGAM_BASE:
 		DW	2201H
+	ELSE
+	IF	BASICNEW
+	ELSE
+		PUSH	AF
+		LD	A,(ControlChar)
+		OR	A
+		JP	OutChar_tail
+	ENDIF
 
+		; RST 20h
+		include "spCompareHLDE.inc"
+
+;
+	IF	BASICNEW
+	ELSE
+NULLS:	DB	01	; Число нолей-1, которое надо вывести после перевода строки (это было нужно для терминалов)
+	ENDIF
+TERMINAL_X:	DB		00	; Variable controlling the current X positions of terminal output
+
+	ENDIF
 		; RST 28h
 		include "spFTestSign.inc"
 	
@@ -287,6 +497,7 @@ INIT_PROGAM_BASE:
 ;Effectively PUSH (HL). First we write the return address to the JMP instruction at the end of the function; then we read the word at (HL) into BC and push it onto the stack; lastly jumping to the return address.
 ;
 PushNextWord:
+	IF	MICRON
 		LD		C, (HL)
         INC     HL
         LD      B,(HL)
@@ -294,7 +505,7 @@ PushNextWord:
         JP      RST6_CONT
 
 
-		NOP
+	NOP
 
 RST7:	RET
 
@@ -308,7 +519,54 @@ RST6_CONT:
         PUSH    HL
         LD      HL,(TMP_HL)
         RET
+	ELSE
+	EX	(SP),HL
+	LD	(RST6RET),HL
+	POP	HL
+	IF	BASICNEW
+	ELSE
+	JP	RST6_CONT		; Отличие от Altair - место для обработчика RST 7
+;
+;
+;
+;	ORG	38H
+RST7:
+	RET
+	ENDIF
 
+L0039:	DW	0
+
+	IF	BASICNEW
+	ELSE
+RST6_CONT:
+	ENDIF
+	LD	C,(HL)
+	INC	HL
+	LD	B,(HL)
+	INC	HL
+	PUSH    BC
+RST6RET:	EQU	$+1
+	JP	04F9H		; Это самомодифицирующийся код, см. PushNextWord.
+
+	ENDIF
+
+	; Блок данных
+	IF	BASICNEW
+	ELSE
+	IF	MICRON
+	ELSE
+	include "data.inc"
+	ENDIF
+	ENDIF
+
+
+;=========================
+;= 1.4 Utility Functions =
+;=========================
+
+; Some useful functions.
+
+		CHK 027ah, "Сдвижка кода"
 		include	"spGetFlowPtr.inc"
 		include	"spCopyMemoryUp.inc"
 		include "spCheckEnoughVarSpace.inc"
@@ -321,7 +579,11 @@ RST6_CONT:
 CheckEnoughMem:
 		PUSH    DE
         EX      DE,HL
+	IF	MICRON
         LD      HL,0FFDBh		; Отличается от более старых версий на 1 байт. Должно быть -34. 0FFDFh. Причину не разбирал
+	ELSE
+        LD      HL,0FFDAH		; HL=-34 (extra 2 bytes for return address)
+	ENDIF
         ADD     HL,SP
         RST     CompareHLDE
         EX      DE,HL
@@ -341,21 +603,39 @@ DATASyntaxError:
 		LD      (CURRENT_LINE),HL
 
 SyntaxError:
-		LD      E,ERR_SN
+		LD      E, ERR_SN
+		IF	MICRON
 	        XOR     A
 	        LD      (2078h),A
-		DB		01		;LD      BC,...
+		ENDIF
+		DB	01		; LD BC,...
 DivideByZero:
 		LD      E, ERR_DZ
 		DB		01				; LD BC,...
 WithoutFOR:
 		LD      E, ERR_NF
 
-        ; --- START PROC Error ---
-Error:  CALL    ResetStack
+; Error
+;
+; Сбрасывает стек, выводит сообщение об ошибке (смещение 
+; сообщение об ошибке передается в E) и прекращает исполнение
+; программы.
+Error:
+	IF	BASICNEW
+		LD	A, E			; Делим смещение на 2
+		SCF
+		CCF
+		RRA
+		LD	(ErrorCode), A		; И сохраняем для получения по ERR
+		LD	HL, (CURRENT_LINE)	; Получаем текущую строку
+		LD	(ErrorLine), HL		; И сохраняем ее для получения по ERL
+	ENDIF
+
+	CALL    ResetStack
         XOR     A
         LD      (ControlChar),A
         CALL    NewLine
+	IF	MICRON
         LD      A,E
         RRCA
         LD      E,A
@@ -370,11 +650,31 @@ L00BC:  LD      A,(HL)
         JP      L00BC
 
 MessageFound:
-		CALL    0F818h
+	CALL    0F818h
+	ELSE
+        LD      HL,ERROR_CODES
+        LD      D,A
+        LD      A,'?'
+        RST     OutChar
+        ADD     HL,DE
+	IF	BASICNEW
+		LD	E, (HL)
+		INC	HL
+		LD	D, (HL)
+		EX	DE, HL
+		CALL    PrintString
+	ELSE
+        LD      A,(HL)
+        RST     OutChar
+        RST     NextChar
+        RST     OutChar
+	ENDIF
+
+	ENDIF
         LD      HL, szError
 PrintInLine:
-		CALL    0F818h
-        LD      HL,(CURRENT_LINE)
+	CALL    0F818h
+        LD      HL, (CURRENT_LINE)
         LD      A,H
         AND     L
         INC     A
@@ -394,14 +694,21 @@ PrintInLine:
         OR      A
         JP      Z,L171B
 
-        ; --- START PROC Main ---
-Main:	LD      HL, szOK			; szOK
+;
+; Main
+; Here's where a BASIC programmer in 1975 spent most of their time : typing at an "OK" prompt, one line at a time. A line of input would either be exec'd immediately (eg "PRINT 2+2"), or it would be a line of a program to be RUN later. Program lines would be prefixed with a line number. The code below looks for that line number, and jumps ahead to Exec if it's not there.
+;
+
+Main:
+	LD      HL, szOK			; szOK
         CALL    0F818h
-        LD      HL,0FFFFh
-        LD      (CURRENT_LINE),HL
+
+		LD		HL,0FFFFH			; Сбрасываем текущую выполняемую строку
+		LD		(CURRENT_LINE),HL
+
         LD      (2078h),HL
 		
-        ; --- START PROC GetNonBlankLine ---
+
 GetNonBlankLine:
 		XOR     A
         LD      (ControlChar),A
@@ -612,20 +919,36 @@ TokenizeNext:
         LD      B,A
         LD      A,(HL)			; Восстанавливаем введенный символа
         JP      NZ,WriteChar
+	IF	MICRON
+	ELSE
+; Обработка ?
+        CP      '?'
+        LD      A, TK_PRINT		; Замена ? на PRINT
+        JP      Z, WriteChar
 
+	IF	BASICNEW
+; Обработка '
+        LD      A,(HL)			; Восстанавливаем введенный символ
+        CP      "'"
+        LD      A, TK_REM		; Замена ' на REM
+        JP      Z, WriteChar
+	ENDIF
 
+;
+        LD      A,(HL)			; Восстанавливаем введенный символ
 
-
-        CP      '0'
-        JP      C,L021D
-        CP      ';'+1
+	ENDIF
+        CP      '0'			; Меньше '0'?
+        JP      C,KwSearch			; Ищем ключевое слово
+        CP      ';'+1			; 0123456789:;
         JP      C,WriteChar
 
-L021D:
-	PUSH    DE
-        LD      DE,KEYWORDS-1
-        PUSH    HL
-	DB		3Eh			; LD      A, ...
+; Here's where we start to see if we've got a keyword. B здесь содержит 0 (см. код выше где OR A; LD B,A)
+KwSearch:
+	PUSH    DE			; Preserve output ptr.
+        LD      DE,KEYWORDS-1		; 
+        PUSH    HL			; Preserve input ptr.
+        DB	3Eh			; LD      A, ...
 
 KwCompare:
 	INC		HL			; !! Отличается от Микро-80 !!
@@ -970,8 +1293,17 @@ ExecNext:
 ; Даем пользователю шанс прервать исполнение.
 
 
-
-		CALL    TestBreakKey
+	if	BASICNEW
+		CALL	TestBreakKey
+	else
+	if	MICRON
+		CALL	TestBreakKey
+	else
+		CALL    0F812h			;---------------
+        NOP				; !! Этот блок можно заменить одним вызовом CALL TestBreakKey
+        CALL    NZ,CheckBreak		;---------------
+	endif
+	endif
 
 ; Если у нас ':', являющийся разделителем команд (что позволяет иметь несколько команд в строке), то исполняем следующую команду.
         LD      (PROG_PTR_TEMP),HL
@@ -1054,6 +1386,22 @@ L0478:
 ; NextChar_tail
 ;
 
+;
+; Это дублирующий код из RST NextChar. Аналог последовательности RST NextChar ! RET
+; Можно убрать для экономии размера.
+;
+; NextChar (RST 2)
+;
+; Возвращает следующий введенный символ из буфера по адресу HL, пропуская символы пробелов.
+; Флаг переноса C выставлен, если возвращаемый символ не алфавитно-цифровой.
+; Также флаг Z выставляется, если символ равен NULL.
+
+
+
+	IF	BASICNEW
+NextChar:
+	ENDIF
+
 NextChar2:
 	INC     HL
         LD      A,(HL)
@@ -1131,7 +1479,7 @@ L04D3:
         JP      NZ, PrintInLine		; Если флаг "STOP", то печатаем сообщение
         JP      Main			; Иначе уходим в диалоговый режим
 
-;
+	CHK	0617H, "Сдвижка кода"
 
 	INCLUDE	"stCont.inc"
 
@@ -1222,14 +1570,24 @@ NextLineNumChar:
         EX      DE,HL
         POP     HL
         JP      NextLineNumChar
+	
+	CHK	0682H, "Сдвижка кода"
 
 	INCLUDE	"stClear.inc"
 
-		INCLUDE	"stRun.inc"
+	CHK	06ABH, "Сдвижка кода"
+
+	INCLUDE	"stRun.inc"
+	
+	CHK	06B7H, "Сдвижка кода"
 
 	INCLUDE	"stGosub.inc"
 
+	CHK	06C7H, "Сдвижка кода"
+
 	INCLUDE	"stGoto.inc"
+
+	CHK	06e3h, "Сдвижка кода"
 
 	INCLUDE	"stReturn.inc"
 
@@ -1287,9 +1645,11 @@ CopyNumeric:
         POP     HL
         RET
 
-		INCLUDE	"stOn.inc"
+	CHK	075Ch, "Сдвижка кода"
+	
+	INCLUDE	"stOn.inc"
 
-		INCLUDE	"stIf.inc"
+	CHK	0778h, "Сдвижка кода"
 
 
 		
@@ -1303,6 +1663,7 @@ CopyNumeric:
 PrintLoop:
 		RST     NextChar
 
+		CHK	0791H, "Сдвижка кода"
 
 Print:
         JP      Z,NewLine
@@ -1475,6 +1836,7 @@ L0736:  LD      A,(INPUT_OR_READ)
         JP      NZ,DATASyntaxError
         JP      L0873+1         ; reference not aligned to instruction
 
+	CHK	0852h, "Сдвижка кода"
 Input:
 		CP      '"'
         LD      BC,0120h
@@ -1625,6 +1987,9 @@ ReadError1:
         CP      TK_DATA
         JP      NZ,ReadError
         JP      GotDataItem
+
+
+		CHK	091Dh, "Сдвижка кода"
 
 		INCLUDE	"stNext.inc"
 
@@ -1841,8 +2206,12 @@ L099C:  LD      BC,KW_INLINE_FNS
         LD      L,C
         JP      (HL)
 
+
+		CHK	0A76h, "Сдвижка кода"
 FOr:
 	DB	0F6h	;OR 0AFH
+
+		CHK	0A77h, "Сдвижка кода"
 FAnd:
 	XOR	A	; AFh
         PUSH    AF
@@ -1959,8 +2328,11 @@ DimContd:
 	DEC     HL
         RST     NextChar
         RET     Z
+
         RST     SyntaxCheck
         DB	','
+
+	CHK	0B15H, "Сдвижка кода"
 Dim:
         LD      BC,DimContd
         PUSH    BC
@@ -2193,9 +2565,13 @@ L0BA3:  LD      HL,(PROG_PTR_TEMP2)
 
 	INCLUDE	"fnFre.inc"
 
-	INCLUDE	"fnPos.inc"
+	CHK	0CA8h, "Сдвижка кода"
 
-Def:	CALL    L0C3F
+	INCLUDE	"fnPos.inc"
+	
+	CHK	0CB0h, "Сдвижка кода"
+Def:
+	CALL    L0C3F
         LD      BC,Data
         PUSH    BC
         PUSH    DE
@@ -2561,7 +2937,6 @@ L0DE0:  DEC     L
         INC     DE
         JP      L0DE0
 
-
 EvalString:
 	CALL    IsString
 EvalCurrentString:
@@ -2577,6 +2952,7 @@ L0DF0:  LD      HL,(TEMPPT)
         RST     CompareHLDE
         EX      DE,HL
         RET     NZ
+
         LD      (TEMPPT),HL
         PUSH    DE
         LD      D,B
@@ -2592,7 +2968,12 @@ L0DF0:  LD      HL,(TEMPPT)
 L0E10:  POP     HL
         RET
 
+	CHK	0EE7h, "Сдвижка кода"
+
 	INCLUDE	"fnLen.inc"
+
+	CHK	0ef6h, "Сдвижка кода"
+
 	INCLUDE	"fnAsc.inc"
 
 Chr:	CALL    L0EDF
@@ -2605,6 +2986,7 @@ L0E33:  LD      A,01h
         LD      (HL),E
         JP      TempStringToPool
 
+	CHK	0f14h, "Сдвижка кода"
 Left:
 	CALL    L0ECB
         XOR     A
@@ -2648,6 +3030,7 @@ Right:	CALL    L0ECB
         SUB     B
         JP      RightCont
 
+	CHK	0f4eh, "Сдвижка кода"
 Mid:
 	EX      DE,HL
         LD      A,(HL)
@@ -2736,6 +3119,8 @@ L0EDF:  CALL    FTestPositiveIntegerExpression
         RST     NextChar
         LD      A,E
         RET
+
+	CHK	0Fc8H, "Сдвижка кода"
 
 	INCLUDE	"fnVal.inc"
 

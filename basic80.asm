@@ -207,6 +207,10 @@
 
 ; Конфигурация
 
+	ifndef MICRON
+MICRON 	EQU	0		; Модификации для "Бейсик-Микрон"
+	endif
+
 	ifndef MIKROSHA
 MIKROSHA 	EQU	0	; Модификации для "Бейсик для Микроша"
 	endif
@@ -216,6 +220,10 @@ MIKROSHA 	EQU	0	; Модификации для "Бейсик для Микро�
 RK86		EQU	1	; Модификации для "Бейсик для Радио-86РК"
 RAM			EQU	32	; Микроша шла только с 32кб
 	endif
+
+	IF	MICRON
+RAM			EQU	32	; Микрон с 32кб
+	ENDIF
 
 	ifndef RK86
 RK86		EQU	0	; Модификации для "Бейсик для Радио-86РК"
@@ -238,9 +246,13 @@ RAM			EQU	16
 
 ; Верхний адрес доступной памяти. В МИКРО-80/ЮТ-88 задано жестко, 
 ; а в РК-86 настраивается при инициализации. В Микроше тоже жестко.
+; В Миероне тоже жестко
 	if MIKROSHA
 MEM_TOP		EQU	075FFH
 	else; MIKROSHA
+	if MICRON
+MEM_TOP		EQU	075FFH
+	else; MICRON
 	IF	RAM=12
 MEM_TOP		EQU	02FFFH
 	ELSEIF	RAM=16
@@ -250,6 +262,7 @@ MEM_TOP		EQU	07FFFH
 	ELSEIF	RAM=48
 MEM_TOP		EQU	0BFFFH
 	ENDIF
+	endif; MICRON
 	endif; MIKROSHA
 
 	
@@ -284,11 +297,16 @@ END			EQU	0	; Поддержка команды END
 CHK	MACRO	adr, msg
 	ENDM
 	ELSE
+	IF	MICRON
+CHK	MACRO	adr, msg
+	ENDM
+	ELSE
 CHK	MACRO	adr, msg
 		IF	adr-$
 			ERROR	msg
 		ENDIF
 	ENDM
+	ENDIF
 	ENDIF
 
 	IF	RK86
@@ -323,6 +341,54 @@ PROGRAM_BASE_INIT	EQU	2200H
 	ENDIF
 
 	ENDIF
+
+
+	IF	MICRON
+
+VarSize		EQU	2049h
+IOCode		EQU	205Ch		; три байта in a, (n) или out (n), a плюс ret
+TERMINAL_X	EQU	2063h
+TMP_HL		EQU	2064h
+LINE_BUFFER	EQU	2090h
+ControlChar	EQU	2117h
+DIM_OR_EVAL	EQU	2118h
+VALTYP		EQU	2119h
+DATA_STM	EQU	211Ah
+MEMSIZ		EQU	211Bh
+TEMPPT		EQU	211Dh
+TMPST		EQU	211Fh
+TMPSTR		EQU	212Bh
+STR_TOP		EQU	212FH
+CUR_TOKEN_ADR	EQU	2131h
+DATA_LINE	EQU	2133h
+NO_ARRAY	EQU	2135h
+INPUT_OR_READ	EQU	2136h
+PROG_PTR_TEMP	EQU	2137h
+PROG_PTR_TEMP2	EQU	2139h
+CURRENT_LINE	EQU	213Bh
+OLD_LINE	EQU	213Dh
+OLD_TEXT	EQU	213Fh
+STACK_TOP	EQU	2141H
+PROGRAM_BASE	EQU	2143h
+VAR_BASE	EQU	2145h
+VAR_ARRAY_BASE	EQU	2147h
+VAR_TOP		EQU	2149h
+DATA_PROG_PTR	EQU	214Bh
+
+FACCUM		EQU	214Dh
+
+ERR_NF		EQU 00H
+ERR_SN		EQU 02H		
+ERR_RG		EQU 04H
+ERR_OD		EQU	06H
+ERR_FC		EQU	08H
+ERR_OM		EQU 0CH
+ERR_US		EQU 0EH
+ERR_DD		EQU 12H
+ERR_DZ		EQU 14H
+ERR_TM		EQU	18H
+ERR_CN		EQU 20h
+		ENDIF
 ; 
 ;********************
 ;* 1. Интерпретатор *
@@ -339,6 +405,7 @@ PROGRAM_BASE_INIT	EQU	2200H
 ; Всего Бейсик использует 7 рестартов. 8-й рестарт используется отладчиками.
 
 ; Начало (RST 00h)
+
 
 ; Запуск интерпретатора осуществляется с адреса 0. Проводится инициализация стека и
 ; переход на код инициализации.
@@ -362,8 +429,13 @@ Start:
 		JP	Init
 
 ; Данные байты не используются? В оригинале здесь указатели на какие-то данные, а не код.
+	IF	MICRON
+		NOP
+		NOP
+	ELSE
 		INC	HL
 		EX	(SP),HL
+	ENDIF
 
 		;RST 08h
 		INCLUDE "spSyntaxCheck.inc"
@@ -375,12 +447,30 @@ Start:
 		INCLUDE "spNextChar.inc"
 	ENDIF
 
-	IF	BASICNEW
-	ELSE
 ; OutChar (RST 3)
 ; Печать символа на терминал.
 
+	IF	BASICNEW
+	ELSE
 OutChar:
+	ENDIF
+	IF	MICRON
+		PUSH    BC
+        PUSH    HL
+        PUSH    AF
+        LD      C,A
+        JP      OutChar_tail
+
+		NOP
+
+		; RST 20h
+		include "spCompareHLDE.inc"
+
+INIT_PROGAM_BASE:
+		DW	2201H
+	ELSE
+	IF	BASICNEW
+	ELSE
 		PUSH	AF
 		LD	A,(ControlChar)
 		OR	A
@@ -397,6 +487,7 @@ NULLS:	DB	01	; Число нолей-1, которое надо вывести �
 	ENDIF
 TERMINAL_X:	DB		00	; Variable controlling the current X positions of terminal output
 
+	ENDIF
 		; RST 28h
 		include "spFTestSign.inc"
 	
@@ -406,6 +497,29 @@ TERMINAL_X:	DB		00	; Variable controlling the current X positions of terminal ou
 ;Effectively PUSH (HL). First we write the return address to the JMP instruction at the end of the function; then we read the word at (HL) into BC and push it onto the stack; lastly jumping to the return address.
 ;
 PushNextWord:
+	IF	MICRON
+		LD		C, (HL)
+        INC     HL
+        LD      B,(HL)
+        INC     HL
+        JP      RST6_CONT
+
+
+	NOP
+
+RST7:	RET
+
+		NOP
+        NOP
+
+RST6_CONT:
+		LD      (TMP_HL),HL
+        POP     HL
+        PUSH    BC
+        PUSH    HL
+        LD      HL,(TMP_HL)
+        RET
+	ELSE
 	EX	(SP),HL
 	LD	(RST6RET),HL
 	POP	HL
@@ -434,11 +548,17 @@ RST6_CONT:
 RST6RET:	EQU	$+1
 	JP	04F9H		; Это самомодифицирующийся код, см. PushNextWord.
 
+	ENDIF
+
 	; Блок данных
 	IF	BASICNEW
 	ELSE
+	IF	MICRON
+	ELSE
 	include "data.inc"
 	ENDIF
+	ENDIF
+
 
 ;=========================
 ;= 1.4 Utility Functions =
@@ -459,7 +579,11 @@ RST6RET:	EQU	$+1
 CheckEnoughMem:
 		PUSH    DE
         EX      DE,HL
+	IF	MICRON
+        LD      HL,0FFDBh		; Отличается от более старых версий на 1 байт. Должно быть -34. 0FFDFh. Причину не разбирал
+	ELSE
         LD      HL,0FFDAH		; HL=-34 (extra 2 bytes for return address)
+	ENDIF
         ADD     HL,SP
         RST     CompareHLDE
         EX      DE,HL
@@ -480,7 +604,11 @@ DATASyntaxError:
 
 SyntaxError:
 		LD      E, ERR_SN
-		DB		01				; LD BC,...
+		IF	MICRON
+	        XOR     A
+	        LD      (2078h),A
+		ENDIF
+		DB	01		; LD BC,...
 DivideByZero:
 		LD      E, ERR_DZ
 		DB		01				; LD BC,...
@@ -502,10 +630,28 @@ Error:
 		LD	HL, (CURRENT_LINE)	; Получаем текущую строку
 		LD	(ErrorLine), HL		; И сохраняем ее для получения по ERL
 	ENDIF
-		CALL    ResetStack
+
+	CALL    ResetStack
         XOR     A
         LD      (ControlChar),A
         CALL    NewLine
+	IF	MICRON
+        LD      A,E
+        RRCA
+        LD      E,A
+        INC     E
+        LD      HL,ErrorMessages
+L00B8:  DEC     E
+        JP      Z,MessageFound
+L00BC:  LD      A,(HL)
+        INC     HL
+        OR      A
+        JP      Z,L00B8
+        JP      L00BC
+
+MessageFound:
+	CALL    0F818h
+	ELSE
         LD      HL,ERROR_CODES
         LD      D,A
         LD      A,'?'
@@ -522,6 +668,8 @@ Error:
         RST     OutChar
         RST     NextChar
         RST     OutChar
+	ENDIF
+
 	ENDIF
         LD      HL, szError
 PrintInLine:
@@ -540,10 +688,12 @@ PrintInLine:
 Main:
 		XOR		A
 		LD		(ControlChar),A		; Включаем вывод на экран (не управляющий символ)
+
 		LD		HL,0FFFFH			; Сбрасываем текущую выполняемую строку
 		LD		(CURRENT_LINE),HL
+
 		LD		HL,szOK				; Выводим приглашение
-		CALL	PrintString
+		CALL		PrintString
 
 GetNonBlankLine:
 L030E:	EQU	$+1
@@ -711,7 +861,8 @@ TokenizeNext:
         LD      B,A
         LD      A,(HL)			; Восстанавливаем введенный символа
         JP      NZ,WriteChar
-
+	IF	MICRON
+	ELSE
 ; Обработка ?
         CP      '?'
         LD      A, TK_PRINT		; Замена ? на PRINT
@@ -728,13 +879,14 @@ TokenizeNext:
 ;
         LD      A,(HL)			; Восстанавливаем введенный символ
 
+	ENDIF
         CP      '0'			; Меньше '0'?
-        JP      C,L041A			; Ищем ключевое слово
+        JP      C,KwSearch			; Ищем ключевое слово
         CP      ';'+1			; 0123456789:;
         JP      C,WriteChar
 
 ; Here's where we start to see if we've got a keyword. B здесь содержит 0 (см. код выше где OR A; LD B,A)
-L041A:
+KwSearch:
 	PUSH    DE			; Preserve output ptr.
         LD      DE,KEYWORDS-1		; 
         PUSH    HL			; Preserve input ptr.
@@ -1069,9 +1221,13 @@ ExecNext:
 	if	BASICNEW
 		CALL	TestBreakKey
 	else
+	if	MICRON
+		CALL	TestBreakKey
+	else
 		CALL    0F812h			;---------------
         NOP				; !! Этот блок можно заменить одним вызовом CALL TestBreakKey
         CALL    NZ,CheckBreak		;---------------
+	endif
 	endif
 
 ; Если у нас ':', являющийся разделителем команд (что позволяет иметь несколько команд в строке), то исполняем следующую команду.
@@ -1336,7 +1492,6 @@ NextLineNumChar:
 
 	INCLUDE	"stRun.inc"
 	
-	
 	CHK	06B7H, "Сдвижка кода"
 
 	INCLUDE	"stGosub.inc"
@@ -1383,7 +1538,6 @@ Print:
         JP      Z,NewLine
 
 L0794:  RET     Z
-
         CP      TK_TAB
         JP      Z,Tab
         CP      TK_SPC
