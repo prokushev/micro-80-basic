@@ -217,6 +217,7 @@ DIM_OR_EVAL	EQU	2118h
 VALTYP		EQU	2119h
 DATA_STM	EQU	211Ah
 MEMSIZ		EQU	211Bh
+TEMPPT		EQU	211Dh
 TMPST		EQU	211Fh
 TMPSTR		EQU	212Bh
 STR_TOP		EQU	212FH
@@ -412,7 +413,8 @@ GetNonBlankLine:
 L010D:  CALL    TerminateInput
         ; --- START PROC L0110 ---
 
-L0110:	RST		NextChar			; Считываем первый символ из буфера. Флаг переноса =1, если это цифра
+L0110:
+		RST		NextChar			; Считываем первый символ из буфера. Флаг переноса =1, если это цифра
 		INC		A					; Проверяем на пустую строку. Инкремент/декремент не сбрасывает флаг переноса.
 		DEC		A
 		JP		Z, GetNonBlankLine	; Снова вводим строку, если пустая
@@ -564,7 +566,7 @@ ResetStack:
         LD      HL,(STACK_TOP)
         LD      SP,HL
         LD      HL,TMPST
-        LD      (211Dh),HL
+        LD      (TEMPPT),HL
         LD      HL,0000h
         PUSH    HL
         LD      (OLD_TEXT),HL
@@ -585,12 +587,14 @@ ResetStack:
 
 Tokenize:
 		XOR     A
-L01F2:  LD      (DATA_STM),A
-        LD      C,05h
-        LD      DE,LINE_BUFFER
+L01F2:
 
-L01FA:
-	LD      A,(HL)
+		LD      (DATA_STM),A
+		LD      C,05H			; Initialise line length to 5
+		LD      DE,LINE_BUFFER		; ie, output ptr is same as input ptr at start.
+
+TokenizeNext:
+		LD      A,(HL)			; Получение введенного символа
 
 ;If char is a space, jump ahead to write it out.
         CP      ' '
@@ -623,26 +627,31 @@ L021D:
         PUSH    HL
 	DB		3Eh			; LD      A, ...
 
-L0223: 	INC		HL			; !! Отличается от Микро-80 !!
+KwCompare:
+	INC		HL			; !! Отличается от Микро-80 !!
         INC     DE
 
-L0225:
-	LD      A,(DE)
-        AND     7Fh
-        JP      Z,L0239
-        CP      (HL)
-        JP      NZ,L0263
-        LD      A,(DE)
+KwCompareDE:
+		LD      A,(DE)			; Get keyword char to compare with.
+        AND     7FH			; Ignore bit 7 of keyword char.
+        JP      Z, NotAKeyword		; If keyword char==0, then end of keywords reached.
+        CP      (HL)			; Keyword char matches input char?
+        JP      NZ, NextKeyword		; If not, jump to get next keyword.
+; OK, so input char == keyword char. Now we test bit 7 of the keyword char : if it's 0 then we haven't yet reached the end of the keyword and so have to loop back to continue comparing.
+        LD      A,(DE)			
         OR      A
-        JP      P,L0223
-        POP     AF
-        LD      A,B
-        OR      80h
-        DB		0F2H			; JP      P,...
-L0239:
-		POP 	HL				; Restore input ptr
-		LD		A, (HL)			; and get input char
-        POP     DE
+        JP      P, KwCompare
+; Matched a keyword! First thing we do is remove input ptr from the stack, as since we're matched to a keyword we don't need to go back and try to match another keyword - HL is already the correct input ptr. Then we set A to the keyword ID which gets written out in the next block but one (notice we LXI over the next block).
+        POP     AF			; Remove input ptr from stack. We don't need it.
+        LD      A,B			; A=Keyword ID
+        OR      80H			; Set bit 7 (indicates a keyword)
+        DB	0F2H			; JP      P,...
+; Here we have found that the input does not lead with a keyword, so we restore the input ptr and write out the literal character.
+NotAKeyword:
+	POP 	HL			; Restore input ptr
+	LD 	A, (HL)			; and get input char
+; Write character, and advance buffer pointers.
+        POP	DE			; Restore output ptr
 
 WriteChar:
 	INC	HL			; Advance input ptr
@@ -658,40 +667,40 @@ WriteChar:
         JP      NZ,L024D
 L024A:  LD      (DATA_STM),A
 L024D:  SUB     TK_REM-':'
-        JP      NZ,L01FA
-        LD      B,A
+        JP      NZ,TokenizeNext
+        LD      B,A			; B=0
 
 ;Free copy loop. This loop copies from input to output without tokenizing, 
 ;as needs to be done for string literals and comment lines. The B register
 ;holds the terminating character - when this char is reached the free 
 ;copy is complete and it jumps back
 
-L0253:
-	LD      A,(HL)
-        OR      A
-        JP      Z,Exit
-        CP      B
-        JP      Z,WriteChar
+FreeCopyLoop:
+	LD      A,(HL)			; A=Input char
+        OR      A			; If char is null then exit
+        JP      Z,Exit			; 
+        CP      B			; If input char is term char then 
+        JP      Z,WriteChar		; we're done free copying.
 FreeCopy:
 		INC     HL
 		LD      (DE),A
         INC     C
         INC     DE
-        JP      L0253
+        JP      FreeCopyLoop
 
 ; NextKeyword. Advances keyword ptr in DE to point to the next keyword in the table, then jumps back to KwCompare to see if it matches. Note we also increment the keyword ID.
 
-L0263:
-	POP     HL
+NextKeyword:
+	POP     HL			; Restore input ptr
         PUSH    HL
-        INC     B
-        EX      DE,HL
-L0267:
-	OR      (HL)
-        INC     HL
-        JP      P,L0267
-        EX      DE,HL
-        JP      L0225
+        INC     B			; Keyword ID ++
+        EX      DE,HL			; HL=keyword table ptr
+NextKwLoop:
+	OR      (HL)			; Loop until
+        INC     HL			; bit 7 of previous
+        JP      P,NextKwLoop		; keyword char is set.
+        EX      DE,HL			; DE=keyword ptr, HL=input ptr
+        JP      KwCompareDE
 
 Exit:	LD      HL,LINE_BUFFER-1
         LD      (DE),A
@@ -930,7 +939,6 @@ L03B6:  CALL    LineNumberFromStr
         SCF
         LD      (2078h),HL
         RET
-
         ; --- START PROC L03D1 ---
 L03D1:  RST     PushNextWord
         DEC     HL
@@ -944,10 +952,25 @@ L03D1:  RST     PushNextWord
         CALL    NewLine
         JP      L163B
 
-		include "stFor.inc"
+	INCLUDE "stFor.inc"
+
+;		
+; 1.9 Исполнение
+;
+; ExecNext
+;
+; После исполнения одной команды, этот блок осуществляет переход к следующей команде
+; в текущей строке или на следующей строке. Если больше команд не найденр, то завершаем
+; исполнение программы.
+;
 
 
 ExecNext:
+
+; Даем пользователю шанс прервать исполнение.
+
+
+
 		CALL    TestBreakKey
 
 ; Если у нас ':', являющийся разделителем команд (что позволяет иметь несколько команд в строке), то исполняем следующую команду.
@@ -999,7 +1022,8 @@ ExecANotZero:
 ; Если нет команды, то прекращаем исполнение.
 	RET     Z
 
-ExecA:  SUB     80h
+ExecA:
+	SUB     80h
         JP      C,Let
         CP      1Dh
         JP      C,L0478
@@ -1024,8 +1048,14 @@ L0478:
 ; получаем следующий символ и переходим по RET в обработчик команды.
         PUSH    BC
         EX      DE,HL
-        ; --- START PROC L0486 ---
-L0486:  INC     HL
+		
+; 1.10 Продолжение вспомогательных функций
+;
+; NextChar_tail
+;
+
+NextChar2:
+	INC     HL
         LD      A,(HL)
         CP      ':'
         RET     NC
@@ -1033,7 +1063,7 @@ L0486:  INC     HL
 NextChar_tail:
 ; Пропускаем пробел.
 	CP      ' '
-        JP      Z,L0486
+        JP      Z,NextChar2
 
 ; Если символ >= '0', то устанавливаем флаг переноса.
         CP      '0'
@@ -1754,7 +1784,8 @@ L094B:  CALL    IsNumeric
         RET
 
         ; --- START PROC L0950 ---
-L0950:  CALL    GetVar
+L0950:
+	CALL    GetVar
         PUSH    HL
         EX      DE,HL
         LD      (FACCUM),HL
@@ -1887,6 +1918,7 @@ L0A06:  LD      A,E
         OR      A
         CPL
         RET     Z
+
 L0A0D:  XOR     A
         CP      E
         INC     A
@@ -2294,7 +2326,7 @@ L0C86:  INC     HL
         CP      B
         JP      NZ,L0C86
 L0C95:  CP      22h             ; '"'
-        CALL    Z,L0486
+        CALL    Z,NextChar2
         EX      (SP),HL
         INC     HL
         EX      DE,HL
@@ -2304,7 +2336,7 @@ L0C95:  CP      22h             ; '"'
         CALL    NC,L0C5F
         ; --- START PROC TempStringToPool ---
 TempStringToPool:  LD      DE,212Bh
-        LD      HL,(211Dh)
+        LD      HL,(TEMPPT)
         LD      (FACCUM),HL
         LD      A,01h
         LD      (VALTYP),A
@@ -2312,7 +2344,7 @@ TempStringToPool:  LD      DE,212Bh
         RST     CompareHLDE
         LD      E,1Eh
         JP      Z,Error
-        LD      (211Dh),HL
+        LD      (TEMPPT),HL
         POP     HL
         LD      A,(HL)
         RET
@@ -2340,7 +2372,7 @@ L0CD5:  OR      A
         LD      HL,(STR_TOP)
         CPL
         LD      C,A
-        LD      B,0FFh
+        LD      B,0FFH
         ADD     HL,BC
         INC     HL
         RST     CompareHLDE
@@ -2358,7 +2390,7 @@ L0CF1:  POP     AF
         PUSH    AF
         LD      BC,0CD7h
         PUSH    BC
-        ; --- START PROC GarbageCollection ---
+; Сборка мусора
 GarbageCollection:
 		LD      HL,(MEMSIZ)
         ; --- START PROC L0D00 ---
@@ -2369,7 +2401,7 @@ L0D00:  LD      (STR_TOP),HL
         PUSH    HL
         LD      HL,TMPST
         EX      DE,HL
-        LD      HL,(211Dh)
+        LD      HL,(TEMPPT)
         EX      DE,HL
         RST     CompareHLDE
         LD      BC,0D0Eh
@@ -2402,7 +2434,7 @@ L0D31:  EX      DE,HL
         LD      (CUR_TOKEN_ADR),HL
         POP     HL
         LD      C,(HL)
-        LD      B,00h
+        LD      B,00H
         ADD     HL,BC
         ADD     HL,BC
         INC     HL
@@ -2450,7 +2482,6 @@ L0D5D:  RST     PushNextWord
         PUSH    BC
         RET
 
-        ; --- START PROC L0D7D ---
 L0D7D:  POP     DE
         POP     HL
         LD      A,L
@@ -2483,7 +2514,6 @@ L0D7D:  POP     DE
         DEC     HL
         JP      L0D00
 
-        ; --- START PROC L0DA2 ---
 L0DA2:  PUSH    BC
         PUSH    HL
         LD      HL,(FACCUM)
@@ -2537,7 +2567,7 @@ EvalString:
 EvalCurrentString:
 	LD      HL,(FACCUM)
 L0DEF:  EX      DE,HL
-L0DF0:  LD      HL,(211Dh)
+L0DF0:  LD      HL,(TEMPPT)
         DEC     HL
         LD      B,(HL)
         DEC     HL
@@ -2547,7 +2577,7 @@ L0DF0:  LD      HL,(211Dh)
         RST     CompareHLDE
         EX      DE,HL
         RET     NZ
-        LD      (211Dh),HL
+        LD      (TEMPPT),HL
         PUSH    DE
         LD      D,B
         LD      E,C

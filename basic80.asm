@@ -687,6 +687,7 @@ InputLineWithQ:
 
 Tokenize:
 		XOR     A
+
 		LD      (DATA_STM),A
 		LD      C,05H			; Initialise line length to 5
 		LD      DE,LINE_BUFFER		; ie, output ptr is same as input ptr at start.
@@ -1046,6 +1047,7 @@ InputChar:
 
 
 	CHK	0535H, "Сдвижка кода"
+
 	INCLUDE "stFor.inc"
 
 ;		
@@ -1058,8 +1060,12 @@ InputChar:
 ; исполнение программы.
 ;
 
+
 ExecNext:
+
 ; Даем пользователю шанс прервать исполнение.
+
+
 	if	BASICNEW
 		CALL	TestBreakKey
 	else
@@ -1149,9 +1155,13 @@ ExecA:
 ; Возвращает следующий введенный символ из буфера по адресу HL, пропуская символы пробелов.
 ; Флаг переноса C выставлен, если возвращаемый символ не алфавитно-цифровой.
 ; Также флаг Z выставляется, если символ равен NULL.
+
+
+
 	IF	BASICNEW
 NextChar:
 	ENDIF
+
 NextChar2:
 	INC     HL
         LD      A,(HL)
@@ -1215,7 +1225,8 @@ EndOfProgram:
 	LD      HL,(PROG_PTR_TEMP)	; Сохранаяем адрес останова из временной переменной
 	LD      (OLD_TEXT),HL		; для последующего восстановления по CONT
 
-L0609:  XOR     A
+L0609:
+	XOR     A
         LD      (ControlChar),A
 
         POP     AF
@@ -1808,7 +1819,7 @@ L0A2A:	CALL    IsNumeric
 
 ;Evaluate a variable. The call to GetVar returns the address of the variable's value in DE, which is then moved to HL then the call to FLoadFromMem loads FACCUM with the variable's value.
 EvalVarTerm:
-		CALL    GetVar
+	CALL    GetVar
         PUSH    HL
         EX      DE,HL
         LD      (FACCUM),HL
@@ -1816,7 +1827,7 @@ EvalVarTerm:
         OR      A
         CALL    Z,FLoadFromMem
         POP     HL
-        RET     
+        RET
 
 ; Evaluate an inline function. First we get the offset into the KW_INLINE_FNS table into BC and stick it on the stack.
 EvalInlineFn:
@@ -2449,7 +2460,7 @@ L0DAC:	POP	AF
         LD      HL,(STACK_TOP)
         EX      DE,HL
         LD      HL,(STR_TOP)
-        CPL     
+        CPL
         LD      C,A
         LD      B,0FFH
         ADD     HL,BC
@@ -2519,7 +2530,7 @@ L0E06:  EX      DE,HL
         INC     HL
 L0E23:	EX      DE,HL
         LD      HL,(CUR_TOKEN_ADR)
-	EX      DE,HL
+        EX      DE,HL
         RST     CompareHLDE
         JP      Z,L0E06
         LD      BC,L0E23
@@ -3332,7 +3343,7 @@ L17DD:  LD      A,(GPOSX)		; 1954H
         RRA     
         LD      E,A
         LD      A,C
-        RRA     
+        RRA
         LD      C,A
         LD      A,(GPOSY)		; 1955H
         RRA     
