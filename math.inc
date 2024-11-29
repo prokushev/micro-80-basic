@@ -797,20 +797,8 @@ L12D0:  SBC     A,A
 
 		INCLUDE	"fnAbs.inc"
 
+		INCLUDE	"spFPush.inc"
 
-;2.6 Moving FACCUM about
-;A group of functions for loading, copying, and pushing FACCUM.
-
-FPush:
-		EX      DE,HL
-        LD      HL,(FACCUM)
-        EX      (SP),HL
-        PUSH    HL
-        LD      HL,(FACCUM+2)
-        EX      (SP),HL
-        PUSH    HL
-        EX      DE,HL
-        RET
 
 ;FLoadFromMem
 ;FLoadFromMem loads FACCUM with the fp number pointed to by HL. It does this by calling a function to load BCDE with the in-memory number, then falls into FLoadFromBCDE.

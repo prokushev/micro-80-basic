@@ -388,6 +388,8 @@ ERR_DD		EQU 12H
 ERR_DZ		EQU 14H
 ERR_TM		EQU	18H
 ERR_CN		EQU 20h
+
+PrintString	EQU	0F818H
 		ENDIF
 ; 
 ;********************
@@ -650,7 +652,7 @@ L00BC:  LD      A,(HL)
         JP      L00BC
 
 MessageFound:
-	CALL    0F818h
+	CALL    PrintString
 	ELSE
         LD      HL,ERROR_CODES
         LD      D,A
@@ -673,14 +675,14 @@ MessageFound:
 	ENDIF
         LD      HL, szError
 PrintInLine:
-	CALL    0F818h
+	CALL    PrintString
         LD      HL, (CURRENT_LINE)
         LD      A,H
         AND     L
         INC     A
         JP      Z,Main
         PUSH    HL
-        CALL    L1313
+        CALL    PrintIN
         LD      A,':'           ; ':'
         RST    	OutChar
         LD      A,(208Dh)
@@ -701,7 +703,7 @@ PrintInLine:
 
 Main:
 	LD      HL, szOK			; szOK
-        CALL    0F818h
+        CALL    PrintString
 
 		LD		HL,0FFFFH			; Сбрасываем текущую выполняемую строку
 		LD		(CURRENT_LINE),HL
@@ -1086,7 +1088,7 @@ L02B8:  DEC     DE
         JP      NZ,L02B8
         LD      (HL),C
         ; --- START PROC L02C4 ---
-L02C4:  CALL    0F818h
+L02C4:  CALL    PrintString
         LD      C,' '           ; ' '
         CALL    0F809h
         LD      A,08h
@@ -1355,17 +1357,18 @@ ExecANotZero:
 	RET     Z
 
 ExecA:
-	SUB     80h
+; Все ключевые слова >=0x80. Если это не ключевое слово, то считаем, что LET было не введено и это команда LET.
+	SUB     FIRST_TK
         JP      C,Let
-        CP      1Dh
-        JP      C,L0478
+        CP      TKCOUNT
+        JP      C,CalcHandler
         CP      4Ah             ; 'J'
         JP      C,SyntaxError
         SUB     2Dh             ; '-'
 
 ; Вычисляем адрес обработчика команды в таблице обработчиков в HL, сохранив текущий указатель программы в DE.
 
-L0478:
+CalcHandler:
 	RLCA				;	BC = A*2
         LD      C,A
         LD      B,00H
@@ -1651,7 +1654,7 @@ CopyNumeric:
 
 	CHK	0778h, "Сдвижка кода"
 
-
+	INCLUDE "stIf.inc"
 		
 ;1.14 Printing
 ;Print
@@ -3123,23 +3126,28 @@ L0EDF:  CALL    FTestPositiveIntegerExpression
 	CHK	0Fc8H, "Сдвижка кода"
 
 	INCLUDE	"fnVal.inc"
+	
+	; IF	MICRON
+	; INCLUDE "MATH.INC"
+	; ENDIF
 
-        ; --- START PROC L0F04 ---
-L0F04:  LD      HL,13EFh
-        ; --- START PROC FAddFromMem ---
-FAddFromMem:  CALL    FLoadBCDEfromMem
-        JP      FAddBCDE
+FAddOneHalf:
+	LD      HL,ONE_HALF
 
-        ; --- START PROC L0F0D ---
-L0F0D:  CALL    FLoadBCDEfromMem
+FAddFromMem:
+	CALL    FLoadBCDEfromMem
+        JP	FAddBCDE
+
+FSubFromMem:
+	CALL    FLoadBCDEfromMem
         DB	21h			;LD      HL,...
 
 FSub:
-		POP	BC			; Get lhs in BCDE.
-		POP	DE
+	POP	BC			; Get lhs in BCDE.
+	POP	DE
 
-        ; --- START PROC L0F13 ---
-L0F13:  CALL    FNegate
+        ; --- START PROC FSubBCDE ---
+FSubBCDE:  CALL    FNegate
         ; --- START PROC FAddBCDE ---
 FAddBCDE:  LD      A,B
         OR      A
@@ -3362,7 +3370,7 @@ Log:	RST     FTestSign
         INC     B
         CALL    L10B2
         LD      HL,1001h
-        CALL    L0F0D
+        CALL    FSubFromMem
         LD      HL,1005h
         CALL    L14B0
         LD      BC,8080h
@@ -3577,7 +3585,7 @@ L1157:  CALL    FCopyToBCDE
         JP      L0FB8
 
 FTestSign_tail:
-	LD      A,(214Fh)
+	LD      A,(FACCUM+2)
         CP      2Fh             ; '/'
         RLA
 L1174:  SBC     A,A
@@ -3587,26 +3595,18 @@ L1174:  SBC     A,A
 
 		INCLUDE	"fnSgn.inc"
 		INCLUDE	"fnAbs.inc"
+		INCLUDE	"spFPush.inc"
 
-        ; --- START PROC FPush ---
-FPush:  EX      DE,HL
-        LD      HL,(FACCUM)
-        EX      (SP),HL
-        PUSH    HL
-        LD      HL,(214Fh)
-        EX      (SP),HL
-        PUSH    HL
-        EX      DE,HL
-        RET
 
-        ; --- START PROC FLoadFromMem ---
-FLoadFromMem:  CALL    FLoadBCDEfromMem
-        ; --- START PROC FLoadFromBCDE ---
-FLoadFromBCDE:  EX      DE,HL
+FLoadFromMem:
+	CALL    FLoadBCDEfromMem
+
+FLoadFromBCDE:
+	EX      DE,HL
         LD      (FACCUM),HL
         LD      H,B
         LD      L,C
-        LD      (214Fh),HL
+        LD      (FACCUM+2),HL
         EX      DE,HL
         RET
 
@@ -3637,7 +3637,7 @@ L11C2:  LD      A,(DE)
         RET
 
         ; --- START PROC L11CB ---
-L11CB:  LD      HL,214Fh
+L11CB:  LD      HL,FACCUM+2
         LD      A,(HL)
         RLCA
         SCF
@@ -3666,7 +3666,7 @@ FCompare:  LD      A,B
         RST     FTestSign
         LD      A,C
         RET     Z
-        LD      HL,214Fh
+        LD      HL,FACCUM+2
         XOR     (HL)
         LD      A,C
         RET     M
@@ -3886,12 +3886,11 @@ L1307:  LD      A,E
         LD      E,A
         JP      L12B4
 
-        ; --- START PROC L1313 ---
-L1313:  PUSH    HL
+PrintIN:  PUSH    HL
         LD      HL,szIn
-        CALL    0F818h
+        CALL    PrintString
         POP     HL
-        ; --- START PROC PrintInt ---
+
 PrintInt:  EX      DE,HL
         ; --- START PROC L131C ---
 L131C:  XOR     A
@@ -3929,7 +3928,7 @@ L1355:  CALL    L10A4
         INC     A
         PUSH    AF
         CALL    L13E1
-L135E:  CALL    L0F04
+L135E:  CALL    FAddOneHalf
         INC     A
         CALL    FAsInteger
         CALL    FLoadFromBCDE
@@ -4071,7 +4070,7 @@ L1415:  RST     FTestSign
         LD      A,H
         RRA
 L1437:  POP     HL
-        LD      (214Fh),HL
+        LD      (FACCUM+2),HL
         POP     HL
         LD      (FACCUM),HL
         CALL    C,L1405
@@ -4101,7 +4100,7 @@ Exp:	CALL    FPush
         POP     BC
         POP     DE
         PUSH    AF
-        CALL    L0F13
+        CALL    FSubBCDE
         CALL    FNegate
         LD      HL,148Fh
         CALL    L14BF
@@ -4206,13 +4205,13 @@ Sin:	CALL    FPush
         CALL    Int
         POP     BC
         POP     DE
-        CALL    L0F13
+        CALL    FSubBCDE
         LD      HL,155Ch
-        CALL    L0F0D
+        CALL    FSubFromMem
         RST     FTestSign
         SCF
         JP      P,L1544
-        CALL    L0F04
+        CALL    FAddOneHalf
         RST     FTestSign
         OR      A
 L1544:  PUSH    AF
@@ -4343,7 +4342,7 @@ Init:   LD      HL,(INIT_PROGAM_BASE)
         LD      A,2Ch           ; ','
         LD      (208Fh),A
         LD      HL,szHello
-        CALL    0F818h
+        CALL    PrintString
         CALL    L0351
         RST     OutChar
         CP      'Y'             ; 'Y'
@@ -5249,10 +5248,10 @@ L1BE0:  LD      HL,2000h
         CALL    L1C12
         CALL    L1C25
         LD      HL,1DFAh
-        CALL    0F818h
+        CALL    PrintString
         POP     HL
         PUSH    HL
-        CALL    0F818h
+        CALL    PrintString
         CALL    0F82Dh
         LD      DE,0BB8h
         CALL    L169C
@@ -5319,7 +5318,7 @@ L1C57:  RST     NextChar
         LD      BC,8100h
         LD      D,C
         LD      E,C
-        CALL    L0F13
+        CALL    FSubBCDE
         CALL    Sqr
         POP     BC
         POP     DE

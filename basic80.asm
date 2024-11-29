@@ -388,6 +388,8 @@ ERR_DD		EQU 12H
 ERR_DZ		EQU 14H
 ERR_TM		EQU	18H
 ERR_CN		EQU 20h
+
+PrintString	EQU	0F818H
 		ENDIF
 ; 
 ;********************
@@ -650,7 +652,7 @@ L00BC:  LD      A,(HL)
         JP      L00BC
 
 MessageFound:
-	CALL    0F818h
+	CALL    PrintString
 	ELSE
         LD      HL,ERROR_CODES
         LD      D,A
@@ -1282,6 +1284,7 @@ ExecA:
 
 ; Вычисляем адрес обработчика команды в таблице обработчиков в HL, сохранив текущий указатель программы в DE.
 
+CalcHandler:
 	RLCA				;	BC = A*2
         LD      C,A
         LD      B,00H

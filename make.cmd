@@ -73,58 +73,58 @@ if errorlevel 1 goto error
 
 rem Бейсик-Сервис
 
-asw -lU -D SERVICE=1 -D RAM=12 basic80.asm > logs\basic80-service-12kb.lst
+asw -lU -D SERVICE=1 -D RAM=12 basic80.asm -o obj\basic80.p > logs\basic80-service-12kb.lst
 if errorlevel 1 goto error
-p2bin basic80.p bin\micro-80\basic80-service-12kb.bin
-if errorlevel 1 goto error
-
-asw -lU -D SERVICE=1 basic80.asm > logs\basic80-service-16kb.lst
-if errorlevel 1 goto error
-p2bin basic80.p bin\micro-80\basic80-service-16kb.bin
+p2bin obj\basic80.p bin\micro-80\basic80-service-12kb.bin
 if errorlevel 1 goto error
 
-asw -lU -D SERVICE=1 -D RAM=32 basic80.asm > logs\basic80-service-32kb.lst
+asw -lU -D SERVICE=1 basic80.asm -o obj\basic80.p > logs\basic80-service-16kb.lst
 if errorlevel 1 goto error
-p2bin basic80.p bin\micro-80\basic80-service-32kb.bin
-if errorlevel 1 goto error
-
-asw -lU -D SERVICE=1 -D RAM=48 basic80.asm > logs\basic80-service-48kb.lst
-if errorlevel 1 goto error
-p2bin basic80.p bin\micro-80\basic80-service-48kb.bin
+p2bin obj\basic80.p bin\micro-80\basic80-service-16kb.bin
 if errorlevel 1 goto error
 
-rem ------------------------------------------------------------
-
-asw -lU -D SERVICE=1 -D RK86=1 basic80.asm > logs\basic80-rk86-service-16kb.lst
+asw -lU -D SERVICE=1 -D RAM=32 basic80.asm -o obj\basic80.p > logs\basic80-service-32kb.lst
 if errorlevel 1 goto error
-p2bin basic80.p bin\radio-86rk\basic80-rk86-service-16kb.bin
+p2bin obj\basic80.p bin\micro-80\basic80-service-32kb.bin
 if errorlevel 1 goto error
 
-asw -lU -D SERVICE=1 -D RK86=1 -D RAM=32 basic80.asm > logs\basic80-rk86-service-32kb.lst
+asw -lU -D SERVICE=1 -D RAM=48 basic80.asm -o obj\basic80.p > logs\basic80-service-48kb.lst
 if errorlevel 1 goto error
-p2bin basic80.p bin\radio-86rk\basic80-rk86-service-32kb.bin
+p2bin obj\basic80.p bin\micro-80\basic80-service-48kb.bin
 if errorlevel 1 goto error
 
 rem ------------------------------------------------------------
 
-asw -lU -D SERVICE=1 -D UT88=1 -D RAM=12 basic80.asm > logs\basic80-ut88-service-12kb.lst
+asw -lU -D SERVICE=1 -D RK86=1 basic80.asm -o obj\basic80.p > logs\basic80-rk86-service-16kb.lst
 if errorlevel 1 goto error
-p2bin basic80.p bin\ut-88\basic80-ut88-service-12kb.bin
-if errorlevel 1 goto error
-
-asw -lU -D SERVICE=1 -D UT88=1 basic80.asm > logs\basic80-ut88-service-16kb.lst
-if errorlevel 1 goto error
-p2bin basic80.p bin\ut-88\basic80-ut88-service-16kb.bin
+p2bin obj\basic80.p bin\radio-86rk\basic80-rk86-service-16kb.bin
 if errorlevel 1 goto error
 
-asw -lU -D SERVICE=1 -D UT88=1 -D RAM=32 basic80.asm > logs\basic80-ut88-service-32kb.lst
+asw -lU -D SERVICE=1 -D RK86=1 -D RAM=32 basic80.asm -o obj\basic80.p > logs\basic80-rk86-service-32kb.lst
 if errorlevel 1 goto error
-p2bin basic80.p bin\ut-88\basic80-ut88-service-32kb.bin
+p2bin obj\basic80.p bin\radio-86rk\basic80-rk86-service-32kb.bin
 if errorlevel 1 goto error
 
-asw -lU -D SERVICE=1 -D UT88=1 -D RAM=48 basic80.asm > logs\basic80-ut88-service-48kb.lst
+rem ------------------------------------------------------------
+
+asw -lU -D SERVICE=1 -D UT88=1 -D RAM=12 basic80.asm -o obj\basic80.p > logs\basic80-ut88-service-12kb.lst
 if errorlevel 1 goto error
-p2bin basic80.p bin\ut-88\basic80-ut88-service-48kb.bin
+p2bin obj\basic80.p bin\ut-88\basic80-ut88-service-12kb.bin
+if errorlevel 1 goto error
+
+asw -lU -D SERVICE=1 -D UT88=1 basic80.asm -o obj\basic80.p > logs\basic80-ut88-service-16kb.lst
+if errorlevel 1 goto error
+p2bin obj\basic80.p bin\ut-88\basic80-ut88-service-16kb.bin
+if errorlevel 1 goto error
+
+asw -lU -D SERVICE=1 -D UT88=1 -D RAM=32 basic80.asm -o obj\basic80.p > logs\basic80-ut88-service-32kb.lst
+if errorlevel 1 goto error
+p2bin obj\basic80.p bin\ut-88\basic80-ut88-service-32kb.bin
+if errorlevel 1 goto error
+
+asw -lU -D SERVICE=1 -D UT88=1 -D RAM=48 basic80.asm -o obj\basic80.p > logs\basic80-ut88-service-48kb.lst
+if errorlevel 1 goto error
+p2bin obj\basic80.p bin\ut-88\basic80-ut88-service-48kb.bin
 if errorlevel 1 goto error
 
 echo Бейсик-Микрон
@@ -136,9 +136,9 @@ if errorlevel 1 goto error
 
 rem Мои варианты
 
-asw -lU -D SERVICE=0 -D BASICNEW=1 basic80.asm > logs\basic80-new-16kb.lst
+asw -lU -D SERVICE=0 -D BASICNEW=1 basic80.asm -o obj\basic80.p > logs\basic80-new-16kb.lst
 if errorlevel 1 goto error
-p2bin basic80.p bin\micro-80\basic80-new-16kb.bin
+p2bin obj\basic80.p bin\micro-80\basic80-new-16kb.bin
 if errorlevel 1 goto error
 bin2rk bin\micro-80\basic80-new-16kb.bin
 
