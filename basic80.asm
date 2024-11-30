@@ -387,7 +387,9 @@ ERR_US		EQU 0EH
 ERR_DD		EQU 12H
 ERR_DZ		EQU 14H
 ERR_TM		EQU	18H
-ERR_CN		EQU 20h
+ERR_ST		EQU	1EH
+ERR_CN		EQU	20H
+ERR_UF		EQU	22H
 
 PrintString	EQU	0F818H
 		ENDIF
@@ -675,12 +677,13 @@ MessageFound:
 	ENDIF
         LD      HL, szError
 PrintInLine:
-		CALL    PrintString
-		LD      HL, (CURRENT_LINE)
-		LD      A,H
-		AND     L
-		INC     A
-		CALL    NZ, PrintIN
+	CALL    PrintString
+        LD      HL, (CURRENT_LINE)
+        LD      A,H
+        AND     L
+        INC     A
+
+	CALL    NZ, PrintIN
 
 ;
 ; Main
@@ -688,14 +691,24 @@ PrintInLine:
 ;
 
 Main:
-		XOR		A
-		LD		(ControlChar),A		; Включаем вывод на экран (не управляющий символ)
+	IF	MICRON
+	LD      HL, szOK			; szOK
+        CALL    PrintString
+	ELSE
+	XOR		A
+	LD		(ControlChar),A		; Включаем вывод на экран (не управляющий символ)
+	ENDIF
 
-		LD		HL,0FFFFH			; Сбрасываем текущую выполняемую строку
-		LD		(CURRENT_LINE),HL
+	LD		HL,0FFFFH			; Сбрасываем текущую выполняемую строку
+	LD		(CURRENT_LINE),HL
 
-		LD		HL,szOK				; Выводим приглашение
-		CALL		PrintString
+	IF	MICRON
+        LD      (2078h),HL
+	ELSE
+	LD		HL,szOK				; Выводим приглашение
+	CALL		PrintString
+	ENDIF
+		
 
 GetNonBlankLine:
 L030E:	EQU	$+1
@@ -998,12 +1011,12 @@ ResetInput:
 L047D:	CALL    NewLine
 	ENDIF	; SERVICE
 InputLine:
-		LD      HL,LINE_BUFFER
+	LD      HL,LINE_BUFFER
         LD      B,01H
 
 ; Get a character and jump out of here if user has pressed 'Enter'. 
 InputNext:
-		CALL    InputChar
+	CALL    InputChar
 ;Deal with backspace.
 
 L0488:	CP      08H
@@ -1344,6 +1357,7 @@ NextChar_tail:
 
 	INCLUDE	"stRestore.inc"
 
+
 ; TestBreakKey
 ; Apparently the Altair had a 'break' key, to break program execution. 
 ; This little function tests to see if the terminal input device is ready,
@@ -1380,6 +1394,7 @@ EndOfProgram:
 	INC     A
 
 	JP      Z,L0609			; Если да, то это прерывание в операторе INPUT
+
 	LD      (OLD_LINE),HL		; Сохраняем номер строки останова
 	LD      HL,(PROG_PTR_TEMP)	; Сохранаяем адрес останова из временной переменной
 	LD      (OLD_TEXT),HL		; для последующего восстановления по CONT
@@ -1426,7 +1441,7 @@ FTestPositiveIntegerExpression:
 
 ;Likewise, if subscript is >32767 then fall into FC error, otherwise exit to FAsInteger.
 FTestIntegerExpression:
-		LD      A,(FACCUM+3)
+	LD      A,(FACCUM+3)
         CP      90H
         JP      C,FAsInteger
         LD      BC,9080H
@@ -1437,7 +1452,7 @@ FTestIntegerExpression:
 
 ; Invalid function call (FC) error..
 FunctionCallError:
-		LD      E,ERR_FC
+	LD      E,ERR_FC
         JP      Error
 		
 ;1.11 Jumping to Program Lines
@@ -1528,8 +1543,11 @@ NextLineNumChar:
 
 	IF	BASICNEW
 	ELSE
+	IF	MICRON
+	ELSE
 ; Похоже, это мертвый код
         DEC     HL
+	ENDIF
 	ENDIF
 
 PrintLoop:
@@ -1626,12 +1644,12 @@ PrintNullLoop:
 ;Calculate how many spaces are needed to get us to the next tab-break then jump to PrintSpaces to do it.
 
 ToNextTabBreak:
-		LD      A,(TERMINAL_X)
+	LD      A,(TERMINAL_X)
         CP      30H
         CALL    NC,NewLine
         JP      NC,ExitTab
 CalcSpaceCount:
-		SUB     0EH
+	SUB     0EH
         JP      NC,CalcSpaceCount
         CPL     
         JP      PrintSpaces
@@ -1655,16 +1673,16 @@ Tab:
         ADD     A,E
         JP      NC,ExitTab
 PrintSpaces:
-		INC     A
+	INC     A
 Spc:	
-		LD      B,A
+	LD      B,A
         LD      A, ' '
 PrintSpaceLoop:
-		RST     OutChar
+	RST     OutChar
         DEC     B
         JP      NZ,PrintSpaceLoop
 ExitTab:
-		POP     HL
+	POP     HL
         RST     NextChar
         JP      L0794
 
@@ -1685,13 +1703,13 @@ L0840:  LD      A, (INPUT_OR_READ)
 
 	CHK	0852h, "Сдвижка кода"
 Input:
-        CP      '"'				; 22H
+	CP      '"'
         LD      A,00H
         LD      (ControlChar),A
         JP      NZ,NoPrompt
         CALL    GetStringConstant
         RST     SyntaxCheck
-        DB		';'
+        DB	';'
         PUSH    HL
         CALL    L0D96
         POP     HL
@@ -1752,7 +1770,7 @@ GotDataItem:
         RST     NextChar
         LD      D,A
         LD      B,A
-        CP      '"'				; 22H
+        CP      '"'
         JP      Z,L08B2
         LD      D,':'
         LD      B,','
@@ -1763,7 +1781,7 @@ L08B2:  CALL    L0D53
         EX      (SP),HL
         PUSH    DE
         JP      L072B
-		
+
 L08BE:  RST     NextChar
         CALL    FIn
         EX      (SP),HL
@@ -1858,7 +1876,7 @@ L0978:
 		CALL	EvalTerm
         LD      (PROG_PTR_TEMP2),HL
 ArithParse:
-		LD      HL,(PROG_PTR_TEMP2)
+	LD      HL,(PROG_PTR_TEMP2)
 L0986:	POP     BC
         LD      A,B
         CP      78H
@@ -1924,14 +1942,13 @@ L09D2:  PUSH    BC
         RST     PushNextWord
         LD      HL,(CUR_TOKEN_ADR)
         JP      L0978
-	
-;EvalTerm
 
+;EvalTerm
 ;Evaluates a term in an expression. This can be a numeric constant, a variable, an inline function call taking a full expression as an argument, or a bracketed expression.
 ;Get first character of term, and if it's a digit (as indicated by the carry flag) then jump to FIn
 
 EvalTerm:
-		XOR     A
+	XOR     A
 L09E6:  LD      (VALTYP),A
         RST     NextChar
         JP      C,FIn
@@ -1945,9 +1962,9 @@ L09E6:  LD      (VALTYP),A
         CP      '.'			;2EH
         JP      Z,FIn
 ;If the character is a leading '-' then jump head to EvalMinusTerm
-        CP      TK_MINUS		;0A5H
-        JP      Z,EvalMinusTerm		; L0A1E
-        CP      '"'			; 22H
+        CP      TK_MINUS
+        JP      Z,EvalMinusTerm
+        CP      '"'
         JP      Z,GetStringConstant
         CP      TK_NOT			; 0A2H
         JP      Z,L0AF9
@@ -1959,20 +1976,20 @@ L09E6:  LD      (VALTYP),A
 ;The only possibility left is a bracketed expression. Here we check for an opening bracket, recurse into EvalExpression, and return.
 L0A16:  RST     SyntaxCheck
         DB	'('
-		CALL	EvalExpression
+	CALL	EvalExpression
         RST     SyntaxCheck
 L0A1C:  DB	')'
         RET     
 
 EvalMinusTerm:
-L0A1E:  LD      D,7DH
+	LD      D,7DH
         CALL    L0978
         LD      HL,(PROG_PTR_TEMP2)
         PUSH    HL
         CALL    FNegate
 L0A2A:	CALL    IsNumeric
         POP     HL
-        RET     
+        RET
 
 ;Evaluate a variable. The call to GetVar returns the address of the variable's value in DE, which is then moved to HL then the call to FLoadFromMem loads FACCUM with the variable's value.
 EvalVarTerm:
@@ -1988,13 +2005,13 @@ EvalVarTerm:
 
 ; Evaluate an inline function. First we get the offset into the KW_INLINE_FNS table into BC and stick it on the stack.
 EvalInlineFn:
-		LD      B,00H
-		RLCA    
-		LD      C,A
-		PUSH    BC
+	LD      B,00H
+	RLCA
+	LD      C,A
+	PUSH    BC
 ;Evaluate function argument
-		RST     NextChar
-		LD      A,C
+	RST     NextChar
+	LD      A,C
         CP      2*(TK_LEFTS-TK_SGN)-1		; Это строковые функции fn$ с несколькими параметрами?
         JP      C,L0A65				; Нет, обычная
 
@@ -2032,7 +2049,7 @@ SkipFnArgs:
         EX      (SP),HL
         LD      DE,L0A2A
         PUSH    DE
-L0A6D:  LD      BC, KW_INLINE_FNS	; 0043H
+L0A6D:  LD      BC, KW_INLINE_FNS
         ADD     HL,BC
         LD      C,(HL)
         INC     HL
@@ -2136,7 +2153,7 @@ L0AD7:  LD      A,E
         JP      Z,L0AD7
         CCF
         JP      L12D0
-	
+
 L0AEF:	INC     A
         ADC     A,A
         POP     BC
@@ -2144,7 +2161,7 @@ L0AEF:	INC     A
         ADD     A,0FFH
         SBC     A,A
         JP      FCharToFloat
-	
+
 L0AF9:  LD      D,5AH
         CALL    L0978
         CALL    IsNumeric
@@ -2192,11 +2209,11 @@ L0B35:  RST     NextChar
         JP      C,L0B35
         CALL    CharIsAlpha
         JP      NC,L0B35
-L0B3F:  SUB     '$'			; 24H
+L0B3F:  SUB     '$'
         JP      NZ,L0B4C
         INC     A			; A=1, т.е. строковая переменная
         LD      (VALTYP),A
-        RRCA    
+        RRCA
         ADD     A,C
         LD      C,A
         RST     NextChar
@@ -2214,8 +2231,8 @@ L0B4C:  LD      A,(NO_ARRAY)
 
 ;Loop to find the variable if it's already been allocated. If HL==DE then we've reached VAR_ARRAY_BASE without finding it, and so can jump ahead to allocate a new variable.
 FindVarLoop:
-		RST     CompareHLDE
-		JP      Z,AllocNewVar
+	RST     CompareHLDE
+	JP      Z,AllocNewVar
         LD      A,C
         SUB     (HL)
         INC     HL
@@ -2288,7 +2305,7 @@ L0BA5:  PUSH    DE
         LD      (DIM_OR_EVAL),HL
         PUSH    DE
         LD      HL,(VAR_ARRAY_BASE)
-        DB	3EH			;LD      A,..
+	DB	3EH			;LD      A,..
 L0BC6:	ADD	HL, DE
         EX      DE,HL
         LD      HL,(VAR_TOP)
@@ -2408,7 +2425,7 @@ L0C57:	POP	HL
 L0C74:  LD      HL,(PROG_PTR_TEMP2)
         DEC     HL
         RST     NextChar
-        RET     
+        RET
 
 	IF	BASICNEW
 Pi:
@@ -2521,7 +2538,7 @@ L0D10:  RST     SyntaxCheck
 	
 	CHK	0d1fh, "Сдвижка кода"
 Str:
-        CALL    IsNumeric
+	CALL    IsNumeric
         CALL    FOut
         CALL    L0D4F
         CALL    EvalCurrentString
@@ -2576,7 +2593,7 @@ L0D65:  CP      '"'			;22H
         CALL    NC,L0D2F
 TempStringToPool:
 	LD      DE,TMPSTR
-        LD      HL,(TEMPPT)		;021DH
+        LD      HL,(TEMPPT)
         LD      (FACCUM),HL
         LD      A,01H
         LD      (VALTYP),A
@@ -2584,10 +2601,10 @@ TempStringToPool:
         RST     CompareHLDE
         LD      E,ERR_ST
         JP      Z,Error
-        LD      (TEMPPT),HL		; 021DH
+        LD      (TEMPPT),HL
         POP     HL
         LD      A,(HL)
-        RET     
+        RET
 
 PrintString1:
         INC     HL
@@ -2821,7 +2838,7 @@ L0EC5:  LD      HL,(TEMPPT)		;021DH
         EX      DE,HL
         RET     NZ
 
-        LD      (TEMPPT),HL		; 021DH
+        LD      (TEMPPT),HL
         PUSH    DE
         LD      D,B
         LD      E,C

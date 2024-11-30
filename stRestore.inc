@@ -1,6 +1,25 @@
 ; Обработчик команды Restore
 ; Сбрасываем указатель данных на адрес перед началом программы.
 
+	IF	MICRON
+Restore:
+	JP      Z,Restore0
+        CALL    LineNumberFromStr
+        RET     NZ
+        PUSH    HL
+        CALL    Goto2
+        POP     DE
+        JP      SetDataPtr
+
+Restore0:
+	EX      DE,HL
+        LD      HL,(PROGRAM_BASE)
+        DEC     HL
+SetDataPtr:
+	LD      (DATA_PROG_PTR),HL
+        EX      DE,HL
+        RET
+	ELSE
 Restore:
 	EX      DE,HL
         LD      HL,(PROGRAM_BASE)
@@ -21,3 +40,4 @@ SetDataPtr:
 	LD      (DATA_PROG_PTR),HL
         EX      DE,HL
         RET     
+	ENDIF

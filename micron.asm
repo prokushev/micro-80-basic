@@ -387,7 +387,9 @@ ERR_US		EQU 0EH
 ERR_DD		EQU 12H
 ERR_DZ		EQU 14H
 ERR_TM		EQU	18H
-ERR_CN		EQU 20h
+ERR_ST		EQU	1EH
+ERR_CN		EQU	20H
+ERR_UF		EQU	22H
 
 PrintString	EQU	0F818H
 		ENDIF
@@ -680,10 +682,11 @@ PrintInLine:
         LD      A,H
         AND     L
         INC     A
+
         JP      Z,Main
         PUSH    HL
         CALL    PrintIN
-        LD      A,':'           ; ':'
+        LD      A,':'
         RST    	OutChar
         LD      A,(208Dh)
         INC     A
@@ -702,17 +705,27 @@ PrintInLine:
 ;
 
 Main:
+	IF	MICRON
 	LD      HL, szOK			; szOK
         CALL    PrintString
+	ELSE
+	XOR		A
+	LD		(ControlChar),A		; Включаем вывод на экран (не управляющий символ)
+	ENDIF
 
-		LD		HL,0FFFFH			; Сбрасываем текущую выполняемую строку
-		LD		(CURRENT_LINE),HL
+	LD		HL,0FFFFH			; Сбрасываем текущую выполняемую строку
+	LD		(CURRENT_LINE),HL
 
+	IF	MICRON
         LD      (2078h),HL
+	ELSE
+	LD		HL,szOK				; Выводим приглашение
+	CALL		PrintString
+	ENDIF
 		
 
 GetNonBlankLine:
-		XOR     A
+	XOR     A
         LD      (ControlChar),A
         LD      (LINE_BUFFER),A
         LD      (TERMINAL_X),A
@@ -844,7 +857,7 @@ GetNonBlankLine2:
 
         ; --- START PROC New ---
 New:
-		RET     NZ
+	RET     NZ
         LD      HL,(PROGRAM_BASE)
         XOR     A
         LD      (HL),A
@@ -864,7 +877,7 @@ ClearAll:
 		LD      (PROG_PTR_TEMP),HL
         LD      HL,(MEMSIZ)
         LD      (STR_TOP),HL
-        CALL    L04A5
+        CALL    Restore0
         ; --- START PROC L01CD ---
 L01CD:  LD      HL,(VAR_BASE)
         LD      (VAR_ARRAY_BASE),HL
@@ -1045,7 +1058,7 @@ L027C:  LD      H,D
         LD      L,E
         LD      BC,027Eh
         PUSH    BC
-        CALL    L0351
+        CALL    InputChar
         CP      0Dh
         EX      DE,HL
         JP      Z,L02D5
@@ -1181,9 +1194,11 @@ L034A:  AND     7Fh             ; ''
         POP     HL
         JP      L02A9
 
-        ; --- START PROC L0351 ---
-L0351:  LD      B,00h
-L0353:  CALL    0F803h
+
+InputChar:
+	LD      B,00h
+InputCharLoop:
+	CALL    0F803h
         CP      1Fh
 
         JP      Z,0F800h
@@ -1192,7 +1207,7 @@ L0353:  CALL    0F803h
         CP      1Bh
         RET     NZ
         LD      B,A
-        JP      L0353
+        JP      InputCharLoop
 
 OutChar_tail:  LD      HL,L038E
 L036A:  LD      A,(HL)
@@ -1359,7 +1374,8 @@ ExecANotZero:
 ExecA:
 ; Все ключевые слова >=0x80. Если это не ключевое слово, то считаем, что LET было не введено и это команда LET.
 	SUB     FIRST_TK
-        JP      C,Let
+	JP	C,Let
+; Если это не основное слово, то это синтаксическая ошибка.
         CP      TKCOUNT
         JP      C,CalcHandler
         CP      4Ah             ; 'J'
@@ -1424,22 +1440,10 @@ NextChar_tail:
         DEC     A
         RET
 
-Restore:
-		JP      Z,L04A5
-        CALL    LineNumberFromStr
-        RET     NZ
-        PUSH    HL
-        CALL    Goto2
-        POP     DE
-        JP      L04AA
+	CHK	05DBh, "Сдвижка кода"
 
-        ; --- START PROC L04A5 ---
-L04A5:  EX      DE,HL
-        LD      HL,(PROGRAM_BASE)
-        DEC     HL
-L04AA:  LD      (DATA_PROG_PTR),HL
-        EX      DE,HL
-        RET
+	INCLUDE	"stRestore.inc"
+
 
 ; TestBreakKey
 ; Apparently the Altair had a 'break' key, to break program execution. 
@@ -1453,7 +1457,7 @@ TestBreakKey:
 	CALL    0F812h
         OR      A
         RET     Z
-        CALL    L0351
+        CALL    InputChar
         CP      05h
 
 
@@ -1471,9 +1475,10 @@ EndOfProgram:
 	INC     A
 
         JP      Z,L04D3
-        LD      (OLD_LINE),HL
-        LD      HL,(PROG_PTR_TEMP)
-        LD      (OLD_TEXT),HL
+
+	LD      (OLD_LINE),HL		; Сохраняем номер строки останова
+	LD      HL,(PROG_PTR_TEMP)	; Сохранаяем адрес останова из временной переменной
+	LD      (OLD_TEXT),HL		; для последующего восстановления по CONT
 
 L04D3:
 
@@ -1513,18 +1518,18 @@ FTestPositiveIntegerExpression:
 
 ;Likewise, if subscript is >32767 then fall into FC error, otherwise exit to FAsInteger.
 FTestIntegerExpression:
-		LD      A,(FACCUM+3)
+	LD      A,(FACCUM+3)
         CP      91h
         JP      C,FAsInteger
         LD      BC,8001h
-        LD      DE,0000h
+        LD      DE,0000H
         CALL    FCompare
         LD      D,C
         RET     Z
 
 ; Invalid function call (FC) error..
 FunctionCallError:
-		LD      E,ERR_FC
+	LD      E,ERR_FC
         JP      Error
 		
 ;1.11 Jumping to Program Lines
@@ -1662,6 +1667,14 @@ CopyNumeric:
 ;or multiple expressions/literals seperated by tabulation directives 
 ;(comma, semi-colon, or the TAB keyword).
 
+	IF	BASICNEW
+	ELSE
+	IF	MICRON
+	ELSE
+; Похоже, это мертвый код
+        DEC     HL
+	ENDIF
+	ENDIF
 
 PrintLoop:
 		RST     NextChar
@@ -1672,12 +1685,12 @@ Print:
         JP      Z,NewLine
 
 L064B:  RET     Z
-        CP      27h             ; '''
+        CP      "'"
         CALL    Z,NewLine
         JP      Z,L0708
-        CP      9Dh
+        CP      TK_TAB
         JP      Z,Tab
-        CP      9Fh
+        CP      TK_SPC
         JP      Z,Tab
         CP      0C8h		; AT ?
         JP      NZ,L066B
@@ -1776,15 +1789,14 @@ NewLine:
 ;ToNextTabBreak
 ;Calculate how many spaces are needed to get us to the next tab-break then jump to PrintSpaces to do it.
 
-
-
-        ; --- START PROC L06EA ---
-L06EA:  LD      A,(TERMINAL_X)
+L06EA:
+	LD      A,(TERMINAL_X)
         CP      2Bh             ; '+'
         CALL    NC,NewLine
         JP      NC,L0707
-L06F5:  SUB     0Eh
-        JP      NC,L06F5
+CalcSpaceCount:
+	SUB     0EH
+        JP      NC,CalcSpaceCount
         CPL
         INC     A
 
@@ -1797,9 +1809,7 @@ L06FF:  DEC     B
         RST     OutChar
         JP      L06FF
 
-        ; --- START PROC L0707 ---
 L0707:  POP     HL
-        ; --- START PROC L0708 ---
 L0708:  RST     NextChar
         JP      L064B
 
@@ -1841,11 +1851,11 @@ L0736:  LD      A,(INPUT_OR_READ)
 
 	CHK	0852h, "Сдвижка кода"
 Input:
-		CP      '"'
+	CP      '"'
         LD      BC,0120h
         JP      NZ,L0761
         PUSH    BC
-        CALL    L0C80
+        CALL    GetStringConstant
         POP     BC
         LD      A,(HL)
         CP      ';'
@@ -1868,7 +1878,7 @@ L0761:  PUSH    HL
         CALL    L0777
         LD      A,(VALTYP)
         CALL    L01F2
-        JP      ReadParse         ; reference not aligned to instruction
+        JP      ReadParse
 
         ; --- START PROC L0777 ---
 L0777:  LD      A,3Fh           ; '?'
@@ -1966,7 +1976,7 @@ L07EC:  EX      (SP),HL
         OR      A
         JP      Z,NewLine
         EX      DE,HL
-        JP      L04AA
+        JP      SetDataPtr
 
 ReadError:
 	CALL    Data
@@ -2024,11 +2034,11 @@ L087B:
 	PUSH    DE
 ;Check we've got enough space for one floating-point number.
         CALL    CheckEnoughVarSpace2
-        LD      BC,0E8CDh		;!!!! Трюк с LD BC,...
-        DB		08H
+		DB	01h
+;Evaluate term and store prog ptr in 015f
+		CALL	EvalTerm
         LD      (PROG_PTR_TEMP2),HL
-        ; --- START PROC L0886 ---
-L0886:
+ArithParse:
 	LD      HL,(PROG_PTR_TEMP2)
         POP     BC
         LD      A,B
@@ -2039,9 +2049,9 @@ L0886:
         LD      D,00h
 L0893:  SUB     0ABh
         JP      C,L08AD
-        CP      03h
+        CP      03H
         JP      NC,L08AD
-        CP      01h
+        CP      01H
         RLA
         XOR     D
         CP      D
@@ -2071,7 +2081,7 @@ L08AD:  LD      A,D
         RLCA
         ADD     A,E
         LD      E,A
-        LD      HL,1FE0h
+        LD      HL,1FE0H
         ADD     HL,DE
         LD      A,B
         LD      D,(HL)
@@ -2083,7 +2093,7 @@ L08AD:  LD      A,D
 ;Push counter and address of ArithParse onto the stack (the latter so we return to it after the arith fn runs)
 
 L08D5:  PUSH    BC
-        LD      BC,0886h
+        LD      BC,ArithParse
         PUSH    BC
 ;Push FACCUM, taking care to preserve the operator precedence byte in D.
         LD      B,E
@@ -2096,26 +2106,32 @@ L08D5:  PUSH    BC
         LD      HL,(CUR_TOKEN_ADR)
         JP      L087B
 
-        ; --- START PROC L08E8 ---
-L08E8:  XOR     A
+;EvalTerm
+;Evaluates a term in an expression. This can be a numeric constant, a variable, an inline function call taking a full expression as an argument, or a bracketed expression.
+;Get first character of term, and if it's a digit (as indicated by the carry flag) then jump to FIn
+
+EvalTerm:
+	XOR     A
         LD      (VALTYP),A
         RST     NextChar
         JP      C,FIn
 ;If the character is alphabetic then we have a variable, so jump ahead to get it.
         CALL    CharIsAlpha
-        JP      NC,L0950
-        CP      0A4h
-        JP      Z,L08E8
-        CP      2Eh             ; '.'
+        JP      NC,EvalVarTerm
+;If the character is a leading '+' then simply ignore it and jump back to EvalTerm.
+        CP      TK_PLUS			;0A4H
+        JP      Z,EvalTerm
+;If the character is a leading '.' then that's a decimal point, so jump to FIn
+        CP      '.'			;2EH
         JP      Z,FIn
-        CP      0A5h
-        JP      Z,L093F
-        CP      22h             ; '"'
-        ; --- START PROC L0907 ---
-L0907:  JP      Z,L0C80
-        CP      0A2h
+;If the character is a leading '-' then jump head to EvalMinusTerm
+        CP      TK_MINUS
+        JP      Z,EvalMinusTerm
+        CP      '"'
+L0907:  JP      Z,GetStringConstant
+        CP      TK_NOT
         JP      Z,L0A28
-        CP      0A0h
+        CP      TK_FN
         JP      Z,L0BFC
         CP      0D5h
         JP      Z,L1A46
@@ -2129,7 +2145,7 @@ L0907:  JP      Z,L0C80
         JP      Z,SyntaxError
         CP      0D9h
         JP      Z,L1C90
-        SUB     0AEh
+        SUB     TK_SGN
         JP      NC,L0961
         ; --- START PROC L0937 ---
 L0937:  RST     SyntaxCheck
@@ -2137,22 +2153,21 @@ L0937:  RST     SyntaxCheck
         LD      A,B
         DB	08H
         RST     SyntaxCheck
-        ADD     HL,HL
+        DB	')'
         RET
 
-        ; --- START PROC L093F ---
-L093F:  LD      D,7Dh           ; '}'
+EvalMinusTerm:
+	LD      D,7Dh           ; '}'
         CALL    L087B
         LD      HL,(PROG_PTR_TEMP2)
         PUSH    HL
         CALL    FNegate
-        ; --- START PROC L094B ---
 L094B:  CALL    IsNumeric
         POP     HL
         RET
 
-        ; --- START PROC L0950 ---
-L0950:
+;Evaluate a variable. The call to GetVar returns the address of the variable's value in DE, which is then moved to HL then the call to FLoadFromMem loads FACCUM with the variable's value.
+EvalVarTerm:
 	CALL    GetVar
         PUSH    HL
         EX      DE,HL
@@ -2163,13 +2178,14 @@ L0950:
         POP     HL
         RET
 
-        ; --- START PROC L0961 ---
-L0961:  LD      B,00h
-        RLCA
-        LD      C,A
-        PUSH    BC
-        RST     NextChar
-        LD      A,C
+L0961:
+	LD      B,00H
+	RLCA
+	LD      C,A
+	PUSH    BC
+;Evaluate function argument
+	RST     NextChar
+	LD      A,C
         CP      29h             ; ')'
         JP      C,L0994
         CP      30h             ; '0'
@@ -2201,7 +2217,7 @@ L0994:  CALL    L0937
         EX      (SP),HL
         LD      DE,094Bh
         PUSH    DE
-L099C:  LD      BC,KW_INLINE_FNS
+L099C:  LD      BC, KW_INLINE_FNS
         ADD     HL,BC
         LD      C,(HL)
         INC     HL
@@ -2325,7 +2341,11 @@ L0A28:  LD      D,5Ah           ; 'Z'
         CPL
         CALL    WordFromACToFACCUM
         POP     BC
-        JP      L0886
+        JP      ArithParse
+
+;1.18 Variable Management
+;Dim
+;Declares an array. Note that the start of this function handler is some way down in the block (at 0B15).
 
 DimContd:
 	DEC     HL
@@ -2357,7 +2377,7 @@ L0A64:  RST     NextChar
         JP      C,L0A64
         CALL    CharIsAlpha
         JP      NC,L0A64
-L0A6E:  SUB     24h             ; '$'
+L0A6E:  SUB     '$'
         JP      NZ,L0A7B
         INC     A
         LD      (VALTYP),A
@@ -2367,8 +2387,8 @@ L0A6E:  SUB     24h             ; '$'
         RST     NextChar
 L0A7B:  LD      A,(NO_ARRAY)
         ADD     A,(HL)
-        CP      28h             ; '('
-        JP      Z,L0ACD
+        CP      '('			;28H
+        JP      Z,GetArrayVar
         XOR     A
         LD      (NO_ARRAY),A
 ;Preserve program ptr on stack, and get VAR_ARRAY_BASE into DE and VAR_BASE into HL. This is where we iterate through the stored variables (ie from VAR_BASE to VAR_ARRAY_BASE) to see if the variable has already been declared. 
@@ -2376,8 +2396,11 @@ L0A7B:  LD      A,(NO_ARRAY)
         LD      HL,(VAR_ARRAY_BASE)
         EX      DE,HL
         LD      HL,(VAR_BASE)
-L0A90:  RST     CompareHLDE
-        JP      Z,L0AA7
+
+;Loop to find the variable if it's already been allocated. If HL==DE then we've reached VAR_ARRAY_BASE without finding it, and so can jump ahead to allocate a new variable.
+FindVarLoop:
+	RST     CompareHLDE
+	JP      Z,AllocNewVar
         LD      A,C
         SUB     (HL)
         INC     HL
@@ -2390,9 +2413,9 @@ L0A9C:  INC     HL
         INC     HL
         INC     HL
         INC     HL
-        JP      L0A90
+        JP      FindVarLoop
 
-L0AA7:
+AllocNewVar:
 	PUSH    BC
         LD      BC,0006H
         LD      HL,(VAR_TOP)
@@ -2406,11 +2429,12 @@ L0AA7:
         LD      H,B
         LD      L,C
         LD      (VAR_ARRAY_BASE),HL
-L0ABE:
+InitVarLoop:
 	DEC     HL
         LD      (HL),00H
         RST     CompareHLDE
-        JP      NZ,L0ABE
+        JP      NZ,InitVarLoop
+;Restore variable name to DE and write it to the first 2 bytes of the variable's storage.
         POP     DE
         LD      (HL),E
         INC     HL
@@ -2420,10 +2444,13 @@ L0ACA:  EX      DE,HL
         POP     HL
         RET
 
-L0ACD:  PUSH    HL
+
+;Accesses or allocates an array variable. The contents of DIM_OR_EVAL indicate whether we're dealing with an array declaration (ie a DIM statement) or whether an array element is being accessed. In the former case DIM_OR_EVAL is 0xEF, otherwise it is 0. 
+GetArrayVar:
+	PUSH    HL
         LD      HL,(DIM_OR_EVAL)
         EX      (SP),HL
-        LD      D,00h
+        LD      D,00H
 L0AD4:  PUSH    DE
         PUSH    BC
         CALL    GetSubscript
@@ -2436,7 +2463,7 @@ L0AD4:  PUSH    DE
         INC     A
         LD      D,A
         LD      A,(HL)
-        CP      2Ch             ; ','
+        CP      2CH
         JP      Z,L0AD4
         RST     SyntaxCheck
         DB	')'
@@ -2445,7 +2472,8 @@ L0AD4:  PUSH    DE
         LD      (DIM_OR_EVAL),HL
         PUSH    DE
         LD      HL,(VAR_ARRAY_BASE)
-L0AF4:  LD      A,19h
+	DB	3EH			;LD      A,..
+L0AF5:	ADD	HL, DE
         EX      DE,HL
         LD      HL,(VAR_TOP)
         EX      DE,HL
@@ -2462,7 +2490,7 @@ L0B07:  INC     HL
         INC     HL
         LD      D,(HL)
         INC     HL
-        JP      NZ,L0AF4+1      ; reference not aligned to instruction
+        JP      NZ,L0AF5
         LD      A,(DIM_OR_EVAL)
         OR      A
         LD      E,ERR_DD
@@ -2474,7 +2502,7 @@ L0B1D:
 	LD      E,10h
         JP      Error
 
-L0B22:  LD      DE,0004h
+L0B22:  LD      DE,0004H
         LD      (HL),C
         INC     HL
         LD      (HL),B
@@ -2492,7 +2520,7 @@ L0B22:  LD      DE,0004h
 L0B39:  LD      A,(DIM_OR_EVAL)
         OR      A
         LD      A,B
-        LD      BC,000Bh
+        LD      BC,000BH
         JP      Z,L0B46
         POP     BC
         INC     BC
@@ -2516,7 +2544,7 @@ L0B46:  LD      (HL),C
         CALL    CheckEnoughMem
         LD      (VAR_TOP),HL
 L0B63:  DEC     HL
-        LD      (HL),00h
+        LD      (HL),00H
         RST     CompareHLDE
         JP      NZ,L0B63
         INC     BC
@@ -2534,10 +2562,10 @@ L0B63:  DEC     HL
         LD      (HL),D
         INC     HL
         JP      NZ,L0BA3
-        ; --- START PROC L0B81 ---
 L0B81:  INC     HL
-        LD      BC,0000h
-L0B85:  LD      D,0E1h
+        LD      BC,0000H
+	DB	16H		; LD D,...
+L0B86:	POP	HL
         LD      E,(HL)
         INC     HL
         LD      D,(HL)
@@ -2554,13 +2582,12 @@ L0B85:  LD      D,0E1h
         DEC     A
         LD      B,H
         LD      C,L
-        JP      NZ,L0B85+1      ; reference not aligned to instruction
+        JP      NZ,L0B86
         ADD     HL,HL
         ADD     HL,HL
         POP     BC
         ADD     HL,BC
         EX      DE,HL
-        ; --- START PROC L0BA3 ---
 L0BA3:  LD      HL,(PROG_PTR_TEMP2)
         DEC     HL
         RST     NextChar
@@ -2585,15 +2612,14 @@ Def:
         LD      A,(BC)
         CALL    IsNumeric
         RST     SyntaxCheck
-        ADD     HL,HL
+        DB	')'
         RST     SyntaxCheck
-        XOR     H
+        DB	TK_EQ
         LD      B,H
         LD      C,L
         EX      (SP),HL
         JP      L0C28
 
-        ; --- START PROC L0BFC ---
 L0BFC:  CALL    L0C3F
         PUSH    DE
         CALL    L0937
@@ -2612,7 +2638,7 @@ L0BFC:  CALL    L0C3F
         PUSH    HL
         RST     CompareHLDE
         PUSH    DE
-        LD      E,22h           ; '"'
+        LD      E,ERR_UF
         JP      Z,Error
         CALL    FCopyToMem
         POP     HL
@@ -2626,7 +2652,6 @@ L0BFC:  CALL    L0C3F
 L0C28:  LD      (HL),C
         INC     HL
         LD      (HL),B
-        ; --- START PROC L0C2B ---
 L0C2B:  INC     HL
         LD      (HL),E
         INC     HL
@@ -2634,7 +2659,6 @@ L0C2B:  INC     HL
         POP     HL
         RET
 
-        ; --- START PROC L0C31 ---
 L0C31:  PUSH    HL
         LD      HL,(CURRENT_LINE)
         INC     HL
@@ -2642,20 +2666,22 @@ L0C31:  PUSH    HL
         OR      L
         POP     HL
         RET     NZ
+
         LD      E,16h
         JP      Error
 
-        ; --- START PROC L0C3F ---
 L0C3F:  RST     SyntaxCheck
-        AND     B
-        LD      A,80h
+        DB	TK_FN
+        LD      A,80H
         LD      (NO_ARRAY),A
         OR      (HL)
         LD      B,A
         CALL    L0A4E
         JP      IsNumeric
-
-Str:	CALL    IsNumeric
+	
+	CHK	0d1fh, "Сдвижка кода"
+Str:
+	CALL    IsNumeric
         CALL    L1326
         CALL    L0C7F
         CALL    EvalCurrentString
@@ -2678,23 +2704,20 @@ L0C5F:  LD      A,(HL)
         POP     DE
         RET
 
-        ; --- START PROC L0C73 ---
-L0C73:  CALL    L0CD5
-        ; --- START PROC L0C76 ---
+L0C73:
+	CALL    L0CD5
 L0C76:  LD      HL,212Bh
         PUSH    HL
         LD      (HL),A
         INC     HL
         JP      L0C2B
 
-        ; --- START PROC L0C7F ---
 L0C7F:  DEC     HL
-        ; --- START PROC L0C80 ---
-L0C80:  LD      B,22h           ; '"'
+GetStringConstant:
+	LD      B,'"'
         LD      D,B
-        ; --- START PROC L0C83 ---
 L0C83:  PUSH    HL
-        LD      C,0FFh
+        LD      C,0FFH
 L0C86:  INC     HL
         LD      A,(HL)
         INC     C
@@ -2713,15 +2736,15 @@ L0C95:  CP      22h             ; '"'
         CALL    L0C76
         RST     CompareHLDE
         CALL    NC,L0C5F
-        ; --- START PROC TempStringToPool ---
-TempStringToPool:  LD      DE,212Bh
+TempStringToPool:
+	LD      DE,212Bh
         LD      HL,(TEMPPT)
         LD      (FACCUM),HL
-        LD      A,01h
+        LD      A,01H
         LD      (VALTYP),A
         CALL    L11C0
         RST     CompareHLDE
-        LD      E,1Eh
+        LD      E,ERR_ST
         JP      Z,Error
         LD      (TEMPPT),HL
         POP     HL
@@ -2897,7 +2920,7 @@ L0DA2:  PUSH    BC
         PUSH    HL
         LD      HL,(FACCUM)
         EX      (SP),HL
-        CALL    L08E8
+        CALL    EvalTerm
         EX      (SP),HL
         CALL    IsString
         LD      A,(HL)
@@ -2922,14 +2945,12 @@ L0DA2:  PUSH    BC
         PUSH    HL
         JP      TempStringToPool
 
-        ; --- START PROC L0DD9 ---
 L0DD9:  POP     HL
         EX      (SP),HL
         RST     PushNextWord
         RST     PushNextWord
         POP     BC
         POP     HL
-        ; --- START PROC L0DDF ---
 L0DDF:  INC     L
 L0DE0:  DEC     L
         RET     Z
@@ -2964,11 +2985,12 @@ L0DF0:  LD      HL,(TEMPPT)
         LD      C,(HL)
         LD      HL,(STR_TOP)
         RST     CompareHLDE
-        JP      NZ,L0E10
+        JP      NZ,POPHLRET2
         LD      B,A
         ADD     HL,BC
         LD      (STR_TOP),HL
-L0E10:  POP     HL
+POPHLRET2:
+	POP     HL
         RET
 
 	CHK	0EE7h, "Сдвижка кода"
@@ -2979,7 +3001,9 @@ L0E10:  POP     HL
 
 	INCLUDE	"fnAsc.inc"
 
-Chr:	CALL    L0EDF
+	CHK	0f04h, "Сдвижка кода"
+Chr:
+	CALL    L0EDF
         POP     BC
 L0E33:  LD      A,01h
         PUSH    DE
@@ -3026,7 +3050,9 @@ L0E4F:  LD		C, 0
         CALL    L0DF0
         JP      TempStringToPool
 
-Right:	CALL    L0ECB
+	CHK	0f44h, "Сдвижка кода"
+Right:
+	CALL    L0ECB
         POP     DE
         PUSH    DE
         LD      A,(DE)
@@ -4343,7 +4369,7 @@ Init:   LD      HL,(INIT_PROGAM_BASE)
         LD      (208Fh),A
         LD      HL,szHello
         CALL    PrintString
-        CALL    L0351
+        CALL    InputChar
         RST     OutChar
         CP      'Y'             ; 'Y'
         CALL    New
@@ -5388,7 +5414,7 @@ Puncher:  LD      C,A
 
 ; Сообщения об ошибках
 ErrorMessages:
-		DB		"NEXT bez FOR" ,0
+	DB		"NEXT bez FOR" ,0
         DB		"sintaksi~eskaq", 0
         DB		"RETURN bez GOSUB", 0
         DB		"malo dannyh pri DATA", 0
@@ -5411,11 +5437,11 @@ szError:
 szOK:
         DB		13,10, "vdu:",13,10, 0
 szStop:	
-		DB		13,10, "stop", 0
+	DB		13,10, "stop", 0
 szIn:	
-		DB		" w stroke ", 0
+	DB		" w stroke ", 0
 szHello:
-		DB		1Fh, "BASIC *mikron*", 13,10, "NEW?",0
+	DB		1Fh, "BASIC *mikron*", 13,10, "NEW?",0
         DB		13,10,"programma:", 0
 ; Конец сообщений
 
