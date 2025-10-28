@@ -1,31 +1,32 @@
 ; ════════════════════════════════════════════════════════════
 ;  БЕЙСИК для МИКРО-80/БЕЙСИК для РАДИО-86РК/БЕЙСИК для ЮТ-88
 ; ════════════════════════════════════════════════════════════
-; Математический пакет
-;
-; 'Математический пакет' is a reasonably discrete block of
-; code that provides floating-point arithmetic capability
-; for the rest of BASIC. It also includes some math
-; functions, such as SQR (square root) and is probably the
-; hardest part of BASIC to understand. There are three general
-; reasons for this:
-; - You may have forgotten a lot of the maths you learnt at
-;   school. This certainly applied to me : when I began
-;   working on this section from first principles, I quickly
-;   found myself floundering at the very idea of binary
-;   fractions.
-; - Unless you're a numerical analyst who has reason to
-;   distrust conventional hardware/software floating-point
-;   support, you probably never needed to think about how
-;   floating point worked before now. Modern processors,
-;   compilers, and runtime libraries took the pain away
-;   years ago, and quite right too.
-; - Floating point is hard to code. Consider this : Bill Gates
-;   is one of the brightest kids in America at the time, but
-;   he and his equally brainy pal Paul Allen end up having to
-;   hire a third wunderkind, Monte Davidoff, just to do
-;   floating point. They needed a specialist to do
-;   specialist work, and Monte had done it before.
+; Математический пакет - это достаточно обособленный блок кода,
+; который обеспечивает возможность арифметики с плавающей 
+; запятой для остальной части BASIC. Он также включает 
+; некоторые математические функции, такие как SQR (квадратный 
+; корень), и, вероятно, является самой сложной для понимания
+; частью BASIC. На то есть три основные причины:
+;  - Возможно, вы забыли многое из математики, которую 
+;    изучали в школе. Это определенно касалось меня: когда
+;    я начал работать над этим разделом с нуля, я быстро
+;    обнаружил, что барахтаюсь в самой идее двоичных дробей.
+;  - Если только вы не специалист по вычислительной 
+;    математике, у которого есть основания не доверять
+;    стандартной аппаратной/программной поддержке чисел 
+;    с плавающей запятой, вам, вероятно, никогда раньше не
+;    приходилось задумываться о том, как она работает. 
+;    Современные процессоры, компиляторы и библиотеки 
+;    времени выполнения избавили от этой головной боли
+;    много лет назад, и совершенно справедливо.
+;  - Числа с плавающей запятой сложно программировать.
+;    Судите сами: Билл Гейтс был одним из самых способных
+;    парней в Америке того времени, но он и его не менее
+;    блестящий друг Пол Аллен в итоге были вынуждены нанять
+;    третьего вундеркинда, Монте Давидова, именно для 
+;    работы с плавающей запятой. Им потребовался специалист 
+;    для выполнения специализированной работы, а Монте уже
+;    имел такой опыт.
 ; ════════════════════════════════════════════════════════════
 ; Maths Refresher
 ; The Basics of Bases
@@ -799,24 +800,8 @@ L12D0:  SBC     A,A
 
 		INCLUDE	"spFPush.inc"
 
+		INCLUDE "spFLoadFromMem.inc"
 
-;FLoadFromMem
-;FLoadFromMem loads FACCUM with the fp number pointed to by HL. It does this by calling a function to load BCDE with the in-memory number, then falls into FLoadFromBCDE.
-
-FLoadFromMem:
-		CALL    FLoadBCDEfromMem
-
-;FLoadFromBCDE
-;Loads FACCUM with BCDE.
-FLoadFromBCDE:
-		EX      DE,HL
-        LD      (FACCUM),HL
-        LD      H,B
-        LD      L,C
-        LD      (FACCUM+2),HL
-        EX      DE,HL
-        RET
-	
 ;FCopyToBCDE and FLoadBCDE
 
 FCopyToBCDE:
@@ -850,42 +835,8 @@ FCopyLoop:
 ;2.7 Unpacking & Comparison
 ;Two functions : the first is for unpacking the mantissas of two floating-point numbers, the second is for comparing two floating-point numbers.
 ;
+	INCLUDE "spFUnpackMantissas.inc"
 ;
-;FUnpackMantissas
-;Unpacks the mantissas of FACCUM and BCDE. This is simple enough - we just restore the missing most-significant bit, invariably a 1 (see tech note). Unfortunately, doing this loses the sign bits of both packed numbers.
-;
-;To compensate for this, a combination of both signs is returned. Duing the function FACC's sign is negated and later xor'ed with BCDE's sign, and returned in bit 7 of A. The effect of this is when the function returns, A is +ve if the signs mismatched, o
-;r -ve if the signs matched.
-;
-;FACC	Negated
-;FACC	BCDE	Result
-;after XOR
-;+	-	+	-
-;+	-	-	+
-;-	+	+	+
-;-	+	-	-
-
-
-FUnpackMantissas:
-		LD      HL,FACCUM+2
-        LD      A,(HL)
-        RLCA
-        SCF
-        RRA
-        LD      (HL),A
-        CCF
-        RRA
-        INC     HL
-        INC     HL
-        LD      (HL),A
-        LD      A,C
-        RLCA
-        SCF
-        RRA
-        LD      C,A
-        RRA
-        XOR     (HL)
-        RET
 
 ;FCompare
 ;Compares FACCUM to BCDE, with the result being returned in A as follows :

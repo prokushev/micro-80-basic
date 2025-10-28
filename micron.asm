@@ -3194,7 +3194,7 @@ FAddBCDE:  LD      A,B
 L0F30:  CP      19h
         RET     NC
         PUSH    AF
-        CALL    L11CB
+        CALL    FUnpackMantissas
         LD      H,A
         POP     AF
         CALL    L0FDD
@@ -3582,7 +3582,7 @@ L112E:  LD      A,B
         ADD     A,80h
         LD      (HL),A
         JP      Z,L109D
-        CALL    L11CB
+        CALL    FUnpackMantissas
         LD      (HL),A
         DEC     HL
         RET
@@ -3622,19 +3622,8 @@ L1174:  SBC     A,A
 		INCLUDE	"fnSgn.inc"
 		INCLUDE	"fnAbs.inc"
 		INCLUDE	"spFPush.inc"
+		INCLUDE "spFLoadFromMem.inc"
 
-
-FLoadFromMem:
-	CALL    FLoadBCDEfromMem
-
-FLoadFromBCDE:
-	EX      DE,HL
-        LD      (FACCUM),HL
-        LD      H,B
-        LD      L,C
-        LD      (FACCUM+2),HL
-        EX      DE,HL
-        RET
 
         ; --- START PROC FCopyToBCDE ---
 FCopyToBCDE:  LD      HL,FACCUM
@@ -3662,26 +3651,8 @@ L11C2:  LD      A,(DE)
         JP      NZ,L11C2
         RET
 
-        ; --- START PROC L11CB ---
-L11CB:  LD      HL,FACCUM+2
-        LD      A,(HL)
-        RLCA
-        SCF
-        RRA
-        LD      (HL),A
-        CCF
-        RRA
-        INC     HL
-        INC     HL
-        LD      (HL),A
-        LD      A,C
-        RLCA
-        SCF
-        RRA
-        LD      C,A
-        RRA
-        XOR     (HL)
-        RET
+        ; --- START PROC FUnpackMantissas ---
+	INCLUDE "spFUnpackMantissas.inc"
 
         ; --- START PROC FCompare ---
 FCompare:  LD      A,B
@@ -3696,13 +3667,13 @@ FCompare:  LD      A,B
         XOR     (HL)
         LD      A,C
         RET     M
-        CALL    L11F8
+        CALL    FIsEqual
         RRA
         XOR     C
         RET
 
-        ; --- START PROC L11F8 ---
-L11F8:  INC     HL
+        ; --- START PROC FIsEqual ---
+FIsEqual:  INC     HL
         LD      A,B
         CP      (HL)
         RET     NZ
@@ -3731,7 +3702,7 @@ FAsInteger:  LD      B,A
         RET     Z
         PUSH    HL
         CALL    FCopyToBCDE
-        CALL    L11CB
+        CALL    FUnpackMantissas
         XOR     (HL)
         LD      H,A
         CALL    M,L122F
