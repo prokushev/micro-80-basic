@@ -3612,7 +3612,9 @@ L1157:  CALL    FCopyToBCDE
 
 FTestSign_tail:
 	LD      A,(FACCUM+2)
-        CP      2Fh             ; '/'
+	DB	0FEH	;CP	2FH
+InvSignToInt:
+	CPL
         RLA
 L1174:  SBC     A,A
         RET     NZ
@@ -3651,47 +3653,8 @@ L11C2:  LD      A,(DE)
         JP      NZ,L11C2
         RET
 
-        ; --- START PROC FUnpackMantissas ---
 	INCLUDE "spFUnpackMantissas.inc"
-
-        ; --- START PROC FCompare ---
-FCompare:  LD      A,B
-        OR      A
-        JP      Z,FTestSign
-        LD      HL,1172h
-        PUSH    HL
-        RST     FTestSign
-        LD      A,C
-        RET     Z
-        LD      HL,FACCUM+2
-        XOR     (HL)
-        LD      A,C
-        RET     M
-        CALL    FIsEqual
-        RRA
-        XOR     C
-        RET
-
-        ; --- START PROC FIsEqual ---
-FIsEqual:  INC     HL
-        LD      A,B
-        CP      (HL)
-        RET     NZ
-        DEC     HL
-        LD      A,C
-        CP      (HL)
-        RET     NZ
-        DEC     HL
-        LD      A,D
-        CP      (HL)
-        RET     NZ
-        DEC     HL
-        LD      A,E
-        SUB     (HL)
-        RET     NZ
-        POP     HL
-        POP     HL
-        RET
+	INCLUDE "spFCompare.inc"
 
         ; --- START PROC FAsInteger ---
 FAsInteger:  LD      B,A
