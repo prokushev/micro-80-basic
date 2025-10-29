@@ -376,6 +376,7 @@ VAR_TOP		EQU	2149h
 DATA_PROG_PTR	EQU	214Bh
 
 FACCUM		EQU	214Dh
+FTEMP		EQU	2151h
 
 ERR_NF		EQU 00H
 ERR_SN		EQU 02H		
@@ -3313,25 +3314,7 @@ L0FBD:  LD      A,(HL)
         LD      C,A
         RET
 
-        ; --- START PROC FNegateInt ---
-FNegateInt:  LD      HL,2151h
-        LD      A,(HL)
-        CPL
-        LD      (HL),A
-        XOR     A
-        LD      L,A
-        SUB     B
-        LD      B,A
-        LD      A,L
-        SBC     A,E
-        LD      E,A
-        LD      A,L
-        SBC     A,D
-        LD      D,A
-        LD      A,L
-        SBC     A,C
-        LD      C,A
-        RET
+		INCLUDE "spFNegateInt.inc"
 
         ; --- START PROC FMantissaRtMult ---
 FMantissaRtMult:  LD      B,00h
@@ -3659,22 +3642,8 @@ L11C2:  LD      A,(DE)
 		INCLUDE "spFAsInteger.inc"
 		INCLUDE "spFMantissaDec.inc"
 
-        ; --- START PROC Int ---
-Int:	LD      HL,FACCUM+3
-        LD      A,(HL)
-        CP      98h
-        LD      A,(FACCUM)
-        RET     NC
-        LD      A,(HL)
-        CALL    FAsInteger
-        LD      (HL),98h
-        LD      A,E
-        PUSH    AF
-        LD      A,C
-        RLA
-        CALL    FNormalise
-        POP     AF
-        RET
+		
+		INCLUDE "fnInt.inc"
 
         ; --- START PROC L124F ---
 L124F:  LD      HL,0000h
@@ -3699,6 +3668,7 @@ L126A:  LD      A,(INPUT_OR_READ)
         OR      A
         JP      Z,EvalNumericExpression
         LD      A,(HL)
+
         ; --- START PROC FIn ---
 FIn:  CP      2Dh             ; '-'
         PUSH    AF

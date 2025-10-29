@@ -407,28 +407,8 @@ FAddMantissas:
         LD      C,A
         RET
 
-;FNegateInt
-;Negate the 32-bit integer in CDEB by subtracting it from zero. Also flips the sign in FTEMP. Used by FAsInteger and FAdd.
 
-FNegateInt:
-	LD      HL,FTEMP
-        LD      A,(HL)
-        CPL
-        LD      (HL),A
-        XOR     A
-        LD      L,A
-        SUB     B
-        LD      B,A
-        LD      A,L
-        SBC     A,E
-        LD      E,A
-        LD      A,L
-        SBC     A,D
-        LD      D,A
-        LD      A,L
-        SBC     A,C
-        LD      C,A
-        RET
+		INCLUDE "spFNegateInt.inc"
 
 ;FMantissaRtMult
 ;Shifts the mantissa in CDE right by A places. Note that lost bits end up in B, general practice so we can round up from something later should we need to.
@@ -845,31 +825,9 @@ FCopyLoop:
 	INCLUDE "spFAsInteger.inc"
 	INCLUDE "spFMantissaDec.inc"
 
-
-
-;Int
-;Removes the fractional part of FACCUM.
-
-;If FACCUM's exponent is >= 2^24, then it's too big to hold any fractional part - it is already an integer, so we just return.
-
 	CHK	1392h, "Сдвижка кода"
-Int:
-		LD      HL,FACCUM+3
-        LD      A,(HL)
-        CP      98H
-        LD      A,(FACCUM)
-        RET     NC
 
-        LD      A,(HL)
-        CALL    FAsInteger
-        LD      (HL),98H
-        LD      A,E
-        PUSH    AF
-        LD      A,C
-        RLA
-        CALL    FNormalise
-        POP     AF
-        RET
+	INCLUDE "fnInt.inc"
 
 L13AB:  LD      HL,0000H
         LD      A,B
