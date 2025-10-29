@@ -3,6 +3,6 @@ Sqr:
         LD      HL,ONE_HALF
         CALL    FLoadFromMem
 
-		;JP		FPower
+	JP		FPower
 
 		

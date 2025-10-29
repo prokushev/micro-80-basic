@@ -5591,3 +5591,22 @@ KW_ARITH_OP_FNS:
 		DW	FOr	; OR 09a5
 
 		DB	"MI(C)RON/88"
+
+JP	MACRO	 ADDR, ADDR2
+		IFB ADDR2
+			IF "ADDR"="(HL)"
+				!JP ADDR
+			ELSE
+				IF	(MOMPASS=3) && (ADDR = $)
+				ELSE
+					IF (ADDR-3) = $
+;						MESSAGE	"ADDR"
+					ELSE
+						!JP ADDR
+					ENDIF
+				ENDIF
+			ENDIF
+		ELSE
+			!JP ADDR, ADDR2
+		ENDIF
+	ENDM

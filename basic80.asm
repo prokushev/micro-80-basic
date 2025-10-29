@@ -302,7 +302,7 @@ CHK	MACRO	adr, msg
 	ENDM
 	ELSE
 CHK	MACRO	adr, msg
-		IF	adr-$
+		IF	(MOMPASS=3) && (adr-$)
 			ERROR	msg
 		ENDIF
 	ENDM
@@ -4219,3 +4219,22 @@ szAuto:	DB	00DH, 00AH, "AUTO*", 000H
 	IF	BASICNEW
 	include "data.inc"
 	ENDIF
+
+JP	MACRO	 ADDR, ADDR2
+		IFB ADDR2
+			IF "ADDR"="(HL)"
+				!JP ADDR
+			ELSE
+				IF	(MOMPASS=3) && (ADDR = $)
+				ELSE
+					IF (ADDR-3) = $
+;						MESSAGE	"ADDR"
+					ELSE
+						!JP ADDR
+					ENDIF
+				ENDIF
+			ENDIF
+		ELSE
+			!JP ADDR, ADDR2
+		ENDIF
+	ENDM
