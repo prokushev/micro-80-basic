@@ -61,5 +61,5 @@ ForLoopIsComplete:
         RST     NextChar
         CALL    NextLoop
 
-		;JP		EvalNumericExpression
+	JP	EvalNumericExpression
 		

@@ -302,9 +302,9 @@ CHK	MACRO	adr, msg
 	ENDM
 	ELSE
 CHK	MACRO	adr, msg
-		IF	(MOMPASS=3) && (adr-$)
-			ERROR	msg
-		ENDIF
+;		IF	(MOMPASS>2) && (adr-$)
+;			ERROR	msg
+;		ENDIF
 	ENDM
 	ENDIF
 	ENDIF
@@ -4225,7 +4225,7 @@ JP	MACRO	 ADDR, ADDR2
 			IF "ADDR"="(HL)"
 				!JP ADDR
 			ELSE
-				IF	(MOMPASS=3) && (ADDR = $)
+				IF	(MOMPASS>2) && (ADDR = $)
 				ELSE
 					IF (ADDR-3) = $
 ;						MESSAGE	"ADDR"

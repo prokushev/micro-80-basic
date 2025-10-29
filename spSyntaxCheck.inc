@@ -12,3 +12,5 @@ SyntaxCheck:
 	INC	HL
 	EX	(SP),HL
 	JP	NZ,SyntaxError
+
+;	JP	NextChar

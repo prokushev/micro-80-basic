@@ -17,5 +17,5 @@ Gosub:
 GosubBC:
 	PUSH    BC
 
-	;JP Goto
+	JP Goto
 

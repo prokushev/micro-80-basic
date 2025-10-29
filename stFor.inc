@@ -75,4 +75,4 @@ EndOfForHandler:
         PUSH    BC
         INC     SP
 
-	;JMP	ExecNext
+	JP	ExecNext

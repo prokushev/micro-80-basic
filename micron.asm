@@ -5597,7 +5597,7 @@ JP	MACRO	 ADDR, ADDR2
 			IF "ADDR"="(HL)"
 				!JP ADDR
 			ELSE
-				IF	(MOMPASS=3) && (ADDR = $)
+				IF	(MOMPASS>2) && (ADDR = $)
 				ELSE
 					IF (ADDR-3) = $
 ;						MESSAGE	"ADDR"

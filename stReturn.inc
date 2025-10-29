@@ -16,4 +16,4 @@ Return:
 
 ;Safe to fall into FindNextStatement, since we're already at the end of the line!...
 
-	;JP FindNextStatement
+	JP FindNextStatement
