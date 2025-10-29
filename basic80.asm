@@ -1414,17 +1414,7 @@ L0609:
 
 	INCLUDE	"stNull.inc"
 
-;
-;CharIsAlpha
-;If character pointed to by HL is alphabetic, the carry flag is reset otherwise set.
-;
-CharIsAlpha:
-		LD      A,(HL)
-        CP      'A'
-        RET     C
-        CP      'Z'+1
-        CCF
-        RET
+	INCLUDE	"spCharIsAlpha.inc"
 
 ;GetSubscript
 ;Gets the subscript of an array variable encountered in an expression or a DIM declaration. The subscript is returned as a positive integer in CDE.
@@ -1814,30 +1804,7 @@ L08D1:  EX      (SP),HL
 	include "szoverflow.inc"
 	ENDIF
 
-
-ReadError:
-	CALL    Data
-        OR      A
-        JP      NZ,ReadError1
-        INC     HL
-        RST     PushNextWord
-        LD      A,C
-        OR      B
-        LD      E,ERR_OD
-        JP      Z,Error
-        POP     BC
-        LD      E,(HL)
-        INC     HL
-        LD      D,(HL)
-        EX      DE,HL
-        LD      (DATA_LINE),HL
-        EX      DE,HL
-ReadError1:
-	RST     NextChar
-        CP      TK_DATA
-        JP      NZ,ReadError
-        JP      GotDataItem
-
+		INCLUDE "spReadError.inc"
 
 		CHK	091Dh, "Сдвижка кода"
 
