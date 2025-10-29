@@ -3197,7 +3197,7 @@ L0F30:  CP      19h
         CALL    FUnpackMantissas
         LD      H,A
         POP     AF
-        CALL    L0FDD
+        CALL    FMantissaRtMult
         OR      H
         LD      HL,FACCUM
         JP      P,L0F56
@@ -3227,7 +3227,7 @@ L0F56:  XOR     A
 		
         ; --- START PROC FNormalise ---
 FNormalise:
-		CALL    C,L0FC9
+		CALL    C,FNegateInt
         ; --- START PROC L0F67 ---
 L0F67:  LD      L,B
         LD      H,E
@@ -3276,7 +3276,7 @@ L0F9C:  LD      A,B
         ; --- START PROC L0F9D ---
 L0F9D:  LD      HL,FACCUM+3
         OR      A
-        CALL    M,L0FAE
+        CALL    M,FMantissaInc
         LD      B,(HL)
         INC     HL
         LD      A,(HL)
@@ -3285,8 +3285,8 @@ L0F9D:  LD      HL,FACCUM+3
         LD      C,A
         JP      FLoadFromBCDE
 
-        ; --- START PROC L0FAE ---
-L0FAE:  INC     E
+        ; --- START PROC FMantissaInc ---
+FMantissaInc:  INC     E
         RET     NZ
         INC     D
         RET     NZ
@@ -3313,8 +3313,8 @@ L0FBD:  LD      A,(HL)
         LD      C,A
         RET
 
-        ; --- START PROC L0FC9 ---
-L0FC9:  LD      HL,2151h
+        ; --- START PROC FNegateInt ---
+FNegateInt:  LD      HL,2151h
         LD      A,(HL)
         CPL
         LD      (HL),A
@@ -3333,8 +3333,8 @@ L0FC9:  LD      HL,2151h
         LD      C,A
         RET
 
-        ; --- START PROC L0FDD ---
-L0FDD:  LD      B,00h
+        ; --- START PROC FMantissaRtMult ---
+FMantissaRtMult:  LD      B,00h
 L0FDF:  SUB     08h
         JP      C,L0FEC
         LD      B,E
@@ -3653,41 +3653,11 @@ L11C2:  LD      A,(DE)
         JP      NZ,L11C2
         RET
 
-	INCLUDE "spFUnpackMantissas.inc"
-	INCLUDE "spFCompare.inc"
+		INCLUDE "spFUnpackMantissas.inc"
+		INCLUDE "spFCompare.inc"
 
-        ; --- START PROC FAsInteger ---
-FAsInteger:  LD      B,A
-        LD      C,A
-        LD      D,A
-        LD      E,A
-        OR      A
-        RET     Z
-        PUSH    HL
-        CALL    FCopyToBCDE
-        CALL    FUnpackMantissas
-        XOR     (HL)
-        LD      H,A
-        CALL    M,L122F
-        LD      A,98h
-        SUB     B
-        CALL    L0FDD
-        LD      A,H
-        RLA
-        CALL    C,L0FAE
-        LD      B,00h
-        CALL    C,L0FC9
-        POP     HL
-        RET
-
-        ; --- START PROC L122F ---
-L122F:  DEC     DE
-        LD      A,D
-        AND     E
-        INC     A
-        RET     NZ
-        DEC     C
-        RET
+		INCLUDE "spFAsInteger.inc"
+		INCLUDE "spFMantissaDec.inc"
 
         ; --- START PROC Int ---
 Int:	LD      HL,FACCUM+3
