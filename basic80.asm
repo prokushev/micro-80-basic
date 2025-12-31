@@ -302,6 +302,7 @@ CHK	MACRO	adr, msg
 	ENDM
 	ELSE
 CHK	MACRO	adr, msg
+;	Временно отключено, т.к. нет идей пока как запустить макрос только на последнем проходе.
 ;		IF	(MOMPASS>2) && (adr-$)
 ;			ERROR	msg
 ;		ENDIF
@@ -727,37 +728,9 @@ L030E:	EQU	$+1
 		POP		AF					; Восстанавлливаем флаг переноса
 		JP		NC, Exec			; Если у нас строка без номера, то сразу исполняем
 
-; StoreProgramLine
-; Here's where a program line has been typed, which we now need to store in program memory.
+		INCLUDE	"spStoreProgramLine.inc"
+		INCLUDE	"spRemoveProgramLine.inc"
 
-StoreProgramLine:
-        PUSH    DE
-        PUSH    BC
-        RST     NextChar
-        PUSH    AF
-        CALL    FindProgramLine			; Ищем строку в программе
-        PUSH    BC
-        JP      NC,InsertProgramLine	; Если не нашли, то вставляем строку
-
-; Carry was set by the call to FindProgramLine, meaning that the line already exists.
-; So we have to remove the old program line before inserting the new one in it's place.
-; To remove the program line we simply move the remainder of the program 
-;(ie every line that comes after it) down in memory.
-
-RemoveProgramLine:
-        EX      DE,HL
-        LD      HL,(VAR_BASE)
-RemoveProgramLineLoop:
-		LD      A,(DE)
-        LD      (BC),A
-        INC     BC
-        INC     DE
-        RST     CompareHLDE
-        JP      NC, RemoveProgramLineLoop
-        LD      H,B
-        LD      L,C
-        INC     HL
-        LD      (VAR_BASE),HL
 
 ;To insert the program line, firstly the program remainder (every line that comes
 ; after the one to be inserted) must be moved up in memory to make room.
@@ -4220,15 +4193,32 @@ szAuto:	DB	00DH, 00AH, "AUTO*", 000H
 	include "data.inc"
 	ENDIF
 
+	; Переопределение команды JP, чтобы конструкции типа
+	; 		JP label
+	; label:	...
+	; не приводили к генерации команды JP.
+	;
+	; Каждый такой переход приводит к одному дополнительному
+	; проходу ассемблера. Макрос должен идти в конце, чтобы
+	; все символы былы определены. При втором и последующих
+	; проходах он будет отрабатывать, но не на первом.
+	;
+	; Известные проблемы. Ломает работу RST, если страбатывает
+	; макрос и удаляет JP, т.к. меняются адреса рестартов.
+	; Можно починить, если перекрыть команду RST макросом, который
+	; будет это учитывать. Если импользовать RST без меток, а
+	; вдреса напрямую, то все ОК.
+
 JP	MACRO	 ADDR, ADDR2
 		IFB ADDR2
 			IF "ADDR"="(HL)"
 				!JP ADDR
 			ELSE
 				IF	(MOMPASS>2) && (ADDR = $)
+						; no command
 				ELSE
 					IF (ADDR-3) = $
-;						MESSAGE	"ADDR"
+						; no command
 					ELSE
 						!JP ADDR
 					ENDIF

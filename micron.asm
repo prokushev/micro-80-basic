@@ -750,37 +750,9 @@ L0110:
 		POP		AF					; Восстанавлливаем флаг переноса
 		JP		NC, Exec			; Если у нас строка без номера, то сразу исполняем
 
-; StoreProgramLine
-; Here's where a program line has been typed, which we now need to store in program memory.
+		INCLUDE	"spStoreProgramLine.inc"
+		INCLUDE	"spRemoveProgramLine.inc"
 
-StoreProgramLine:
-        PUSH    DE
-        PUSH    BC
-        RST     NextChar
-        PUSH    AF
-        CALL    FindProgramLine			; Ищем строку в программе
-        PUSH    BC
-        JP      NC,InsertProgramLine	; Если не нашли, то вставляем строку
-
-; Carry was set by the call to FindProgramLine, meaning that the line already exists.
-; So we have to remove the old program line before inserting the new one in it's place.
-; To remove the program line we simply move the remainder of the program 
-;(ie every line that comes after it) down in memory.
-
-RemoveProgramLine:
-        EX      DE,HL
-        LD      HL,(VAR_BASE)
-RemoveProgramLineLoop:
-		LD      A,(DE)
-        LD      (BC),A
-        INC     BC
-        INC     DE
-        RST     CompareHLDE
-        JP      NC, RemoveProgramLineLoop
-        LD      H,B
-        LD      L,C
-        INC     HL
-        LD      (VAR_BASE),HL
 
 ;To insert the program line, firstly the program remainder (every line that comes
 ; after the one to be inserted) must be moved up in memory to make room.
@@ -859,6 +831,7 @@ GetNonBlankLine2:
         ; --- START PROC New ---
 New:
 	RET     NZ
+
         LD      HL,(PROGRAM_BASE)
         XOR     A
         LD      (HL),A
